@@ -1,0 +1,41 @@
+{
+  "name": "gb-planner",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "yarn workspace @gb-planner/frontend dev",
+    "dev:backend": "yarn workspace @gb-planner/backend start:dev",
+    "dev:all": "concurrently \"yarn dev\" \"yarn dev:backend\"",
+    "build": "yarn workspaces foreach -A run build",
+    "build:frontend": "yarn workspace @gb-planner/frontend build",
+    "build:backend": "yarn workspace @gb-planner/backend build",
+    "lint": "eslint . --ext ts,tsx --fix",
+    "lint:check": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write \"**/*.{ts,tsx,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,css,md}\"",
+    "prepare": "husky || true",
+    "firebase:deploy": "yarn build:frontend && firebase deploy",
+    "firebase:deploy:hosting": "yarn build:frontend && firebase deploy --only hosting"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "@typescript-eslint/eslint-plugin": "^7.17.0",
+    "@typescript-eslint/parser": "^7.17.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.5",
+    "typescript": "^5.5.4"
+  },
+  "packageManager": "yarn@1.22.22"
+}

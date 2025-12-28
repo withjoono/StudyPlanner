@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+
+    /* Custom brand color - ultrasonic */
+    --ultrasonic-50: 210 100% 97%;
+    --ultrasonic-100: 214 95% 93%;
+    --ultrasonic-200: 213 97% 87%;
+    --ultrasonic-300: 212 96% 78%;
+    --ultrasonic-400: 213 94% 68%;
+    --ultrasonic-500: 217 91% 60%;
+    --ultrasonic-600: 221 83% 53%;
+    --ultrasonic-700: 224 76% 48%;
+    --ultrasonic-800: 226 71% 40%;
+    --ultrasonic-900: 224 64% 33%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom utility classes for ultrasonic brand color */
+.bg-ultrasonic-50 {
+  background-color: hsl(var(--ultrasonic-50));
+}
+.bg-ultrasonic-100 {
+  background-color: hsl(var(--ultrasonic-100));
+}
+.bg-ultrasonic-200 {
+  background-color: hsl(var(--ultrasonic-200));
+}
+.bg-ultrasonic-300 {
+  background-color: hsl(var(--ultrasonic-300));
+}
+.bg-ultrasonic-400 {
+  background-color: hsl(var(--ultrasonic-400));
+}
+.bg-ultrasonic-500 {
+  background-color: hsl(var(--ultrasonic-500));
+}
+.bg-ultrasonic-600 {
+  background-color: hsl(var(--ultrasonic-600));
+}
+.bg-ultrasonic-700 {
+  background-color: hsl(var(--ultrasonic-700));
+}
+.bg-ultrasonic-800 {
+  background-color: hsl(var(--ultrasonic-800));
+}
+.bg-ultrasonic-900 {
+  background-color: hsl(var(--ultrasonic-900));
+}
+
+.text-ultrasonic-50 {
+  color: hsl(var(--ultrasonic-50));
+}
+.text-ultrasonic-100 {
+  color: hsl(var(--ultrasonic-100));
+}
+.text-ultrasonic-200 {
+  color: hsl(var(--ultrasonic-200));
+}
+.text-ultrasonic-300 {
+  color: hsl(var(--ultrasonic-300));
+}
+.text-ultrasonic-400 {
+  color: hsl(var(--ultrasonic-400));
+}
+.text-ultrasonic-500 {
+  color: hsl(var(--ultrasonic-500));
+}
+.text-ultrasonic-600 {
+  color: hsl(var(--ultrasonic-600));
+}
+.text-ultrasonic-700 {
+  color: hsl(var(--ultrasonic-700));
+}
+.text-ultrasonic-800 {
+  color: hsl(var(--ultrasonic-800));
+}
+.text-ultrasonic-900 {
+  color: hsl(var(--ultrasonic-900));
+}
+
+.border-ultrasonic-500 {
+  border-color: hsl(var(--ultrasonic-500));
+}
+.hover\:bg-ultrasonic-600:hover {
+  background-color: hsl(var(--ultrasonic-600));
+}
