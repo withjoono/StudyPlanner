@@ -1,5 +1,8 @@
-# Build stage
-FROM node:20-alpine AS builder
+# Build stage - Debian slim for Prisma compatibility
+FROM node:20-slim AS builder
+
+# Install OpenSSL (required for Prisma)
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # 작업 디렉토리 설정
 WORKDIR /app
@@ -25,8 +28,11 @@ WORKDIR /app/apps/backend
 RUN yarn prisma:generate
 RUN yarn build
 
-# Production stage
-FROM node:20-alpine AS production
+# Production stage - Debian slim for Prisma compatibility
+FROM node:20-slim AS production
+
+# Install OpenSSL (required for Prisma)
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # 작업 디렉토리 설정
 WORKDIR /app
