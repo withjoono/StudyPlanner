@@ -1,0 +1,28 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/studyplanner-482610/backend:latest'
+      - '-f'
+      - 'apps/backend/Dockerfile'
+      - '.'
+    
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/studyplanner-482610/backend:latest'
+
+images:
+  - 'gcr.io/studyplanner-482610/backend:latest'
+
+timeout: '1200s'
+
+
+
+
+
+
+

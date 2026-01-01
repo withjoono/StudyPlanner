@@ -15,9 +15,9 @@ async function bootstrap() {
     }),
   );
 
-  // CORS
+  // CORS - Production에서는 모든 origin 허용 (나중에 특정 도메인으로 제한 필요)
   app.enableCors({
-    origin: ['http://localhost:3001', 'http://localhost:3002'],
+    origin: true,
     credentials: true,
   });
 
@@ -32,9 +32,9 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   // Start server
-  const port = process.env.PORT || 4000;
-  await app.listen(port);
-  console.log(`🚀 Application is running on: http://localhost:${port}`);
-  console.log(`📚 API Documentation: http://localhost:${port}/api`);
+  const port = parseInt(process.env.PORT || '8080', 10);
+  await app.listen(port, '0.0.0.0');
+  console.log(`🚀 Application is running on: http://0.0.0.0:${port}`);
+  console.log(`📚 API Documentation: http://0.0.0.0:${port}/api`);
 }
 bootstrap();
