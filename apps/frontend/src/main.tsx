@@ -4,6 +4,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { routeTree } from './routeTree.gen';
 import { setupInterceptors } from './lib/api';
+import { SSOHandler } from './components/auth';
 import './index.css';
 
 // API 인터셉터 설정 (앱 시작 시 한 번만)
@@ -32,7 +33,9 @@ declare module '@tanstack/react-router' {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <SSOHandler>
+        <RouterProvider router={router} />
+      </SSOHandler>
     </QueryClientProvider>
   </React.StrictMode>,
 );

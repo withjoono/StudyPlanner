@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3001,
+    port: 3002,
     host: true,
     proxy: {
       // gb-planner 백엔드 (플래너 전용 API)

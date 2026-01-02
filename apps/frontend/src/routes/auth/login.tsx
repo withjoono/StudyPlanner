@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Loader2, Mail, Lock } from 'lucide-react';
+import { Loader2, Mail, Lock, ExternalLink } from 'lucide-react';
+import { redirectToHubLogin, redirectToHubRegister } from '@/lib/auth/hub-login';
 
 export const Route = createFileRoute('/auth/login')({
   component: LoginPage,
@@ -95,7 +96,7 @@ function LoginPage() {
           </Button>
         </form>
 
-        {/* 소셜 로그인 */}
+        {/* 거북스쿨 계정으로 로그인 */}
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -106,25 +107,19 @@ function LoginPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4">
             <Button
               type="button"
               variant="outline"
-              className="w-full"
-              onClick={() => toast.info('네이버 로그인은 준비 중입니다')}
+              className="w-full border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              onClick={() => redirectToHubLogin('/')}
             >
-              <img src="/naver-icon.png" alt="Naver" className="mr-2 h-5 w-5" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-              네이버
+              <ExternalLink className="mr-2 h-4 w-4" />
+              거북스쿨 계정으로 로그인
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => toast.info('구글 로그인은 준비 중입니다')}
-            >
-              <img src="/google-icon.png" alt="Google" className="mr-2 h-5 w-5" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-              구글
-            </Button>
+            <p className="mt-2 text-center text-xs text-gray-500">
+              거북스쿨 계정이 있다면 바로 이용 가능합니다
+            </p>
           </div>
         </div>
 
@@ -132,22 +127,16 @@ function LoginPage() {
         <div className="mt-6 text-center text-sm">
           <p className="text-gray-600">
             계정이 없으신가요?{' '}
-            <Link to="/auth/register" className="font-medium text-indigo-600 hover:text-indigo-500">
-              회원가입
-            </Link>
+            <button
+              type="button"
+              onClick={() => redirectToHubRegister('/')}
+              className="font-medium text-indigo-600 hover:text-indigo-500"
+            >
+              거북스쿨 회원가입
+            </button>
           </p>
-          <Link
-            to="/auth/reset-password"
-            className="mt-2 block text-gray-500 hover:text-gray-700"
-          >
-            비밀번호를 잊으셨나요?
-          </Link>
         </div>
       </Card>
     </div>
   );
 }
-
-
-
-

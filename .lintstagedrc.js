@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   // TypeScript/JavaScript 파일: ESLint + Prettier
   '*.{ts,tsx}': ['eslint --fix', 'prettier --write'],
 
@@ -14,5 +14,3 @@ module.exports = {
   // CSS 파일: Prettier만
   '*.css': ['prettier --write'],
 };
-
-
