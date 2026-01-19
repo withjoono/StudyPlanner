@@ -1,0 +1,471 @@
+// GB Planner Prisma Schema
+// Based on DATABASE.md specification
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================================================================
+// ENUM 타입 정의
+// ================================================================
+
+enum SchoolLevel {
+  elementary
+  middle
+  high
+}
+
+enum SchoolType {
+  general
+  special
+  autonomous
+  foreign
+  science
+  art
+}
+
+enum Category {
+  study
+  exercise
+  activity
+  rest
+  other
+}
+
+enum MaterialType {
+  textbook
+  lecture
+}
+
+enum MissionStatus {
+  pending
+  fixed
+  changed
+  added
+  deleted
+  completed
+}
+
+enum PriceType {
+  monthly
+  per_session
+}
+
+enum MaterialCategory {
+  textbook    // 교과서
+  reference   // 참고서
+  lecture     // 인강
+}
+
+enum SubjectCode {
+  korean      // 국어
+  math        // 수학
+  english     // 영어
+  science     // 과학
+  social      // 사회
+  history     // 한국사
+  foreign     // 제2외국어
+  other       // 기타
+}
+
+// ================================================================
+// 테이블 정의
+// ================================================================
+
+/// 학생 인적사항
+model Student {
+  id          BigInt      @id @default(autoincrement())
+  studentCode String      @unique @map("student_code") @db.VarChar(20)
+  year        Int
+  schoolLevel SchoolLevel @map("school_level")
+  schoolName  String?     @map("school_name") @db.VarChar(50)
+  grade       String?     @db.VarChar(10)
+  name        String      @db.VarChar(50)
+  schoolType  SchoolType? @map("school_type")
+  phone       String?     @db.VarChar(20)
+  parentPhone String?     @map("parent_phone") @db.VarChar(20)
+  email       String?     @db.VarChar(100)
+  parentEmail String?     @map("parent_email") @db.VarChar(100)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  weeklyRoutines   WeeklyRoutine[]
+  longTermPlans    LongTermPlan[]
+  dailyMissions    DailyMission[]
+  missionResults   MissionResult[]
+  studentLessons   StudentLesson[]
+  studentMentorings StudentMentoring[]
+
+  @@index([studentCode], name: "idx_student_code")
+  @@index([year], name: "idx_student_year")
+  @@map("student")
+}
+
+/// 주간 루틴
+model WeeklyRoutine {
+  id          BigInt    @id @default(autoincrement())
+  routineCode String?   @unique @map("routine_code") @db.VarChar(20)
+  studentId   BigInt    @map("student_id")
+  title       String?   @db.VarChar(100)
+  category    Category?
+  subCategory String?   @map("sub_category") @db.VarChar(50)
+  subject     String?   @db.VarChar(50)
+  content     String?   @db.VarChar(200)
+  startTime   DateTime? @map("start_time") @db.Time(0)
+  endTime     DateTime? @map("end_time") @db.Time(0)
+  dayMon      Boolean   @default(false) @map("day_mon")
+  dayTue      Boolean   @default(false) @map("day_tue")
+  dayWed      Boolean   @default(false) @map("day_wed")
+  dayThu      Boolean   @default(false) @map("day_thu")
+  dayFri      Boolean   @default(false) @map("day_fri")
+  daySat      Boolean   @default(false) @map("day_sat")
+  daySun      Boolean   @default(false) @map("day_sun")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  student       Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  dailyMissions DailyMission[]
+
+  @@index([studentId], name: "idx_routine_student")
+  @@index([isActive], name: "idx_routine_active")
+  @@map("weekly_routine")
+}
+
+/// 장기 계획
+model LongTermPlan {
+  id            BigInt        @id @default(autoincrement())
+  planCode      String?       @unique @map("plan_code") @db.VarChar(20)
+  studentId     BigInt        @map("student_id")
+  title         String?       @db.VarChar(100)
+  category      Category?
+  subCategory   String?       @map("sub_category") @db.VarChar(50)
+  subject       String?       @db.VarChar(50)
+  content       String?       @db.VarChar(200)
+  startDate     DateTime?     @map("start_date") @db.Date
+  endDate       DateTime?     @map("end_date") @db.Date
+  materialType  MaterialType? @map("material_type")
+  materialId    BigInt?       @map("material_id") // 교재 DB 연결
+  materialName  String?       @map("material_name") @db.VarChar(100)
+  startPage     Int?          @map("start_page") // 시작 페이지/강의
+  endPage       Int?          @map("end_page") // 끝 페이지/강의
+  totalPages    Int?          @map("total_pages")
+  donePages     Int           @default(0) @map("done_pages")
+  dailyTarget   Int?          @map("daily_target") // 일일 목표량 (자동 계산)
+  weeklyTarget  Int?          @map("weekly_target") // 주간 목표량 (자동 계산)
+  isDistributed Boolean       @default(false) @map("is_distributed")
+  isCompleted   Boolean       @default(false) @map("is_completed")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  student       Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  material      Material?      @relation("MaterialToLongTermPlan", fields: [materialId], references: [id], onDelete: SetNull)
+  dailyMissions DailyMission[]
+
+  @@index([studentId], name: "idx_plan_student")
+  @@index([startDate, endDate], name: "idx_plan_date")
+  @@index([subject], name: "idx_plan_subject")
+  @@index([materialId], name: "idx_plan_material")
+  @@map("long_term_plan")
+}
+
+/// 일일 미션 (단기 계획)
+model DailyMission {
+  id          BigInt        @id @default(autoincrement())
+  missionCode String        @unique @map("mission_code") @db.VarChar(30)
+  studentId   BigInt        @map("student_id")
+  planId      BigInt?       @map("plan_id")
+  routineId   BigInt?       @map("routine_id")
+  date        DateTime      @db.Date
+  startTime   DateTime?     @map("start_time") @db.Time(0)
+  endTime     DateTime?     @map("end_time") @db.Time(0)
+  category    Category?
+  subject     String?       @db.VarChar(50)
+  subCategory String?       @map("sub_category") @db.VarChar(50)
+  content     String?       @db.VarChar(200)
+  startPage   Int?          @map("start_page")
+  endPage     Int?          @map("end_page")
+  amount      Int?
+  status      MissionStatus @default(pending)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  student        Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  plan           LongTermPlan?   @relation(fields: [planId], references: [id], onDelete: SetNull)
+  routine        WeeklyRoutine?  @relation(fields: [routineId], references: [id], onDelete: SetNull)
+  missionResults MissionResult[]
+
+  @@index([studentId], name: "idx_mission_student")
+  @@index([date], name: "idx_mission_date")
+  @@index([studentId, date], name: "idx_mission_student_date")
+  @@index([planId], name: "idx_mission_plan")
+  @@map("daily_mission")
+}
+
+/// 미션 결과
+model MissionResult {
+  id              BigInt    @id @default(autoincrement())
+  resultCode      String?   @unique @map("result_code") @db.VarChar(30)
+  missionId       BigInt    @map("mission_id")
+  studentId       BigInt    @map("student_id")
+  completedDate   DateTime? @map("completed_date") @db.Date
+  startTime       DateTime? @map("start_time") @db.Time(0)
+  endTime         DateTime? @map("end_time") @db.Time(0)
+  amount          Int?
+  achievementRate Decimal?  @map("achievement_rate") @db.Decimal(3, 2)
+  correctCount    Int?      @map("correct_count")
+  totalQuestions  Int?      @map("total_questions")
+  score           Decimal?  @db.Decimal(5, 2)
+  focusRate       Decimal?  @map("focus_rate") @db.Decimal(3, 2)
+  note            String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  mission DailyMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  student Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([missionId], name: "idx_result_mission")
+  @@index([studentId], name: "idx_result_student")
+  @@index([completedDate], name: "idx_result_date")
+  @@map("mission_result")
+}
+
+/// 수업
+model Lesson {
+  id           BigInt     @id @default(autoincrement())
+  lessonCode   String?    @unique @map("lesson_code") @db.VarChar(30)
+  grade        String?    @db.VarChar(10)
+  subjectCode  String?    @map("subject_code") @db.VarChar(10)
+  startDate    DateTime?  @map("start_date") @db.Date
+  name         String?    @db.VarChar(100)
+  teacherName  String?    @map("teacher_name") @db.VarChar(50)
+  weeklyCount  Int?       @map("weekly_count")
+  duration     String?    @db.VarChar(10)
+  schedule     Json?
+  price        Int?
+  priceType    PriceType? @map("price_type")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  studentLessons StudentLesson[]
+
+  @@index([grade], name: "idx_lesson_grade")
+  @@index([isActive], name: "idx_lesson_active")
+  @@map("lesson")
+}
+
+/// 멘토링
+model Mentoring {
+  id            BigInt     @id @default(autoincrement())
+  mentoringCode String?    @unique @map("mentoring_code") @db.VarChar(30)
+  grade         String?    @db.VarChar(10)
+  subjectCode   String?    @map("subject_code") @db.VarChar(10)
+  startDate     DateTime?  @map("start_date") @db.Date
+  name          String?    @db.VarChar(100)
+  mentorName    String?    @map("mentor_name") @db.VarChar(50)
+  weeklyCount   Int?       @map("weekly_count")
+  duration      String?    @db.VarChar(10)
+  schedule      Json?
+  price         Int?
+  priceType     PriceType? @map("price_type")
+  isActive      Boolean    @default(true) @map("is_active")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  studentMentorings StudentMentoring[]
+
+  @@map("mentoring")
+}
+
+/// 학생-수업 연결
+model StudentLesson {
+  id         BigInt    @id @default(autoincrement())
+  studentId  BigInt    @map("student_id")
+  lessonId   BigInt    @map("lesson_id")
+  enrolledAt DateTime? @map("enrolled_at") @db.Date
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lesson  Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, lessonId], name: "uk_student_lesson")
+  @@index([studentId], name: "idx_student_lesson_student")
+  @@index([lessonId], name: "idx_student_lesson_lesson")
+  @@map("student_lesson")
+}
+
+/// 학생-멘토링 연결
+model StudentMentoring {
+  id          BigInt    @id @default(autoincrement())
+  studentId   BigInt    @map("student_id")
+  mentoringId BigInt    @map("mentoring_id")
+  enrolledAt  DateTime? @map("enrolled_at") @db.Date
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mentoring Mentoring @relation(fields: [mentoringId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, mentoringId], name: "uk_student_mentoring")
+  @@index([studentId], name: "idx_sm_student")
+  @@index([mentoringId], name: "idx_sm_mentoring")
+  @@map("student_mentoring")
+}
+
+// ================================================================
+// 교재 DB (Material Database) - 크롤링된 교재/인강 목차
+// ================================================================
+
+/// 교재/강의 정보
+model Material {
+  id              BigInt           @id @default(autoincrement())
+  materialCode    String           @unique @map("material_code") @db.VarChar(30)
+  category        MaterialCategory // 교과서/참고서/인강
+  subjectCode     SubjectCode      @map("subject_code") // 과목
+  grade           String?          @db.VarChar(10) // 학년 (H1, H2, H3, M1, M2, M3)
+  name            String           @db.VarChar(200) // 교재명/강의명
+  publisher       String?          @db.VarChar(100) // 출판사/강사
+  author          String?          @db.VarChar(100) // 저자
+  year            Int?             // 출판년도
+  edition         String?          @db.VarChar(20) // 판수
+  totalPages      Int?             @map("total_pages") // 총 페이지 수 (교재)
+  totalLectures   Int?             @map("total_lectures") // 총 강의 수 (인강)
+  totalDuration   Int?             @map("total_duration") // 총 시간 (분, 인강)
+  estimatedHours  Int?             @map("estimated_hours") // 예상 학습 시간
+  difficulty      Int?             @default(3) // 난이도 (1~5)
+  description     String?          @db.Text // 설명
+  coverImage      String?          @map("cover_image") @db.VarChar(500) // 표지 이미지 URL
+  isActive        Boolean          @default(true) @map("is_active")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  chapters      MaterialChapter[]
+  longTermPlans LongTermPlan[]    @relation("MaterialToLongTermPlan")
+
+  @@index([category], name: "idx_material_category")
+  @@index([subjectCode], name: "idx_material_subject")
+  @@index([grade], name: "idx_material_grade")
+  @@index([name], name: "idx_material_name")
+  @@map("material")
+}
+
+/// 교재 챕터/단원 (목차)
+model MaterialChapter {
+  id              BigInt    @id @default(autoincrement())
+  materialId      BigInt    @map("material_id")
+  chapterNumber   Int       @map("chapter_number") // 챕터 번호 (순서)
+  title           String    @db.VarChar(200) // 챕터 제목
+  startPage       Int?      @map("start_page") // 시작 페이지
+  endPage         Int?      @map("end_page") // 끝 페이지
+  pageCount       Int?      @map("page_count") // 페이지 수
+  lectureCount    Int?      @map("lecture_count") // 강의 수 (인강)
+  durationMinutes Int?      @map("duration_minutes") // 총 시간 (분)
+  estimatedTime   Int?      @map("estimated_time") // 예상 학습 시간 (분)
+  difficulty      Int?      @default(3) // 난이도 (1~5)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  material Material          @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  sections MaterialSection[]
+
+  @@index([materialId], name: "idx_chapter_material")
+  @@index([chapterNumber], name: "idx_chapter_number")
+  @@map("material_chapter")
+}
+
+/// 교재 세부 목차/강의 (소단원)
+model MaterialSection {
+  id              BigInt   @id @default(autoincrement())
+  chapterId       BigInt   @map("chapter_id")
+  sectionNumber   Int      @map("section_number") // 섹션 번호 (순서)
+  title           String   @db.VarChar(200) // 섹션 제목
+  startPage       Int?     @map("start_page") // 시작 페이지
+  endPage         Int?     @map("end_page") // 끝 페이지
+  pageCount       Int?     @map("page_count") // 페이지 수
+  durationMinutes Int?     @map("duration_minutes") // 강의 시간 (분)
+  estimatedTime   Int?     @map("estimated_time") // 예상 학습 시간 (분)
+  difficulty      Int?     @default(3) // 난이도 (1~5)
+  videoUrl        String?  @map("video_url") @db.VarChar(500) // 강의 URL (인강)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  chapter MaterialChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([chapterId], name: "idx_section_chapter")
+  @@index([sectionNumber], name: "idx_section_number")
+  @@map("material_section")
+}
+
+// ================================================================
+// 월간/주간 미션 분배 테이블
+// ================================================================
+
+/// 월간 미션 (장기계획에서 자동 분배)
+model MonthlyMission {
+  id            BigInt   @id @default(autoincrement())
+  planId        BigInt   @map("plan_id")
+  studentId     BigInt   @map("student_id")
+  year          Int      // 년도
+  month         Int      // 월 (1~12)
+  targetPages   Int?     @map("target_pages") // 목표 페이지
+  targetLectures Int?    @map("target_lectures") // 목표 강의수
+  startPage     Int?     @map("start_page") // 시작 페이지
+  endPage       Int?     @map("end_page") // 끝 페이지
+  completedPages Int     @default(0) @map("completed_pages") // 완료 페이지
+  isCompleted   Boolean  @default(false) @map("is_completed")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  weeklyMissions WeeklyMission[]
+
+  @@unique([planId, year, month], name: "uk_monthly_plan")
+  @@index([studentId], name: "idx_monthly_student")
+  @@index([year, month], name: "idx_monthly_date")
+  @@map("monthly_mission")
+}
+
+/// 주간 미션 (월간에서 자동 분배)
+model WeeklyMission {
+  id              BigInt   @id @default(autoincrement())
+  monthlyId       BigInt?  @map("monthly_id")
+  planId          BigInt   @map("plan_id")
+  studentId       BigInt   @map("student_id")
+  weekStart       DateTime @map("week_start") @db.Date // 주 시작일 (월요일)
+  weekEnd         DateTime @map("week_end") @db.Date // 주 종료일 (일요일)
+  targetPages     Int?     @map("target_pages") // 목표 페이지
+  targetLectures  Int?     @map("target_lectures") // 목표 강의수
+  startPage       Int?     @map("start_page") // 시작 페이지
+  endPage         Int?     @map("end_page") // 끝 페이지
+  completedPages  Int      @default(0) @map("completed_pages") // 완료 페이지
+  isCompleted     Boolean  @default(false) @map("is_completed")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  monthly MonthlyMission? @relation(fields: [monthlyId], references: [id], onDelete: SetNull)
+
+  @@unique([planId, weekStart], name: "uk_weekly_plan")
+  @@index([studentId], name: "idx_weekly_student")
+  @@index([weekStart, weekEnd], name: "idx_weekly_date")
+  @@map("weekly_mission")
+}
