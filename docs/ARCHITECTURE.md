@@ -431,22 +431,35 @@ cd packages/shared-types && yarn build
 
 | 서비스   | 포트 | 환경변수 |
 | -------- | ---- | -------- |
-| Frontend | 3001 | -        |
-| Backend  | 4000 | `PORT`   |
+| Frontend | 3004 | -        |
+| Backend  | 4004 | `PORT`   |
 | Database | 3306 | -        |
+
+### 외부 서비스 포트
+
+| 서비스       | 포트 | 설명                      |
+| ------------ | ---- | ------------------------- |
+| Hub Backend  | 4000 | 인증, 결제, 회원 관리 API |
+| Hub Frontend | 3000 | 메인 프론트엔드           |
 
 ### 프록시 설정
 
 프론트엔드에서 백엔드 API 호출 시 Vite 프록시 사용:
 
 ```typescript
-// apps/frontend/vite.config.ts
+// apps/studyplanner-frontend/vite.config.ts
 server: {
+  port: 3004,
   proxy: {
     '/api': {
-      target: 'http://localhost:4000',
+      target: 'http://localhost:4004',  // StudyPlanner Backend
       changeOrigin: true,
       rewrite: (path) => path.replace(/^\/api/, ''),
+    },
+    '/api-main': {
+      target: 'http://localhost:4000',  // Hub Backend
+      changeOrigin: true,
+      rewrite: (path) => path.replace(/^\/api-main/, ''),
     },
   },
 }

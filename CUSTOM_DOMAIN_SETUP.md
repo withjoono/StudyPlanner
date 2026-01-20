@@ -43,6 +43,7 @@ Value: [Firebase에서 제공하는 IP 주소들]
 ```
 
 Firebase는 보통 다음 IP 주소들을 제공합니다:
+
 - `151.101.1.195`
 - `151.101.65.195`
 
@@ -68,21 +69,25 @@ TTL: 3600
 ### 3단계: DNS 설정 예시
 
 #### 가비아 (Gabia)
+
 1. 가비아 로그인 > My가비아 > 도메인 관리
 2. 해당 도메인 선택 > DNS 정보 > DNS 설정
 3. 위의 레코드 추가
 
 #### 호스팅KR
+
 1. 호스팅KR 로그인 > 도메인 관리
 2. 해당 도메인 선택 > DNS 관리
 3. 위의 레코드 추가
 
 #### AWS Route53
+
 1. Route53 > Hosted zones
 2. 해당 도메인 선택 > Create record
 3. 위의 레코드 추가
 
 #### Cloudflare
+
 1. Cloudflare 대시보드 > DNS
 2. Add record
 3. 위의 레코드 추가
@@ -109,6 +114,7 @@ TTL: 3600
 ## 🔍 DNS 전파 확인 방법
 
 ### 온라인 도구
+
 - https://dnschecker.org/
 - https://www.whatsmydns.net/
 
@@ -142,16 +148,19 @@ nslookup -type=A studyplanner.kr
 ## 🔧 문제 해결
 
 ### 1. "도메인 소유권을 확인할 수 없습니다" 오류
+
 - TXT 레코드가 올바르게 입력되었는지 확인
 - DNS 전파 대기 (최대 48시간)
 - nslookup으로 TXT 레코드 확인
 
 ### 2. SSL 인증서 오류
+
 - DNS A 레코드가 올바른지 확인
 - Firebase가 제공한 IP 주소를 정확히 입력했는지 확인
 - 최대 24시간 대기 (SSL 프로비저닝 시간)
 
 ### 3. Cloudflare 사용 시
+
 - Proxy를 끄고 "DNS only" 모드로 설정
 - 또는 Firebase 대신 Cloudflare의 SSL을 사용
 
@@ -160,6 +169,7 @@ nslookup -type=A studyplanner.kr
 ## 📞 도메인 등록 업체가 어디신가요?
 
 도메인을 어디서 등록하셨는지 알려주시면 더 구체적인 DNS 설정 방법을 안내해드리겠습니다:
+
 - 가비아 (Gabia)
 - 호스팅KR
 - AWS Route53
@@ -181,15 +191,7 @@ nslookup -type=A studyplanner.kr
 ## ✅ 완료 확인
 
 설정이 완료되면:
+
 1. https://studyplanner.kr 접속 가능
 2. HTTPS 자동 적용 (SSL 인증서)
 3. Firebase Hosting의 모든 기능 사용 가능
-
-
-
-
-
-
-
-
-

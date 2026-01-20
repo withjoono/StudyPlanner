@@ -7,11 +7,13 @@
 Cloud Run을 사용하려면 프로젝트에 결제 계정을 연결해야 합니다.
 
 **결제 활성화 방법:**
+
 1. https://console.cloud.google.com/billing/linkedaccount?project=studyplanner-482610
 2. 결제 계정 선택 또는 새로 만들기
 3. 프로젝트에 연결
 
 **참고:** Google Cloud는 무료 크레딧과 무료 티어를 제공합니다:
+
 - 신규 가입 시 $300 무료 크레딧 (90일)
 - Cloud Run 무료 티어: 월 2백만 요청, 180,000 vCPU-초, 360,000 GiB-초
 
@@ -42,6 +44,7 @@ gcloud run deploy studyplanner-backend \
 ```
 
 **파라미터 설명:**
+
 - `--region asia-northeast3`: 서울 리전
 - `--allow-unauthenticated`: 공개 액세스 허용
 - `--port 8080`: 애플리케이션 포트
@@ -99,6 +102,7 @@ Value: [Cloud Run이 제공하는 IP 주소]
 Cloudflare를 사용 중이라면:
 
 1. Cloudflare DNS에 CNAME 레코드 추가:
+
    ```
    Type: CNAME
    Name: api
@@ -155,6 +159,7 @@ gcloud run deploy studyplanner-backend \
 ### Cloud SQL (PostgreSQL) 사용 시
 
 1. Cloud SQL 인스턴스 생성:
+
    ```bash
    gcloud sql instances create studyplanner-db \
      --database-version=POSTGRES_15 \
@@ -163,6 +168,7 @@ gcloud run deploy studyplanner-backend \
    ```
 
 2. 데이터베이스 생성:
+
    ```bash
    gcloud sql databases create studyplanner \
      --instance=studyplanner-db
@@ -193,12 +199,15 @@ gcloud run services update studyplanner-backend \
 ### 무료 티어 유지 팁
 
 1. **최소 인스턴스 0으로 설정**
+
    ```bash
    --min-instances 0
    ```
+
    요청이 없을 때 인스턴스를 0으로 줄여 비용 절감
 
 2. **메모리 최소화**
+
    ```bash
    --memory 256Mi  # 필요에 따라 조정
    ```
@@ -215,6 +224,7 @@ gcloud run services update studyplanner-backend \
 - 요청: $0.40/백만 요청
 
 **예시:** 월 10만 요청, 평균 응답 시간 200ms, 512MB 메모리 사용
+
 - 예상 비용: $1-2/월 (무료 티어 포함)
 
 ---
@@ -246,6 +256,7 @@ gcloud run services describe studyplanner-backend --region asia-northeast3
 첫 요청 시 인스턴스 시작으로 인한 지연 발생 (5-10초).
 
 **해결책:**
+
 - `--min-instances 1` 설정 (항상 1개 인스턴스 유지, 비용 증가)
 - 또는 Cold Start 최적화 (경량 이미지 사용)
 
@@ -293,6 +304,7 @@ nslookup api.studyplanner.kr
 Backend 배포 완료 후 Frontend의 환경 변수를 업데이트하세요:
 
 **apps/frontend/.env.production:**
+
 ```env
 VITE_API_URL=https://api.studyplanner.kr
 # 또는 Cloud Run URL
@@ -300,15 +312,8 @@ VITE_API_URL=https://studyplanner-backend-xxx.run.app
 ```
 
 재배포:
+
 ```bash
 yarn build:frontend
 firebase deploy --only hosting
 ```
-
-
-
-
-
-
-
-

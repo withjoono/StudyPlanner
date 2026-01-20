@@ -42,6 +42,7 @@ yarn firebase:deploy
 ```
 
 이 명령은:
+
 1. Frontend를 빌드합니다 (`apps/frontend/dist`에 빌드됨)
 2. Firebase에 배포합니다
 
@@ -64,6 +65,7 @@ firebase deploy --only hosting
 ## 배포 확인
 
 배포가 완료되면 터미널에 Hosting URL이 표시됩니다:
+
 - Hosting URL: https://your-project-id.web.app
 
 ## 환경 변수 설정
@@ -90,14 +92,17 @@ VITE_API_URL=https://your-backend-api.com
 현재 설정은 Frontend만 Firebase Hosting에 배포합니다. Backend는 다음 옵션 중 하나를 선택하여 배포하세요:
 
 ### 옵션 1: Firebase Cloud Functions (권장)
+
 - Firebase 생태계와 통합
 - 서버리스 환경
 
 ### 옵션 2: Google Cloud Run
+
 - 컨테이너 기반
 - Auto-scaling 지원
 
 ### 옵션 3: 기타 플랫폼
+
 - Heroku, Railway, Render, AWS, etc.
 
 Backend를 배포한 후 Frontend의 API 엔드포인트를 업데이트하세요.
@@ -123,11 +128,3 @@ yarn install
 # 빌드 테스트
 yarn build:frontend
 ```
-
-
-
-
-
-
-
-
