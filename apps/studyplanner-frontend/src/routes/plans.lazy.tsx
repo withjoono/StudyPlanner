@@ -399,18 +399,26 @@ function PlanCreateDialog({
     return { pages, lectures };
   }, [material, startChapter, endChapter]);
 
-  // 일수 및 일일 목표량 계산
+  // 주 단위 기반 학습 일정 계산
   const schedule = useMemo(() => {
     const start = new Date(startDate);
     const end = new Date(endDate);
     const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    const weeks = Math.ceil(days / 7);
+    // 첫 월요일 찾기
+    const startDay = start.getDay();
+    const firstMondayOffset = startDay === 0 ? 1 : startDay === 1 ? 0 : 8 - startDay;
+    const firstMonday = new Date(start);
+    firstMonday.setDate(start.getDate() + firstMondayOffset);
+    const totalDaysFromMonday = Math.floor(
+      (end.getTime() - firstMonday.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    const nWeeks = Math.max(1, Math.floor(totalDaysFromMonday / 7));
+    const remainderDays = totalDaysFromMonday % 7;
 
     const totalAmount = selectedRange.pages || selectedRange.lectures;
-    const dailyTarget = Math.ceil(totalAmount / (days * 0.7)); // 70% 가동률 가정
-    const weeklyTarget = dailyTarget * 5;
+    const weeklyTarget = Math.ceil(totalAmount / nWeeks);
 
-    return { days, weeks, dailyTarget, weeklyTarget };
+    return { days, nWeeks, weeklyTarget, remainderDays };
   }, [startDate, endDate, selectedRange]);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -490,20 +498,20 @@ function PlanCreateDialog({
               <div className="rounded-lg bg-gray-50 p-2 text-center">
                 <p className="text-xs text-gray-500">학습 기간</p>
                 <p className="font-semibold">
-                  {schedule.days}일 ({schedule.weeks}주)
+                  {schedule.nWeeks}주
+                  {schedule.remainderDays > 0 && (
+                    <span className="text-xs font-normal text-gray-400">
+                      {' '}
+                      (+{schedule.remainderDays}일)
+                    </span>
+                  )}
                 </p>
               </div>
               <div className="rounded-lg bg-gray-50 p-2 text-center">
                 <p className="text-xs text-gray-500">
-                  일일 목표 ({selectedRange.pages ? 'p' : '강'})
+                  주간 할당량 ({selectedRange.pages ? 'p' : '강'})
                 </p>
-                <p className="font-semibold">{schedule.dailyTarget}</p>
-              </div>
-              <div className="rounded-lg bg-gray-50 p-2 text-center">
-                <p className="text-xs text-gray-500">
-                  주간 목표 ({selectedRange.pages ? 'p' : '강'})
-                </p>
-                <p className="font-semibold">{schedule.weeklyTarget}</p>
+                <p className="font-semibold text-blue-600">{schedule.weeklyTarget}</p>
               </div>
               <div className="rounded-lg bg-gray-50 p-2 text-center">
                 <p className="text-xs text-gray-500">총 분량</p>
@@ -561,8 +569,19 @@ function MonthlyMissionSummaryCard({
   // 해당 월에 진행 중인 계획을 과목별로 그룹화
   const summaryBySubject = useMemo(() => {
     const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-    const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59, 999);
-    const map = new Map<string, MonthlyMissionSummary>();
+    const monthEnd = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
+    const map = new Map<
+      string,
+      MonthlyMissionSummary & { weeklyTarget: number; weeksInMonth: number }
+    >();
 
     plans.forEach((plan) => {
       if (!plan.startDate || !plan.endDate) return;
@@ -575,19 +594,35 @@ function MonthlyMissionSummaryCard({
       // 해당 월과 겹치는지 확인
       if (monthStart > planEnd || monthEnd < planStart) return;
 
+      // 이 달에 걸치는 유효 기간 계산
+      const effectiveStart = planStart > monthStart ? planStart : monthStart;
+      const effectiveEnd = planEnd < monthEnd ? planEnd : monthEnd;
+      const daysInMonth =
+        Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const weeksInMonth = Math.max(1, Math.floor(daysInMonth / 7));
+
       const subject = plan.subject || '기타';
+      const weeklyTarget = plan.weeklyTarget || 0;
+      const monthlyTarget = weeklyTarget * weeksInMonth;
       const existing = map.get(subject) || {
         subject,
         count: 0,
         totalAmount: 0,
         completedAmount: 0,
         titles: [],
-        type: (plan as ExtendedLongTermPlan).type === 'lecture' ? 'lecture' as const : 'page' as const,
+        type:
+          (plan as ExtendedLongTermPlan).type === 'lecture'
+            ? ('lecture' as const)
+            : ('page' as const),
+        weeklyTarget: 0,
+        weeksInMonth: 0,
       };
 
       existing.count += 1;
-      existing.totalAmount += plan.totalAmount || 0;
+      existing.totalAmount += monthlyTarget || plan.totalAmount || 0;
       existing.completedAmount += plan.completedAmount || 0;
+      existing.weeklyTarget += weeklyTarget;
+      existing.weeksInMonth = Math.max(existing.weeksInMonth, weeksInMonth);
       if (existing.titles.length < 2) {
         existing.titles.push(plan.title);
       }
@@ -626,7 +661,10 @@ function MonthlyMissionSummaryCard({
         {/* 과목별 미션 목록 */}
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {summaryBySubject.map((summary) => {
-            const colors = SUBJECT_COLORS[summary.subject] || { bg: 'bg-gray-500', text: 'text-gray-600' };
+            const colors = SUBJECT_COLORS[summary.subject] || {
+              bg: 'bg-gray-500',
+              text: 'text-gray-600',
+            };
             const progress =
               summary.totalAmount > 0
                 ? Math.round((summary.completedAmount / summary.totalAmount) * 100)
@@ -646,12 +684,20 @@ function MonthlyMissionSummaryCard({
                 <div className="min-w-0 flex-1">
                   {/* 과목명 + 진행률 */}
                   <div className="flex items-center justify-between">
-                    <span className={`rounded px-2 py-0.5 text-xs font-medium text-white ${colors.bg}`}>
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs font-medium text-white ${colors.bg}`}
+                    >
                       {summary.subject}
                     </span>
                     <span className="text-xs text-gray-500">
-                      {summary.completedAmount}/{summary.totalAmount}
-                      {summary.type === 'lecture' ? '강' : 'p'} ({progress}%)
+                      {summary.weeklyTarget > 0 && (
+                        <span className="mr-1 text-blue-500">
+                          주간 {summary.weeklyTarget}
+                          {summary.type === 'lecture' ? '강' : 'p'} ×{summary.weeksInMonth}주 =
+                        </span>
+                      )}
+                      {summary.totalAmount}
+                      {summary.type === 'lecture' ? '강' : 'p'}
                     </span>
                   </div>
 
@@ -896,9 +942,10 @@ function PlanCard({
             {plan.material && <p className="mt-0.5 text-sm text-gray-500">{plan.material}</p>}
             <p className="mt-1 text-xs text-gray-400">
               {startDate} ~ {endDate}
-              {plan.dailyTarget && (
-                <span className="ml-2">
-                  · 일 {plan.dailyTarget}
+              {plan.nWeeks && <span className="ml-2">· {plan.nWeeks}주</span>}
+              {plan.weeklyTarget && (
+                <span className="ml-1">
+                  · 주간 {plan.weeklyTarget}
                   {plan.type === 'lecture' ? '강' : 'p'}
                 </span>
               )}
@@ -922,7 +969,7 @@ function PlanCard({
               <Button variant="outline" size="sm" onClick={onDistribute} className="gap-1">
                 <Sparkles className="h-3 w-3" />
                 분배
-            </Button>
+              </Button>
             )}
             <Button
               variant="ghost"

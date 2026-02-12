@@ -606,6 +606,7 @@ export interface ExtendedLongTermPlan extends LongTermPlan {
   startPage?: number;
   endPage?: number;
   isDistributed?: boolean;
+  nWeeks?: number;
 }
 
 export const mockPlans: ExtendedLongTermPlan[] = [
@@ -661,7 +662,7 @@ export const mockPlans: ExtendedLongTermPlan[] = [
 ];
 
 // ================================================================
-// 자동 분배 알고리즘
+// 자동 분배 알고리즘 (주 단위 기반)
 // ================================================================
 
 export interface DailyMission {
@@ -679,10 +680,90 @@ export interface DailyMission {
   amount: number;
   status: 'pending' | 'completed' | 'skipped';
   progress: number;
+  // 주 단위 분배 정보
+  weekNumber?: number;
+  weeklyTarget?: number;
+}
+
+// ── 유틸 함수 ──
+
+/** 시간 문자열("HH:MM")을 분(minutes)으로 변환 */
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+}
+
+/** 루틴의 학습 시간(분)을 계산 */
+function getRoutineDuration(routine: Routine): number {
+  return timeToMinutes(routine.endTime) - timeToMinutes(routine.startTime);
+}
+
+/** startDate 이후 첫 번째 월요일 (startDate가 월요일이면 그대로) */
+function getFirstMonday(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=일, 1=월 ...
+  const diff = day === 0 ? 1 : day === 1 ? 0 : 8 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+// ── 요일별 학습 시간 정보 ──
+
+interface DayStudySlot {
+  dayOfWeek: number; // 0=일, 1=월, ...
+  routine: Routine;
+  minutes: number; // 학습 시간(분)
 }
 
 /**
- * 장기 계획을 일간 미션으로 자동 분배
+ * 해당 과목의 자습 루틴에서 요일별 학습 시간 슬롯을 추출
+ */
+function getSubjectDaySlots(
+  subject: string,
+  routines: Routine[],
+): { slots: DayStudySlot[]; totalMinutes: number } {
+  // 해당 과목의 자습 루틴 찾기
+  const subjectRoutines = routines.filter(
+    (r) => r.majorCategory === 'self_study' && (r.subject === subject || r.subject === '기타'),
+  );
+
+  const slots: DayStudySlot[] = [];
+  for (const routine of subjectRoutines) {
+    const minutes = getRoutineDuration(routine);
+    for (let dow = 0; dow < 7; dow++) {
+      if (routine.days[dow]) {
+        // 이미 같은 요일에 슬롯이 있으면 시간을 합산
+        const existing = slots.find((s) => s.dayOfWeek === dow);
+        if (existing) {
+          existing.minutes += minutes;
+        } else {
+          slots.push({ dayOfWeek: dow, routine, minutes });
+        }
+      }
+    }
+  }
+
+  // 요일 순서로 정렬 (월=1 부터, 일=0 은 맨 뒤)
+  slots.sort((a, b) => {
+    const aOrder = a.dayOfWeek === 0 ? 7 : a.dayOfWeek;
+    const bOrder = b.dayOfWeek === 0 ? 7 : b.dayOfWeek;
+    return aOrder - bOrder;
+  });
+
+  const totalMinutes = slots.reduce((sum, s) => sum + s.minutes, 0);
+  return { slots, totalMinutes };
+}
+
+// ── 핵심 분배 함수 ──
+
+/**
+ * 장기 계획을 주 단위로 나누어 일간 미션으로 자동 분배
+ *
+ * 알고리즘:
+ * 1. 시작일부터 첫 월요일을 찾아 주 단위로 나눔 (짜투리 날 버림)
+ * 2. 주간 할당량 = 총 할일 / n주
+ * 3. 해당 과목 자습 루틴의 요일별 학습 시간 비율로 일별 분배
+ *    예) 월 3시간, 수 2시간 → 월 3/5, 수 2/5
  */
 export function distributePlanToMissions(
   plan: ExtendedLongTermPlan,
@@ -692,115 +773,105 @@ export function distributePlanToMissions(
 ): DailyMission[] {
   const missions: DailyMission[] = [];
 
-  // 해당 과목의 자습 루틴 찾기
-  const subjectRoutines = routines.filter(
-    (r) => r.majorCategory === 'self_study' && (r.subject === plan.subject || r.subject === '기타'),
-  );
+  // 1. 해당 과목의 요일별 학습 슬롯 추출
+  const { slots, totalMinutes } = getSubjectDaySlots(plan.subject || '기타', routines);
+  if (slots.length === 0 || totalMinutes === 0) return missions;
 
-  if (subjectRoutines.length === 0) return missions;
+  // 2. 주 단위 계산 (월요일 시작, 짜투리 버림)
+  const firstMonday = getFirstMonday(startDate);
+  const totalDays = Math.floor((endDate.getTime() - firstMonday.getTime()) / (1000 * 60 * 60 * 24));
+  const nWeeks = Math.floor(totalDays / 7);
+  if (nWeeks <= 0) return missions;
 
-  // 날짜 범위 내의 모든 날짜 순회
-  const currentDate = new Date(startDate);
+  // 3. 주간 할당량
+  const totalAmount = plan.totalAmount || (plan.endPage || 0) - (plan.startPage || 0);
+  const weeklyAmount = Math.ceil(totalAmount / nWeeks);
+
+  // 4. 각 주별로 미션 생성
+  let missionId = 1000 + plan.id * 10000;
   let currentPage = plan.startPage || 1;
-  const endPage = plan.endPage || plan.totalAmount;
-  const dailyAmount = plan.dailyTarget || Math.ceil((endPage - currentPage) / 30);
-  let missionId = 1000;
+  const lastPage = plan.endPage || (plan.startPage || 1) + totalAmount;
 
-  while (currentDate <= endDate && currentPage < endPage) {
-    const dayOfWeek = currentDate.getDay(); // 0=일, 1=월, ...
+  for (let week = 0; week < nWeeks; week++) {
+    if (currentPage >= lastPage) break;
 
-    // 해당 요일에 해당 과목 루틴이 있는지 확인
-    for (const routine of subjectRoutines) {
-      if (routine.days[dayOfWeek]) {
-        const dateStr = currentDate.toISOString().split('T')[0];
-        const nextPage = Math.min(currentPage + dailyAmount, endPage);
+    const weekStart = new Date(firstMonday);
+    weekStart.setDate(firstMonday.getDate() + week * 7);
 
-        missions.push({
-          id: missionId++,
-          planId: plan.id,
-          routineId: routine.id,
-          date: dateStr,
-          startTime: routine.startTime,
-          endTime: routine.endTime,
-          subject: plan.subject || '기타',
-          title: `${plan.material} 학습`,
-          content:
-            plan.type === 'textbook'
-              ? `p.${currentPage}~${nextPage}`
-              : `${currentPage}강~${nextPage}강`,
-          startPage: currentPage,
-          endPage: nextPage,
-          amount: nextPage - currentPage,
-          status: 'pending',
-          progress: 0,
-        });
+    // 이 주에 남은 분량 (마지막 주는 남은 전부)
+    const remainingTotal = lastPage - currentPage;
+    const thisWeekAmount = Math.min(weeklyAmount, remainingTotal);
 
-        currentPage = nextPage;
-        break; // 하루에 하나의 미션만
-      }
+    // 요일별 분배 (학습 시간 비율)
+    let distributed = 0;
+    const dayAmounts: { slot: DayStudySlot; amount: number; date: Date }[] = [];
+
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      const ratio = slot.minutes / totalMinutes;
+
+      // 마지막 슬롯에서 나머지 전부 할당 (반올림 보정)
+      const isLast = i === slots.length - 1;
+      const dayAmount = isLast ? thisWeekAmount - distributed : Math.round(thisWeekAmount * ratio);
+
+      if (dayAmount <= 0) continue;
+
+      // 해당 요일의 날짜 계산
+      const dayDate = new Date(weekStart);
+      const targetDow = slot.dayOfWeek;
+      const mondayDow = 1;
+      const dayDiff = targetDow >= mondayDow ? targetDow - mondayDow : targetDow + 7 - mondayDow;
+      dayDate.setDate(weekStart.getDate() + dayDiff);
+
+      // endDate를 초과하면 스킵
+      if (dayDate > endDate) continue;
+
+      dayAmounts.push({ slot, amount: dayAmount, date: dayDate });
+      distributed += dayAmount;
     }
 
-    currentDate.setDate(currentDate.getDate() + 1);
+    // 미션 생성
+    for (const { slot, amount, date } of dayAmounts) {
+      if (currentPage >= lastPage) break;
+
+      const actualAmount = Math.min(amount, lastPage - currentPage);
+      const nextPage = currentPage + actualAmount;
+      const dateStr = date.toISOString().split('T')[0];
+
+      missions.push({
+        id: missionId++,
+        planId: plan.id,
+        routineId: slot.routine.id,
+        date: dateStr,
+        startTime: slot.routine.startTime,
+        endTime: slot.routine.endTime,
+        subject: plan.subject || '기타',
+        title: `${plan.material || plan.title} 학습`,
+        content:
+          plan.type === 'textbook'
+            ? `p.${currentPage}~${nextPage}`
+            : `${currentPage}강~${nextPage}강`,
+        startPage: currentPage,
+        endPage: nextPage,
+        amount: actualAmount,
+        status: 'pending',
+        progress: 0,
+        weekNumber: week + 1,
+        weeklyTarget: thisWeekAmount,
+      });
+
+      currentPage = nextPage;
+    }
   }
 
   return missions;
 }
 
-/**
- * 주간 루틴을 일간 미션으로 변환 (루틴 기반 고정 일정)
- */
-export function routineToMissions(
-  routines: Routine[],
-  startDate: Date,
-  endDate: Date,
-): DailyMission[] {
-  const missions: DailyMission[] = [];
-  let missionId = 2000;
-
-  const currentDate = new Date(startDate);
-
-  while (currentDate <= endDate) {
-    const dayOfWeek = currentDate.getDay();
-    const dateStr = currentDate.toISOString().split('T')[0];
-
-    for (const routine of routines) {
-      // 루틴 기간 체크
-      const routineStart = new Date(routine.startDate);
-      const routineEnd = new Date(routine.endDate);
-
-      if (currentDate >= routineStart && currentDate <= routineEnd && routine.days[dayOfWeek]) {
-        // 수업/자습은 학습 관련 미션으로
-        if (routine.majorCategory === 'class' || routine.majorCategory === 'self_study') {
-          missions.push({
-            id: missionId++,
-            planId: 0,
-            routineId: routine.id,
-            date: dateStr,
-            startTime: routine.startTime,
-            endTime: routine.endTime,
-            subject: routine.subject || '기타',
-            title: routine.title,
-            content: routine.title,
-            amount: 1,
-            status: 'pending',
-            progress: 0,
-          });
-        }
-      }
-    }
-
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-
-  return missions;
-}
-
-// 생성된 미션 (장기계획 + 루틴 기반)
+// 생성된 미션 (장기계획 기반)
 const planStartDate = new Date('2025-01-06');
 const planEndDate = new Date('2025-03-30');
 
 export const mockDailyMissions: DailyMission[] = [
-  // 장기 계획 기반 미션 생성
   ...mockPlans.flatMap((plan) =>
     distributePlanToMissions(plan, mockRoutines, planStartDate, planEndDate),
   ),

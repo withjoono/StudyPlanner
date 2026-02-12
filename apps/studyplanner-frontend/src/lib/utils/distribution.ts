@@ -178,7 +178,7 @@ export function distributePlansToMissions(
 
   // 우선순위 정렬
   if (options.prioritizeHighPriority) {
-    activePlans.sort((a, b) => a.priority - b.priority);
+    activePlans.sort((a, b) => (a.priority ?? 99) - (b.priority ?? 99));
   }
 
   // 분배 기간의 날짜들
@@ -191,15 +191,22 @@ export function distributePlansToMissions(
 
   // 각 계획에 대해 미션 생성
   activePlans.forEach((plan) => {
-    const subjectTime = subjectTimeMap.get(plan.subject);
+    const subjectTime = subjectTimeMap.get(plan.subject ?? '');
 
     if (!subjectTime) {
       warnings.push(`${plan.subject} 과목의 학습 루틴이 설정되지 않았습니다.`);
     }
 
     // 계획 기간과 분배 기간의 교집합
-    const planStart = new Date(Math.max(plan.startDate.getTime(), options.startDate.getTime()));
-    const planEnd = new Date(Math.min(plan.endDate.getTime(), options.endDate.getTime()));
+    const planStart = new Date(
+      Math.max(
+        new Date(plan.startDate ?? options.startDate).getTime(),
+        options.startDate.getTime(),
+      ),
+    );
+    const planEnd = new Date(
+      Math.min(new Date(plan.endDate ?? options.endDate).getTime(), options.endDate.getTime()),
+    );
 
     if (planStart > planEnd) return; // 기간이 겹치지 않음
 
@@ -244,7 +251,7 @@ export function distributePlansToMissions(
         memberId: options.memberId,
         date,
         planId: plan.id,
-        subject: plan.subject,
+        subject: plan.subject ?? '기타',
         title,
         description: plan.title,
         targetAmount: todayTarget,
@@ -260,7 +267,8 @@ export function distributePlansToMissions(
 
       // 통계 업데이트
       summary.totalMissions++;
-      summary.bySubject[plan.subject] = (summary.bySubject[plan.subject] || 0) + 1;
+      const subjectKey = plan.subject ?? '기타';
+      summary.bySubject[subjectKey] = (summary.bySubject[subjectKey] || 0) + 1;
       if (daySlot) {
         summary.totalStudyMinutes += daySlot.minutes;
       }

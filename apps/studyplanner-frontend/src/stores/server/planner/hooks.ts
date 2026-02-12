@@ -18,7 +18,6 @@ import {
   mockDailyMissions,
   distributePlanToMissions,
   type Material,
-  type DailyMission,
   type ExtendedLongTermPlan,
 } from './mock-data';
 import type { Routine, LongTermPlan } from '@/types/planner';
@@ -481,12 +480,18 @@ export function useCreatePlanWithMaterial() {
         selectedChapters[selectedChapters.length - 1]?.endPage || material.totalPages || 100;
       const totalPages = endPage - startPage;
 
-      // 일수 계산
-      const days = Math.ceil(
-        (new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24),
-      );
-      const dailyTarget = Math.ceil(totalPages / days);
-      const weeklyTarget = dailyTarget * 5; // 주 5일 기준
+      // 주 단위 계산 (월요일 기준, 짜투리 버림)
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      // 첫 월요일 찾기
+      const startDay = start.getDay();
+      const firstMondayOffset = startDay === 0 ? 1 : startDay === 1 ? 0 : 8 - startDay;
+      const firstMonday = new Date(start);
+      firstMonday.setDate(start.getDate() + firstMondayOffset);
+      const totalDays = Math.floor((end.getTime() - firstMonday.getTime()) / (1000 * 60 * 60 * 24));
+      const nWeeks = Math.max(1, Math.floor(totalDays / 7));
+      const weeklyTarget = Math.ceil(totalPages / nWeeks);
+      const dailyTarget = Math.ceil(totalPages / (nWeeks * 5)); // 참고용
 
       const newPlan: ExtendedLongTermPlan = {
         id: Date.now(),
@@ -503,6 +508,7 @@ export function useCreatePlanWithMaterial() {
         endDate,
         dailyTarget,
         weeklyTarget,
+        nWeeks,
         isDistributed: false,
       };
 

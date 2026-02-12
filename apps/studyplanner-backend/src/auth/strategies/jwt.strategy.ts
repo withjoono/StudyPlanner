@@ -15,11 +15,12 @@ import { Request } from 'express';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(configService: ConfigService<AllConfigType>) {
-    const secret = configService.get('AUTH_SECRET', { infer: false });
+    const authConfig = configService.get('auth', { infer: true });
+    const secret = authConfig?.secret || 'studyplanner-secret-key-change-in-production';
     super({
       jwtFromRequest: JwtStrategy.extractJwtFromRequestOrCookie,
       // Secret는 환경변수에서 직접 사용
-      secretOrKey: secret || 'studyplanner-secret-key-change-in-production',
+      secretOrKey: secret,
     });
   }
 

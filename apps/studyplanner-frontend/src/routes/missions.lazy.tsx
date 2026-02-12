@@ -81,6 +81,7 @@ interface MissionSummary {
   count: number;
   completedCount: number;
   totalAmount: number;
+  weeklyTarget: number;
   titles: string[];
 }
 
@@ -101,12 +102,16 @@ function MissionSummaryCard({
         count: 0,
         completedCount: 0,
         totalAmount: 0,
+        weeklyTarget: 0,
         titles: [],
       };
 
       existing.count += 1;
       existing.completedCount += mission.status === 'completed' ? 1 : 0;
       existing.totalAmount += mission.amount;
+      if (mission.weeklyTarget && mission.weeklyTarget > existing.weeklyTarget) {
+        existing.weeklyTarget = mission.weeklyTarget;
+      }
       if (existing.titles.length < 3) {
         existing.titles.push(mission.title);
       }
@@ -191,8 +196,13 @@ function MissionSummaryCard({
                     )}
                   </div>
 
-                  {/* 총 분량 */}
-                  <p className="mt-1 text-[10px] text-gray-400">총 분량: {summary.totalAmount}</p>
+                  {/* 총 분량 + 주간 할당량 */}
+                  <div className="mt-1 flex items-center gap-2 text-[10px] text-gray-400">
+                    <span>총 {summary.totalAmount}</span>
+                    {summary.weeklyTarget > 0 && (
+                      <span className="text-blue-400">(주간 {summary.weeklyTarget} 할당)</span>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -429,6 +439,65 @@ function WeeklyCalendar({
           </button>
         </div>
 
+        {/* 주간 할당량 진행률 요약 */}
+        {(() => {
+          // 이번 주 미션만 필터링
+          const weekStartStr = formatDateStr(weekStart);
+          const weekEndStr = formatDateStr(weekEnd);
+          const weekMissions = missions.filter(
+            (m) => m.date >= weekStartStr && m.date <= weekEndStr,
+          );
+
+          if (weekMissions.length === 0) return null;
+
+          // 과목별 그룹화
+          const subjectProgress = new Map<
+            string,
+            { total: number; completed: number; weeklyTarget: number }
+          >();
+          weekMissions.forEach((m) => {
+            const existing = subjectProgress.get(m.subject) || {
+              total: 0,
+              completed: 0,
+              weeklyTarget: 0,
+            };
+            existing.total += m.amount;
+            existing.completed += m.status === 'completed' ? m.amount : 0;
+            if (m.weeklyTarget && m.weeklyTarget > existing.weeklyTarget) {
+              existing.weeklyTarget = m.weeklyTarget;
+            }
+            subjectProgress.set(m.subject, existing);
+          });
+
+          return (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {Array.from(subjectProgress.entries()).map(([subject, data]) => {
+                const color = SUBJECT_COLORS[subject] || '#6b7280';
+                const target = data.weeklyTarget || data.total;
+                const pct = target > 0 ? Math.round((data.completed / target) * 100) : 0;
+                return (
+                  <div
+                    key={subject}
+                    className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-xs"
+                  >
+                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                    <span className="font-medium">{subject}</span>
+                    <div className="h-1.5 w-12 overflow-hidden rounded-full bg-gray-200">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color }}
+                      />
+                    </div>
+                    <span className="text-gray-500">
+                      {data.completed}/{target} ({pct}%)
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         {/* 주간 타임라인 */}
         <div className="flex">
           {/* 시간 라벨 */}
@@ -636,7 +705,7 @@ function MonthlyCalendar({
                     ? 'bg-ultrasonic-500 text-white'
                     : !isCurrentMonth
                       ? 'bg-gray-50'
-                      : 'bg-white border border-gray-100'
+                      : 'border border-gray-100 bg-white'
                 }`}
               >
                 <span
@@ -679,7 +748,9 @@ function MonthlyCalendar({
                 )}
 
                 {dateMissions.length > 0 && isCurrentMonth && (
-                  <div className={`mt-auto text-[9px] ${isToday ? 'text-white/80' : 'text-gray-400'}`}>
+                  <div
+                    className={`mt-auto text-[9px] ${isToday ? 'text-white/80' : 'text-gray-400'}`}
+                  >
                     {completedCount}/{dateMissions.length}
                   </div>
                 )}
@@ -747,6 +818,12 @@ function MissionItem({
           </span>
           <span className="text-gray-300">|</span>
           <span>{mission.content}</span>
+          {mission.weekNumber && (
+            <>
+              <span className="text-gray-300">|</span>
+              <span className="text-blue-500">{mission.weekNumber}주차</span>
+            </>
+          )}
         </div>
       </div>
 
@@ -756,6 +833,11 @@ function MissionItem({
           {mission.progress}%
         </div>
         <div className="text-xs text-gray-500">성취도</div>
+        {mission.weeklyTarget && mission.weeklyTarget > 0 && (
+          <div className="mt-1 text-[10px] text-blue-500">
+            주간 {mission.amount}/{mission.weeklyTarget}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -843,13 +925,13 @@ function MyMissionsPage() {
 
         {/* 기간 선택 드롭다운 */}
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-ultrasonic-500 to-ultrasonic-600 shadow-lg">
+          <div className="from-ultrasonic-500 to-ultrasonic-600 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br shadow-lg">
             <Calendar className="h-6 w-6 text-white" />
           </div>
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value as PeriodType)}
-            className="min-w-[120px] cursor-pointer rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 text-base font-bold text-gray-700 transition-all hover:border-ultrasonic-400 focus:border-ultrasonic-500 focus:outline-none focus:ring-2 focus:ring-ultrasonic-200"
+            className="hover:border-ultrasonic-400 focus:border-ultrasonic-500 focus:ring-ultrasonic-200 min-w-[120px] cursor-pointer rounded-lg border-2 border-gray-200 bg-white px-4 py-2.5 text-base font-bold text-gray-700 transition-all focus:outline-none focus:ring-2"
           >
             <option value="daily">📅 일간</option>
             <option value="weekly">📆 주간</option>
@@ -918,7 +1000,11 @@ function MyMissionsPage() {
         />
       )}
       {period === 'weekly' && (
-        <WeeklyCalendar missions={missions || []} weekStart={weekStart} onWeekChange={setWeekStart} />
+        <WeeklyCalendar
+          missions={missions || []}
+          weekStart={weekStart}
+          onWeekChange={setWeekStart}
+        />
       )}
       {period === 'monthly' && (
         <MonthlyCalendar
@@ -993,4 +1079,3 @@ function MyMissionsPage() {
     </div>
   );
 }
-

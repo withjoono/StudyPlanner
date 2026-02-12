@@ -8,7 +8,7 @@ import { env } from '@/lib/config/env';
 // Hub Frontend URL (환경 변수 또는 기본값)
 const HUB_URL =
   import.meta.env.VITE_HUB_URL ||
-  (import.meta.env.PROD ? 'https://geobukschool.kr' : 'http://localhost:5173');
+  (import.meta.env.PROD ? 'https://geobukschool.kr' : 'http://localhost:3000');
 
 /**
  * Hub 로그인 URL 생성
@@ -19,7 +19,7 @@ export function getHubLoginUrl(returnPath: string = '/'): string {
   const frontUrl = env.frontUrl || window.location.origin;
   const redirectUri = `${frontUrl}${returnPath}`;
 
-  return `${HUB_URL}/auth/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
+  return `${HUB_URL}/auth/login?redirect=${encodeURIComponent(redirectUri)}`;
 }
 
 /**
@@ -30,7 +30,7 @@ export function getHubRegisterUrl(returnPath: string = '/'): string {
   const frontUrl = env.frontUrl || window.location.origin;
   const redirectUri = `${frontUrl}${returnPath}`;
 
-  return `${HUB_URL}/auth/register?redirect_uri=${encodeURIComponent(redirectUri)}`;
+  return `${HUB_URL}/auth/register?redirect=${encodeURIComponent(redirectUri)}`;
 }
 
 /**

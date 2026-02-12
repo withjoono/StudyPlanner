@@ -181,6 +181,7 @@ export interface LongTermPlan {
   weeklyTarget?: number; // 주간 목표량 (자동 계산)
   priority?: number; // 우선순위 (1=높음)
   isActive?: boolean; // 활성 상태
+  nWeeks?: number; // 주 단위 수 (자동 계산)
   createdAt?: Date;
   updatedAt?: Date;
 }
