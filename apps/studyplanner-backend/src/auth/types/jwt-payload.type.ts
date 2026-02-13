@@ -18,6 +18,7 @@ export type JwtPayloadType = {
   iat: number; // Issued At (발급 시간)
   exp: number; // Expiration Time (만료 시간)
   email?: string; // 사용자 이메일 (선택적)
+  role?: 'student' | 'parent' | 'teacher' | 'admin'; // 사용자 역할
   permissions?: PermissionsPayload; // Hub JWT에 포함된 앱별 권한 (선택)
 };
 

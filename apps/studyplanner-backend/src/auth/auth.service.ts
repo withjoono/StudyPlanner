@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
-import { AllConfigType } from '../../config/config.type';
+import { AllConfigType } from '../config/config.type';
 
 @Injectable()
 export class AuthService {
@@ -10,7 +10,7 @@ export class AuthService {
 
   constructor(
     private readonly httpService: HttpService,
-    private readonly configService: ConfigService<AllConfigType>,
+    private readonly configService: ConfigService,
   ) {
     // Hub Backend URL (defaults to localhost:4000 if not set)
     this.hubApiUrl = this.configService.get('HUB_API_URL') || 'http://localhost:4000';

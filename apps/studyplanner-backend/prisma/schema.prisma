@@ -73,14 +73,100 @@ enum SubjectCode {
   other       // 기타
 }
 
+enum UserRole {
+  student
+  parent
+  teacher
+  admin
+}
+
 // ================================================================
 // 테이블 정의
 // ================================================================
+
+/// 사용자 (역할 기반: 학생/학부모/선생님/관리자)
+model User {
+  id        BigInt   @id @default(autoincrement())
+  email     String   @unique @db.VarChar(100)
+  name      String   @db.VarChar(50)
+  role      UserRole
+  phone     String?  @db.VarChar(20)
+  avatarUrl String?  @map("avatar_url") @db.VarChar(500)
+  hubUserId String?  @unique @map("hub_user_id") @db.VarChar(100) // Hub SSO sub
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  student        Student?
+  parentLinks    ParentStudent[]  @relation("ParentUser")
+  teacherLinks   TeacherStudent[] @relation("TeacherUser")
+  sentMessages   Message[]        @relation("MessageSender")
+  receivedMessages Message[]      @relation("MessageReceiver")
+
+  @@map("sp_user")
+}
+
+/// 학부모-학생 연결
+model ParentStudent {
+  id        BigInt   @id @default(autoincrement())
+  parentId  BigInt   @map("parent_id")
+  studentId BigInt   @map("student_id")
+  relation  String   @default("parent") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  parent  User    @relation("ParentUser", fields: [parentId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId], name: "uk_parent_student")
+  @@index([parentId], name: "idx_ps_parent")
+  @@index([studentId], name: "idx_ps_student")
+  @@map("sp_parent_student")
+}
+
+/// 선생님-학생 연결
+model TeacherStudent {
+  id        BigInt   @id @default(autoincrement())
+  teacherId BigInt   @map("teacher_id")
+  studentId BigInt   @map("student_id")
+  subject   String?  @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  teacher User    @relation("TeacherUser", fields: [teacherId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, studentId], name: "uk_teacher_student")
+  @@index([teacherId], name: "idx_ts_teacher")
+  @@index([studentId], name: "idx_ts_student")
+  @@map("sp_teacher_student")
+}
+
+/// 쪽지(메시지) 시스템
+model Message {
+  id         BigInt   @id @default(autoincrement())
+  senderId   BigInt   @map("sender_id")
+  receiverId BigInt   @map("receiver_id")
+  studentId  BigInt?  @map("student_id") // 학생 컨텍스트 (선생↔학부모 대화 시 어떤 학생 관련인지)
+  content    String   @db.Text
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  sender   User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User     @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  student  Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([senderId], name: "idx_msg_sender")
+  @@index([receiverId], name: "idx_msg_receiver")
+  @@index([studentId], name: "idx_msg_student")
+  @@index([receiverId, isRead], name: "idx_msg_unread")
+  @@map("sp_message")
+}
 
 /// 학생 인적사항
 model Student {
   id          BigInt      @id @default(autoincrement())
   studentCode String      @unique @map("student_code") @db.VarChar(20)
+  userId      BigInt?     @unique @map("user_id")
   year        Int
   schoolLevel SchoolLevel @map("school_level")
   schoolName  String?     @map("school_name") @db.VarChar(50)
@@ -95,12 +181,22 @@ model Student {
   updatedAt   DateTime    @updatedAt @map("updated_at")
 
   // Relations
-  weeklyRoutines   WeeklyRoutine[]
-  longTermPlans    LongTermPlan[]
-  dailyMissions    DailyMission[]
-  missionResults   MissionResult[]
-  studentLessons   StudentLesson[]
+  user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  weeklyRoutines    WeeklyRoutine[]
+  longTermPlans     LongTermPlan[]
+  dailyMissions     DailyMission[]
+  missionResults    MissionResult[]
+  studentLessons    StudentLesson[]
   studentMentorings StudentMentoring[]
+  timerSessions     TimerSession[]
+  dailyScores       DailyScore[]
+  quizzes           Quiz[]
+  quizResults       QuizResult[]
+  weeklyReports     WeeklyReport[]
+  examScores        ExamScore[]
+  parentLinks       ParentStudent[]
+  teacherLinks      TeacherStudent[]
+  messages          Message[]
 
   @@index([studentCode], name: "idx_student_code")
   @@index([year], name: "idx_student_year")
@@ -194,6 +290,7 @@ model DailyMission {
   startPage   Int?          @map("start_page")
   endPage     Int?          @map("end_page")
   amount      Int?
+  sortOrder   Int           @default(0) @map("sort_order")
   status      MissionStatus @default(pending)
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
@@ -203,6 +300,7 @@ model DailyMission {
   plan           LongTermPlan?   @relation(fields: [planId], references: [id], onDelete: SetNull)
   routine        WeeklyRoutine?  @relation(fields: [routineId], references: [id], onDelete: SetNull)
   missionResults MissionResult[]
+  timerSessions  TimerSession[]
 
   @@index([studentId], name: "idx_mission_student")
   @@index([date], name: "idx_mission_date")
@@ -221,6 +319,7 @@ model MissionResult {
   startTime       DateTime? @map("start_time") @db.Time(0)
   endTime         DateTime? @map("end_time") @db.Time(0)
   amount          Int?
+  studyMinutes    Int?      @map("study_minutes") // 타이머 누적 학습시간 (분)
   achievementRate Decimal?  @map("achievement_rate") @db.Decimal(3, 2)
   correctCount    Int?      @map("correct_count")
   totalQuestions  Int?      @map("total_questions")
@@ -231,8 +330,9 @@ model MissionResult {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   // Relations
-  mission DailyMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
-  student Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mission            DailyMission        @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  student            Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  verificationPhotos VerificationPhoto[]
 
   @@index([missionId], name: "idx_result_mission")
   @@index([studentId], name: "idx_result_student")
@@ -468,4 +568,182 @@ model WeeklyMission {
   @@index([studentId], name: "idx_weekly_student")
   @@index([weekStart, weekEnd], name: "idx_weekly_date")
   @@map("weekly_mission")
+}
+
+// ================================================================
+// 포모도로 타이머 세션
+// ================================================================
+
+/// 타이머 세션 (포모도로)
+model TimerSession {
+  id            BigInt        @id @default(autoincrement())
+  studentId     BigInt        @map("student_id")
+  missionId     BigInt?       @map("mission_id")
+  startedAt     DateTime      @map("started_at")
+  endedAt       DateTime?     @map("ended_at")
+  durationMin   Int           @default(0) @map("duration_min")
+  targetMin     Int           @default(25) @map("target_min")
+  sessionType   String        @default("focus") @map("session_type") @db.VarChar(20)
+  isCompleted   Boolean       @default(false) @map("is_completed")
+  subject       String?       @db.VarChar(50)
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  student       Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mission       DailyMission? @relation(fields: [missionId], references: [id], onDelete: SetNull)
+
+  @@index([studentId], name: "idx_timer_student")
+  @@index([studentId, startedAt], name: "idx_timer_student_date")
+  @@index([missionId], name: "idx_timer_mission")
+  @@map("timer_session")
+}
+
+// ================================================================
+// 사진 인증 & AI 검증
+// ================================================================
+
+/// 인증 사진
+model VerificationPhoto {
+  id              BigInt    @id @default(autoincrement())
+  missionResultId BigInt    @map("mission_result_id")
+  photoUrl        String    @map("photo_url") @db.VarChar(500)
+  verifiedAt      DateTime? @map("verified_at")
+  aiScore         Decimal?  @map("ai_score") @db.Decimal(3, 2)
+  pageCount       Int?      @map("page_count")
+  aiAnalysis      Json?     @map("ai_analysis")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  missionResult   MissionResult @relation(fields: [missionResultId], references: [id], onDelete: Cascade)
+
+  @@index([missionResultId], name: "idx_verification_result")
+  @@map("verification_photo")
+}
+
+// ================================================================
+// 학습 성과 점수 (Study Performance Score)
+// ================================================================
+
+/// 일간 성과 점수
+model DailyScore {
+  id           BigInt   @id @default(autoincrement())
+  studentId    BigInt   @map("student_id")
+  date         DateTime @db.Date
+  totalScore   Decimal  @map("total_score") @db.Decimal(10, 2)
+  missionCount Int      @map("mission_count")
+  studyMinutes Int      @default(0) @map("study_minutes")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date], name: "uk_daily_score")
+  @@index([studentId], name: "idx_daily_score_student")
+  @@index([date], name: "idx_daily_score_date")
+  @@map("sp_daily_score")
+}
+
+// ================================================================
+// AI 퀴즈 시스템
+// ================================================================
+
+/// AI 퀴즈 세트
+model Quiz {
+  id          BigInt    @id @default(autoincrement())
+  studentId   BigInt    @map("student_id")
+  subject     String    @db.VarChar(50)
+  topic       String    @db.VarChar(200)   // 학습 단원명
+  difficulty  Int       @default(3)        // 1~5
+  totalItems  Int       @default(5) @map("total_items")
+  questions   Json                         // 문항 배열 [{question, choices, answer, explanation}]
+  generatedBy String    @default("ai") @map("generated_by") @db.VarChar(20)
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  student     Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  results     QuizResult[]
+
+  @@index([studentId], name: "idx_quiz_student")
+  @@index([studentId, subject], name: "idx_quiz_student_subject")
+  @@map("quiz")
+}
+
+/// 퀴즈 결과
+model QuizResult {
+  id           BigInt   @id @default(autoincrement())
+  quizId       BigInt   @map("quiz_id")
+  studentId    BigInt   @map("student_id")
+  answers      Json                        // 학생 답변 배열
+  correctCount Int      @default(0) @map("correct_count")
+  totalCount   Int      @default(0) @map("total_count")
+  scoreRate    Decimal  @default(0) @map("score_rate") @db.Decimal(3, 2) // 0.00~1.00
+  timeTakenSec Int?     @map("time_taken_sec")
+  completedAt  DateTime @default(now()) @map("completed_at")
+
+  // Relations
+  quiz    Quiz    @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([quizId], name: "idx_quiz_result_quiz")
+  @@index([studentId], name: "idx_quiz_result_student")
+  @@map("quiz_result")
+}
+
+// ================================================================
+// AI 학습 분석 & 주간 리포트
+// ================================================================
+
+/// 주간 학습 리포트
+model WeeklyReport {
+  id           BigInt   @id @default(autoincrement())
+  studentId    BigInt   @map("student_id")
+  weekStart    DateTime @map("week_start") @db.Date
+  weekEnd      DateTime @map("week_end") @db.Date
+  totalStudyMin Int     @default(0) @map("total_study_min")
+  totalScore   Decimal  @default(0) @map("total_score") @db.Decimal(10, 2)
+  subjectBreakdown Json? @map("subject_breakdown") // 과목별 학습 분석
+  strengths    String?  @db.Text                    // AI 피드백 - 잘한 점
+  improvements String?  @db.Text                    // AI 피드백 - 개선점
+  encouragement String? @db.Text                    // AI 피드백 - 격려 메시지
+  consistency  Decimal? @map("consistency") @db.Decimal(3, 2) // 학습 일관성 0~1
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, weekStart], name: "uk_weekly_report")
+  @@index([studentId], name: "idx_weekly_report_student")
+  @@map("sp_weekly_report")
+}
+
+// ================================================================
+// 모의고사/내신 성적 추적
+// ================================================================
+
+/// 시험 성적
+model ExamScore {
+  id           BigInt   @id @default(autoincrement())
+  studentId    BigInt   @map("student_id")
+  examType     String   @map("exam_type") @db.VarChar(20) // mock (모의고사) | school (내신)
+  examName     String   @map("exam_name") @db.VarChar(100) // "2026년 3월 모의고사", "1학기 중간고사"
+  examDate     DateTime @map("exam_date") @db.Date
+  subject      String   @db.VarChar(50)
+  rawScore     Decimal? @map("raw_score") @db.Decimal(5, 2)     // 원점수
+  standardScore Decimal? @map("standard_score") @db.Decimal(5, 2) // 표준점수 (모의고사)
+  percentile   Decimal? @db.Decimal(5, 2)                       // 백분위
+  grade        Int?                                              // 등급 1~9
+  rank         Int?                                              // 석차 (내신)
+  totalStudents Int?    @map("total_students")                   // 전체 학생 수
+  memo         String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId], name: "idx_exam_student")
+  @@index([studentId, subject], name: "idx_exam_student_subject")
+  @@index([examDate], name: "idx_exam_date")
+  @@map("sp_exam_score")
 }
