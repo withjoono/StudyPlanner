@@ -5,6 +5,7 @@
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
 import { useState, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Plus, ArrowLeft, Loader2 } from 'lucide-react';
+import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
   useGetRoutines,
   useCreateRoutine,
@@ -188,7 +189,7 @@ function WeeklyRoutineSummaryCard({
 
       const [startH, startM] = routine.startTime.split(':').map(Number);
       const [endH, endM] = routine.endTime.split(':').map(Number);
-      const duration = (endH * 60 + endM) - (startH * 60 + startM);
+      const duration = endH * 60 + endM - (startH * 60 + startM);
       const activeDays = routine.days.filter(Boolean).length;
 
       existing.count += activeDays;
@@ -439,151 +440,153 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
           </div>
 
           {/* 주간 타임라인 */}
-        <div className="flex">
-          {/* 시간 라벨 (왼쪽) */}
-          <div className="w-10 flex-shrink-0">
-            <div className="h-12" />
-            <div className="relative h-[480px]">
-              {HOURS.filter((h) => h % 2 === 0).map((hour) => (
-                <div
-                  key={hour}
-                  className="absolute left-0 right-0 pr-2 text-right text-xs text-gray-400"
-                  style={{ top: `${(hour / 24) * 100}%`, transform: 'translateY(-50%)' }}
-                >
-                  {hour.toString().padStart(2, '0')}
-                </div>
-              ))}
+          <div className="flex">
+            {/* 시간 라벨 (왼쪽) */}
+            <div className="w-10 flex-shrink-0">
+              <div className="h-12" />
+              <div className="relative h-[480px]">
+                {HOURS.filter((h) => h % 2 === 0).map((hour) => (
+                  <div
+                    key={hour}
+                    className="absolute left-0 right-0 pr-2 text-right text-xs text-gray-400"
+                    style={{ top: `${(hour / 24) * 100}%`, transform: 'translateY(-50%)' }}
+                  >
+                    {hour.toString().padStart(2, '0')}
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* 요일 컬럼들 */}
-          <div className="grid flex-1 grid-cols-7 gap-0.5">
-            {/* 요일 헤더 */}
-            {weekDays.map((date, idx) => {
-              const isToday = date.getTime() === today.getTime();
-              return (
-                <div
-                  key={`header-${idx}`}
-                  className={`flex h-12 flex-col items-center justify-center rounded-t-lg ${
-                    isToday ? 'bg-ultrasonic-500 text-white' : 'bg-gray-100'
-                  }`}
-                >
-                  <span
-                    className={`text-xs font-medium ${
-                      isToday
-                        ? 'text-white'
-                        : idx === 0
-                          ? 'text-red-500'
-                          : idx === 6
-                            ? 'text-blue-500'
-                            : 'text-gray-500'
+            {/* 요일 컬럼들 */}
+            <div className="grid flex-1 grid-cols-7 gap-0.5">
+              {/* 요일 헤더 */}
+              {weekDays.map((date, idx) => {
+                const isToday = date.getTime() === today.getTime();
+                return (
+                  <div
+                    key={`header-${idx}`}
+                    className={`flex h-12 flex-col items-center justify-center rounded-t-lg ${
+                      isToday ? 'bg-ultrasonic-500 text-white' : 'bg-gray-100'
                     }`}
                   >
-                    {DAYS_KR[idx]}
-                  </span>
-                  <span className={`text-sm font-bold ${isToday ? 'text-white' : 'text-gray-900'}`}>
-                    {date.getDate()}
-                  </span>
-                </div>
-              );
-            })}
-
-            {/* 타임라인 그리드 */}
-            {weekDays.map((date, dayIdx) => {
-              const isToday = date.getTime() === today.getTime();
-              const dayRoutines = getRoutinesForDay(dayIdx);
-
-              return (
-                <div
-                  key={`timeline-${dayIdx}`}
-                  className={`relative h-[480px] border-l border-gray-200 ${
-                    isToday ? 'bg-ultrasonic-50' : 'bg-gray-50'
-                  }`}
-                >
-                  {HOURS.map((hour) => (
-                    <div
-                      key={hour}
-                      className="absolute left-0 right-0 border-t border-gray-100"
-                      style={{ top: `${(hour / 24) * 100}%` }}
-                    />
-                  ))}
-
-                  {isToday && (
-                    <div
-                      className="bg-ultrasonic-500 absolute left-0 right-0 z-10 h-0.5"
-                      style={{ top: `${currentPosition}%` }}
+                    <span
+                      className={`text-xs font-medium ${
+                        isToday
+                          ? 'text-white'
+                          : idx === 0
+                            ? 'text-red-500'
+                            : idx === 6
+                              ? 'text-blue-500'
+                              : 'text-gray-500'
+                      }`}
                     >
-                      <div className="bg-ultrasonic-500 absolute -left-1 -top-1 h-2.5 w-2.5 rounded-full" />
-                    </div>
-                  )}
+                      {DAYS_KR[idx]}
+                    </span>
+                    <span
+                      className={`text-sm font-bold ${isToday ? 'text-white' : 'text-gray-900'}`}
+                    >
+                      {date.getDate()}
+                    </span>
+                  </div>
+                );
+              })}
 
-                  {dayRoutines.map((routine) => {
-                    const pos = getRoutinePosition(routine);
-                    const colors = MAJOR_CATEGORY_COLORS[routine.majorCategory];
-                    return (
+              {/* 타임라인 그리드 */}
+              {weekDays.map((date, dayIdx) => {
+                const isToday = date.getTime() === today.getTime();
+                const dayRoutines = getRoutinesForDay(dayIdx);
+
+                return (
+                  <div
+                    key={`timeline-${dayIdx}`}
+                    className={`relative h-[480px] border-l border-gray-200 ${
+                      isToday ? 'bg-ultrasonic-50' : 'bg-gray-50'
+                    }`}
+                  >
+                    {HOURS.map((hour) => (
                       <div
-                        key={routine.id}
-                        className={`absolute left-0.5 right-0.5 overflow-hidden rounded border-l-2 px-1 text-xs text-white ${colors.bg} ${colors.border}`}
-                        style={{
-                          top: `${pos.top}%`,
-                          height: `${pos.height}%`,
-                          minHeight: '20px',
-                        }}
-                        title={`${routine.title} (${routine.startTime}~${routine.endTime})`}
+                        key={hour}
+                        className="absolute left-0 right-0 border-t border-gray-100"
+                        style={{ top: `${(hour / 24) * 100}%` }}
+                      />
+                    ))}
+
+                    {isToday && (
+                      <div
+                        className="bg-ultrasonic-500 absolute left-0 right-0 z-10 h-0.5"
+                        style={{ top: `${currentPosition}%` }}
                       >
-                        <div className="truncate font-medium">{routine.title}</div>
-                        {pos.height > 4 && (
-                          <div className="text-[10px] opacity-80">{routine.startTime}</div>
-                        )}
+                        <div className="bg-ultrasonic-500 absolute -left-1 -top-1 h-2.5 w-2.5 rounded-full" />
                       </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
+                    )}
+
+                    {dayRoutines.map((routine) => {
+                      const pos = getRoutinePosition(routine);
+                      const colors = MAJOR_CATEGORY_COLORS[routine.majorCategory];
+                      return (
+                        <div
+                          key={routine.id}
+                          className={`absolute left-0.5 right-0.5 overflow-hidden rounded border-l-2 px-1 text-xs text-white ${colors.bg} ${colors.border}`}
+                          style={{
+                            top: `${pos.top}%`,
+                            height: `${pos.height}%`,
+                            minHeight: '20px',
+                          }}
+                          title={`${routine.title} (${routine.startTime}~${routine.endTime})`}
+                        >
+                          <div className="truncate font-medium">{routine.title}</div>
+                          {pos.height > 4 && (
+                            <div className="text-[10px] opacity-80">{routine.startTime}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 시간 라벨 (오른쪽) */}
+            <div className="w-10 flex-shrink-0">
+              <div className="h-12" />
+              <div className="relative h-[480px]">
+                {HOURS.filter((h) => h % 2 === 0).map((hour) => (
+                  <div
+                    key={hour}
+                    className="absolute left-0 right-0 pl-2 text-xs text-gray-400"
+                    style={{ top: `${(hour / 24) * 100}%`, transform: 'translateY(-50%)' }}
+                  >
+                    {hour.toString().padStart(2, '0')}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* 시간 라벨 (오른쪽) */}
-          <div className="w-10 flex-shrink-0">
-            <div className="h-12" />
-            <div className="relative h-[480px]">
-              {HOURS.filter((h) => h % 2 === 0).map((hour) => (
+          {/* 범례 */}
+          <div className="mt-4 flex flex-wrap items-center gap-4 border-t pt-3">
+            {Object.entries(MAJOR_CATEGORY_LABELS).map(([key, label]) => (
+              <div key={key} className="flex items-center gap-1.5 text-xs text-gray-600">
                 <div
-                  key={hour}
-                  className="absolute left-0 right-0 pl-2 text-xs text-gray-400"
-                  style={{ top: `${(hour / 24) * 100}%`, transform: 'translateY(-50%)' }}
-                >
-                  {hour.toString().padStart(2, '0')}
-                </div>
-              ))}
+                  className={`h-3 w-3 rounded ${MAJOR_CATEGORY_COLORS[key as RoutineMajorCategory].bg}`}
+                />
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* 주간 통계 - 원형 차트 */}
+          <div className="mt-6 border-t pt-4">
+            <h4 className="mb-4 text-center font-semibold text-gray-700">주간 시간 통계</h4>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <PieChart data={majorCategoryPieData} title="대분류별" />
+              <PieChart data={getSubjectPieData(stats.classSubjects)} title="수업 (과목별)" />
+              <PieChart data={getSubjectPieData(stats.selfStudySubjects)} title="자습 (과목별)" />
+              <PieChart data={getSubjectPieData(stats.studySubjects)} title="수업+자습 (과목별)" />
             </div>
           </div>
-        </div>
-
-        {/* 범례 */}
-        <div className="mt-4 flex flex-wrap items-center gap-4 border-t pt-3">
-          {Object.entries(MAJOR_CATEGORY_LABELS).map(([key, label]) => (
-            <div key={key} className="flex items-center gap-1.5 text-xs text-gray-600">
-              <div
-                className={`h-3 w-3 rounded ${MAJOR_CATEGORY_COLORS[key as RoutineMajorCategory].bg}`}
-              />
-              <span>{label}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* 주간 통계 - 원형 차트 */}
-        <div className="mt-6 border-t pt-4">
-          <h4 className="mb-4 text-center font-semibold text-gray-700">주간 시간 통계</h4>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <PieChart data={majorCategoryPieData} title="대분류별" />
-            <PieChart data={getSubjectPieData(stats.classSubjects)} title="수업 (과목별)" />
-            <PieChart data={getSubjectPieData(stats.selfStudySubjects)} title="자습 (과목별)" />
-            <PieChart data={getSubjectPieData(stats.studySubjects)} title="수업+자습 (과목별)" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
     </>
   );
 }
@@ -828,15 +831,20 @@ function PlannerRoutinePage() {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<Routine | undefined>();
+  const { guard, LoginGuardModal } = useLoginGuard();
 
   const handleCreate = () => {
-    setEditingRoutine(undefined);
-    setIsFormOpen(true);
+    guard(() => {
+      setEditingRoutine(undefined);
+      setIsFormOpen(true);
+    });
   };
 
   const handleEdit = (routine: Routine) => {
-    setEditingRoutine(routine);
-    setIsFormOpen(true);
+    guard(() => {
+      setEditingRoutine(routine);
+      setIsFormOpen(true);
+    });
   };
 
   const handleSubmit = async (data: Omit<Routine, 'id'>) => {
@@ -850,9 +858,11 @@ function PlannerRoutinePage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (confirm('정말 삭제하시겠습니까?')) {
-      await deleteMutation.mutateAsync(id);
-    }
+    guard(() => {
+      if (confirm('정말 삭제하시겠습니까?')) {
+        deleteMutation.mutateAsync(id);
+      }
+    });
   };
 
   if (isLoading) {
@@ -971,6 +981,8 @@ function PlannerRoutinePage() {
         onSubmit={handleSubmit}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
+
+      {LoginGuardModal}
     </div>
   );
 }

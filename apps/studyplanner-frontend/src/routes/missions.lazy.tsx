@@ -7,6 +7,7 @@
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
 import { useState, useMemo } from 'react';
+import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
   ChevronLeft,
   ChevronRight,
@@ -895,8 +896,10 @@ function MyMissionsPage() {
     return { total, completed, avgProgress, totalAmount };
   }, [filteredMissions]);
 
+  const { guard, LoginGuardModal } = useLoginGuard();
+
   const handleComplete = (missionId: number, progress: number) => {
-    completeMutation.mutate({ missionId, progress });
+    guard(() => completeMutation.mutate({ missionId, progress }));
   };
 
   if (isLoading) {
@@ -1076,6 +1079,8 @@ function MyMissionsPage() {
           </CardContent>
         </Card>
       )}
+
+      {LoginGuardModal}
     </div>
   );
 }

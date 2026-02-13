@@ -243,10 +243,7 @@ export function usePasswordResetRequest() {
 export function useVerifyResetCode() {
   return useMutation({
     mutationFn: async (data: { phone: string; code: string }) => {
-      const response = await publicClient.post<{ token: string }>(
-        '/auth/verify-reset-code',
-        data,
-      );
+      const response = await publicClient.post<{ token: string }>('/auth/verify-reset-code', data);
       return response.data;
     },
   });
@@ -263,6 +260,26 @@ export function usePasswordReset() {
   });
 }
 
+/**
+ * SSO 코드 교환 (Hub -> Client)
+ */
+export function useSsoExchange() {
+  const queryClient = useQueryClient();
+  const { setUser, setActiveServices } = useAuthStore();
 
+  return useMutation({
+    mutationFn: async (code: string) => {
+      const response = await publicClient.post<LoginResponse>('/auth/sso/exchange', { code });
+      return response.data;
+    },
+    onSuccess: async (data) => {
+      setTokens(data.accessToken, data.refreshToken, data.tokenExpiry);
+      setActiveServices(data.activeServices);
 
+      const meResponse = await authClient.get<Member>('/auth/me');
+      setUser(meResponse.data);
 
+      queryClient.invalidateQueries({ queryKey: authKeys.me() });
+    },
+  });
+}

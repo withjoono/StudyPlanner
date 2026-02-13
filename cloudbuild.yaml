@@ -1,45 +1,38 @@
 steps:
   # Build the container image
-  - name: 'gcr.io/cloud-builders/docker'
+  - name: "gcr.io/cloud-builders/docker"
     args:
-      - 'build'
-      - '-t'
-      - 'asia-northeast3-docker.pkg.dev/studyplanner-new/backend/studyplanner-backend:latest'
-      - '-f'
-      - 'apps/backend/Dockerfile'
-      - '.'
+      - "build"
+      - "-t"
+      - "asia-northeast3-docker.pkg.dev/studyplanner-new/backend/studyplanner-backend:latest"
+      - "-f"
+      - "apps/studyplanner-backend/Dockerfile"
+      - "."
 
   # Push the container image to Artifact Registry
-  - name: 'gcr.io/cloud-builders/docker'
+  - name: "gcr.io/cloud-builders/docker"
     args:
-      - 'push'
-      - 'asia-northeast3-docker.pkg.dev/studyplanner-new/backend/studyplanner-backend:latest'
+      - "push"
+      - "asia-northeast3-docker.pkg.dev/studyplanner-new/backend/studyplanner-backend:latest"
 
   # Deploy to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     entrypoint: gcloud
     args:
-      - 'run'
-      - 'deploy'
-      - 'studyplanner-backend'
-      - '--image'
-      - 'asia-northeast3-docker.pkg.dev/studyplanner-new/backend/studyplanner-backend:latest'
-      - '--region'
-      - 'asia-northeast3'
-      - '--platform'
-      - 'managed'
-      - '--allow-unauthenticated'
-      - '--port'
-      - '8080'
+      - "run"
+      - "deploy"
+      - "studyplanner-backend"
+      - "--image"
+      - "asia-northeast3-docker.pkg.dev/studyplanner-new/backend/studyplanner-backend:latest"
+      - "--region"
+      - "asia-northeast3"
+      - "--platform"
+      - "managed"
+      - "--allow-unauthenticated"
+      - "--port"
+      - "8080"
 
 images:
-  - 'asia-northeast3-docker.pkg.dev/studyplanner-new/backend/studyplanner-backend:latest'
+  - "asia-northeast3-docker.pkg.dev/studyplanner-new/backend/studyplanner-backend:latest"
 
-timeout: '1200s'
-
-
-
-
-
-
-
+timeout: "1200s"

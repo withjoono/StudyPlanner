@@ -6,6 +6,8 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtHelperService } from './services/jwt-helper.service';
 import { HubPermissionGuard } from './guards/hub-permission.guard';
+import { HttpModule } from '@nestjs/axios';
+import { AuthService } from './auth.service';
 
 @Module({
   imports: [
@@ -20,9 +22,10 @@ import { HubPermissionGuard } from './guards/hub-permission.guard';
         },
       }),
     }),
+    HttpModule,
   ],
   controllers: [AuthController],
-  providers: [JwtStrategy, JwtHelperService, HubPermissionGuard],
-  exports: [PassportModule, JwtModule, JwtHelperService, HubPermissionGuard],
+  providers: [JwtStrategy, JwtHelperService, HubPermissionGuard, AuthService],
+  exports: [PassportModule, JwtModule, JwtHelperService, HubPermissionGuard, AuthService],
 })
 export class AuthModule {}

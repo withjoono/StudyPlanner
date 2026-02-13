@@ -2,10 +2,12 @@
  * 플래너 대시보드 페이지
  *
  * 오늘의 캘린더, 미션, 성취도, 주간 진행률을 한눈에 보여줍니다.
+ * 비로그인 사용자도 열람 가능하며, 액션 시 로그인 모달이 표시됩니다.
  */
 
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
+import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
   useGetTodayDashboard,
   useGetNotices,
@@ -541,6 +543,7 @@ function PlannerDashboard() {
   const { data: allItems } = useGetPlannerItems();
 
   const { openItemForm } = usePlannerStore();
+  const { guard, LoginGuardModal } = useLoginGuard();
 
   const isToday = useIsToday();
   const dateString = useSelectedDateString();
@@ -581,10 +584,12 @@ function PlannerDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">플래너</h1>
           <p className="mt-1 text-gray-500">학습 계획을 세우고 성취도를 관리하세요</p>
         </div>
-        <Button onClick={() => openItemForm()} className="gap-2">
+        <Button onClick={() => guard(() => openItemForm())} className="gap-2">
           <Plus className="h-4 w-4" />새 일정
         </Button>
       </div>
+
+      {LoginGuardModal}
 
       {/* 통계 카드 */}
       <div className="mb-6 grid gap-4 md:grid-cols-4">

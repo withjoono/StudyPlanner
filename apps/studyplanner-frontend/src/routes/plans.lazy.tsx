@@ -7,6 +7,7 @@
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
 import { useState, useMemo } from 'react';
+import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
   ChevronLeft,
   ChevronRight,
@@ -1003,6 +1004,7 @@ function PlannerPlansPage() {
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [selectedStartChapter, setSelectedStartChapter] = useState(1);
   const [selectedEndChapter, setSelectedEndChapter] = useState(1);
+  const { guard, LoginGuardModal } = useLoginGuard();
 
   // 현재 월 상태 (월간 미션 요약용)
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -1121,7 +1123,7 @@ function PlannerPlansPage() {
             <p className="mt-1 text-gray-500">교재를 선택하면 자동으로 일정이 분배됩니다</p>
           </div>
         </div>
-        <Button onClick={() => setIsMaterialSelectOpen(true)} className="gap-2">
+        <Button onClick={() => guard(() => setIsMaterialSelectOpen(true))} className="gap-2">
           <Plus className="h-4 w-4" />
           교재 선택하여 계획 추가
         </Button>
@@ -1197,8 +1199,8 @@ function PlannerPlansPage() {
             <PlanCard
               key={plan.id}
               plan={plan as ExtendedLongTermPlan}
-              onDistribute={() => handleDistribute(plan as ExtendedLongTermPlan)}
-              onDelete={() => handleDelete(plan.id)}
+              onDistribute={() => guard(() => handleDistribute(plan as ExtendedLongTermPlan))}
+              onDelete={() => guard(() => handleDelete(plan.id))}
             />
           ))
         ) : (
@@ -1209,7 +1211,7 @@ function PlannerPlansPage() {
               <p className="mb-4 text-sm text-gray-400">
                 교재를 선택하면 목차에서 범위를 정하고 자동으로 일정이 분배됩니다.
               </p>
-              <Button onClick={() => setIsMaterialSelectOpen(true)} className="gap-2">
+              <Button onClick={() => guard(() => setIsMaterialSelectOpen(true))} className="gap-2">
                 <Plus className="h-4 w-4" />첫 계획 추가하기
               </Button>
             </CardContent>
@@ -1234,6 +1236,8 @@ function PlannerPlansPage() {
         onSubmit={handleCreatePlan}
         isLoading={createPlanMutation.isPending || distributeMutation.isPending}
       />
+
+      {LoginGuardModal}
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { createRootRoute, Outlet, Link, useNavigate } from '@tanstack/react-router';
 import { Toaster } from 'sonner';
 import { useAuthStore } from '@/stores/client/use-auth-store';
-import { useLogout } from '@/stores/server/auth';
+
+import { useLogout, useSsoExchange } from '@/stores/server/auth';
+import { useEffect, useState } from 'react';
 import {
   LogOut,
   User,
@@ -14,6 +16,7 @@ import {
   CalendarClock,
   BookOpen,
   BarChart3,
+  X,
 } from 'lucide-react';
 
 // Hub URL
@@ -29,6 +32,29 @@ function RootLayout() {
   const { user, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const logoutMutation = useLogout();
+  const ssoExchangeMutation = useSsoExchange();
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  // SSO 코드 처리
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const ssoCode = searchParams.get('sso_code');
+
+    if (ssoCode) {
+      ssoExchangeMutation.mutate(ssoCode, {
+        onSuccess: () => {
+          // 쿼리 파라미터 제거 (URL 정리)
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+          toast.success('로그인되었습니다.');
+        },
+        onError: () => {
+          toast.error('SSO 로그인에 실패했습니다.');
+          navigate({ to: '/auth/login' });
+        },
+      });
+    }
+  }, []);
 
   const handleLogout = async () => {
     await logoutMutation.mutateAsync();
@@ -134,6 +160,30 @@ function RootLayout() {
           </div>
         </div>
       </nav>
+
+      {/* 로그인 유도 배너 (비로그인 시) */}
+      {!isAuthenticated && !bannerDismissed && (
+        <div className="border-ultrasonic-200 from-ultrasonic-50 relative border-b bg-gradient-to-r to-blue-50">
+          <div className="mx-auto flex max-w-screen-xl items-center justify-between px-4 py-2.5">
+            <p className="text-ultrasonic-700 flex-1 text-center text-sm font-medium">
+              로그인하면 학생, 선생님, 학부모가 함께 하는 스터디플래너를 실행할 수 있습니다{' '}
+              <Link
+                to="/auth/login"
+                className="text-ultrasonic-600 hover:text-ultrasonic-800 ml-1 inline-flex items-center gap-1 font-bold underline underline-offset-2"
+              >
+                로그인하기 →
+              </Link>
+            </p>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="text-ultrasonic-400 hover:bg-ultrasonic-100 hover:text-ultrasonic-600 ml-3 flex-shrink-0 rounded-full p-1 transition-colors"
+              aria-label="배너 닫기"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 모바일 하단 네비게이션 */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white md:hidden">
