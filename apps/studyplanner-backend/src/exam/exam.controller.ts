@@ -1,77 +1,64 @@
-import { Controller, Get, Post, Put, Delete, Body, Query, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Query, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ExamService } from './exam.service';
 
 @ApiTags('exam')
 @Controller('exam')
 export class ExamController {
-    constructor(private readonly examService: ExamService) { }
+  constructor(private readonly examService: ExamService) {}
 
-    @Post()
-    @ApiOperation({ summary: '성적 입력' })
-    async addScore(@Body() body: {
-        studentId: number;
-        examType: 'mock' | 'school';
-        examName: string;
-        examDate: string;
-        subject: string;
-        rawScore?: number;
-        standardScore?: number;
-        percentile?: number;
-        grade?: number;
-        rank?: number;
-        totalStudents?: number;
-        memo?: string;
-    }) {
-        return this.examService.addScore(body);
-    }
+  @Post()
+  @ApiOperation({ summary: '시험 성적 등록' })
+  async createExamScore(
+    @Body()
+    body: {
+      studentId: number;
+      examType: string;
+      examName: string;
+      examDate: string;
+      subject: string;
+      rawScore?: number;
+      standardScore?: number;
+      percentile?: number;
+      grade?: number;
+      rank?: number;
+      totalStudents?: number;
+      memo?: string;
+    },
+  ) {
+    return this.examService.createExamScore(body);
+  }
 
-    @Put(':id')
-    @ApiOperation({ summary: '성적 수정' })
-    async updateScore(
-        @Param('id') id: string,
-        @Body() body: any,
-    ) {
-        return this.examService.updateScore(parseInt(id, 10), body);
-    }
+  @Get(':studentId')
+  @ApiOperation({ summary: '시험 성적 조회' })
+  async getExamScores(
+    @Param('studentId') studentId: number,
+    @Query('examType') examType?: string,
+    @Query('subject') subject?: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.examService.getExamScores(+studentId, {
+      examType,
+      subject,
+      limit: limit ? +limit : undefined,
+    });
+  }
 
-    @Delete(':id')
-    @ApiOperation({ summary: '성적 삭제' })
-    async deleteScore(@Param('id') id: string) {
-        return this.examService.deleteScore(parseInt(id, 10));
-    }
+  @Get(':studentId/trends')
+  @ApiOperation({ summary: '과목별 성적 추이' })
+  async getTrends(@Param('studentId') studentId: number, @Query('subject') subject?: string) {
+    return this.examService.getTrends(+studentId, subject);
+  }
 
-    @Get('list')
-    @ApiOperation({ summary: '성적 목록' })
-    async getScores(
-        @Query('studentId') studentId: number,
-        @Query('examType') examType?: string,
-        @Query('subject') subject?: string,
-    ) {
-        return this.examService.getScores(studentId, { examType, subject });
-    }
+  @Put(':id')
+  @ApiOperation({ summary: '시험 성적 수정' })
+  async updateExamScore(@Param('id') id: number, @Body() body: any) {
+    return this.examService.updateExamScore(+id, body);
+  }
 
-    @Get('trend')
-    @ApiOperation({ summary: '과목별 성적 추이' })
-    async getSubjectTrend(
-        @Query('studentId') studentId: number,
-        @Query('subject') subject: string,
-    ) {
-        return this.examService.getSubjectTrend(studentId, subject);
-    }
-
-    @Get('summary')
-    @ApiOperation({ summary: '전체 성적 요약' })
-    async getScoreSummary(@Query('studentId') studentId: number) {
-        return this.examService.getScoreSummary(studentId);
-    }
-
-    @Get('correlation')
-    @ApiOperation({ summary: '학습량-성적 상관관계' })
-    async getCorrelation(
-        @Query('studentId') studentId: number,
-        @Query('subject') subject: string,
-    ) {
-        return this.examService.getCorrelation(studentId, subject);
-    }
+  @Delete(':id')
+  @ApiOperation({ summary: '시험 성적 삭제' })
+  async deleteExamScore(@Param('id') id: number) {
+    return this.examService.deleteExamScore(+id);
+  }
 }

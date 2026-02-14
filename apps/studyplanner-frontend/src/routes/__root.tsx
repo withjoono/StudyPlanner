@@ -17,6 +17,7 @@ import {
   BookOpen,
   BarChart3,
   X,
+  Timer,
 } from 'lucide-react';
 
 // Hub URL
@@ -104,6 +105,9 @@ function RootLayout() {
               </NavLink>
               <NavLink to="/learning" icon={<BarChart3 className="h-4 w-4" />}>
                 학습 현황
+              </NavLink>
+              <NavLink to="/timer" icon={<Timer className="h-4 w-4" />}>
+                타이머
               </NavLink>
             </div>
 
@@ -193,6 +197,7 @@ function RootLayout() {
           <MobileNavLink to="/routine" icon={<CalendarClock className="h-5 w-5" />} label="루틴" />
           <MobileNavLink to="/plans" icon={<BookOpen className="h-5 w-5" />} label="계획" />
           <MobileNavLink to="/learning" icon={<BarChart3 className="h-5 w-5" />} label="현황" />
+          <MobileNavLink to="/timer" icon={<Timer className="h-5 w-5" />} label="타이머" />
         </div>
       </nav>
 

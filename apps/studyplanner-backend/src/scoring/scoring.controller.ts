@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ScoringService } from './scoring.service';
 
@@ -7,43 +7,22 @@ import { ScoringService } from './scoring.service';
 export class ScoringController {
   constructor(private readonly scoringService: ScoringService) {}
 
-  @Post('calculate')
-  @ApiOperation({ summary: '미션 점수 계산' })
-  async calculateScore(
-    @Body()
-    body: {
-      pages: number;
-      subject: string;
-      difficulty?: number;
-      quizScore?: number;
-      studyMinutes?: number;
-    },
-  ) {
-    return {
-      score: this.scoringService.calculateMissionScore({
-        ...body,
-        difficulty: body.difficulty || 3,
-      }),
-    };
+  @Post('calculate/:studentId')
+  @ApiOperation({ summary: '일간 성과 점수 재계산' })
+  async calculateDailyScore(@Param('studentId') studentId: number, @Query('date') date?: string) {
+    const targetDate = date ? new Date(date) : undefined;
+    return this.scoringService.calculateDailyScore(+studentId, targetDate);
   }
 
-  @Get('daily')
-  @ApiOperation({ summary: '일간 종합 점수 조회' })
-  async getDailyScore(
-    @Query('studentId') studentId: number,
-    @Query('date') date?: string,
-  ) {
-    const targetDate = date ? new Date(date) : new Date();
-    return this.scoringService.calculateDailyScore(studentId, targetDate);
+  @Get('daily/:studentId')
+  @ApiOperation({ summary: '일간 점수 조회 (기간)' })
+  async getDailyScores(@Param('studentId') studentId: number, @Query('days') days?: number) {
+    return this.scoringService.getDailyScores(+studentId, days ? +days : 30);
   }
 
-  @Get('weekly')
-  @ApiOperation({ summary: '주간 점수 조회' })
-  async getWeeklyScore(
-    @Query('studentId') studentId: number,
-    @Query('date') date?: string,
-  ) {
-    const targetDate = date ? new Date(date) : new Date();
-    return this.scoringService.getWeeklyScores(studentId, targetDate);
+  @Get('today/:studentId')
+  @ApiOperation({ summary: '오늘 점수 요약' })
+  async getTodayScore(@Param('studentId') studentId: number) {
+    return this.scoringService.getTodayScore(+studentId);
   }
 }

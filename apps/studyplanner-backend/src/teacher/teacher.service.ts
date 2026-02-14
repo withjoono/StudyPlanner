@@ -74,8 +74,12 @@ export class TeacherService {
     const student = await this.prisma.student.findUnique({
       where: { id: BigInt(studentId) },
       select: {
-        id: true, name: true, studentCode: true,
-        schoolName: true, grade: true, schoolLevel: true,
+        id: true,
+        name: true,
+        studentCode: true,
+        schoolName: true,
+        grade: true,
+        schoolLevel: true,
       },
     });
 
@@ -99,7 +103,8 @@ export class TeacherService {
       today: {
         totalMissions,
         completedMissions,
-        completionRate: totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0,
+        completionRate:
+          totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0,
       },
       weeklyScores: recentScores.map(this.serialize),
     };
@@ -121,14 +126,18 @@ export class TeacherService {
   }
 
   /** 학생 미션 생성 (선생님이 직접) */
-  async createMission(teacherUserId: number, studentId: number, data: {
-    date: string;
-    subject?: string;
-    content?: string;
-    startTime?: string;
-    endTime?: string;
-    amount?: number;
-  }) {
+  async createMission(
+    teacherUserId: number,
+    studentId: number,
+    data: {
+      date: string;
+      subject?: string;
+      content?: string;
+      startTime?: string;
+      endTime?: string;
+      amount?: number;
+    },
+  ) {
     await this.verifyTeacherAccess(teacherUserId, studentId);
 
     const missionCode = `T-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
@@ -161,7 +170,11 @@ export class TeacherService {
       },
       include: {
         missionResult: {
-          select: { id: true, completedDate: true, mission: { select: { subject: true, content: true } } },
+          select: {
+            id: true,
+            completedDate: true,
+            mission: { select: { subject: true, content: true } },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -169,42 +182,6 @@ export class TeacherService {
     });
 
     return photos.map(this.serialize);
-  }
-
-  /** 학생 성적 입력 */
-  async addExamScore(teacherUserId: number, studentId: number, data: {
-    examType: string;
-    examName: string;
-    examDate: string;
-    subject: string;
-    rawScore?: number;
-    standardScore?: number;
-    percentile?: number;
-    grade?: number;
-    rank?: number;
-    totalStudents?: number;
-    memo?: string;
-  }) {
-    await this.verifyTeacherAccess(teacherUserId, studentId);
-
-    const score = await (this.prisma as any).examScore.create({
-      data: {
-        studentId: BigInt(studentId),
-        examType: data.examType,
-        examName: data.examName,
-        examDate: new Date(data.examDate),
-        subject: data.subject,
-        rawScore: data.rawScore,
-        standardScore: data.standardScore,
-        percentile: data.percentile,
-        grade: data.grade,
-        rank: data.rank,
-        totalStudents: data.totalStudents,
-        memo: data.memo,
-      },
-    });
-
-    return this.serialize(score);
   }
 
   /** 전체 학생 요약 (선생님 대시보드) */
@@ -240,16 +217,21 @@ export class TeacherService {
     return {
       totalStudents,
       atRiskStudents: atRisk,
-      avgCompletionRate: totalStudents > 0
-        ? Math.round(summaries.reduce((sum: number, s: any) => sum + s.completionRate, 0) / totalStudents)
-        : 0,
+      avgCompletionRate:
+        totalStudents > 0
+          ? Math.round(
+              summaries.reduce((sum: number, s: any) => sum + s.completionRate, 0) / totalStudents,
+            )
+          : 0,
       students: summaries,
     };
   }
 
   private async verifyTeacherAccess(teacherUserId: number, studentId: number) {
     const link = await this.prisma.teacherStudent.findUnique({
-      where: { uk_teacher_student: { teacherId: BigInt(teacherUserId), studentId: BigInt(studentId) } },
+      where: {
+        uk_teacher_student: { teacherId: BigInt(teacherUserId), studentId: BigInt(studentId) },
+      },
     });
     if (!link) {
       throw new Error('해당 학생에 대한 접근 권한이 없습니다.');
@@ -264,7 +246,12 @@ export class TeacherService {
         result[key] = Number(result[key]);
       } else if (result[key]?.constructor?.name === 'Decimal') {
         result[key] = Number(result[key]);
-      } else if (result[key] && typeof result[key] === 'object' && !Array.isArray(result[key]) && !(result[key] instanceof Date)) {
+      } else if (
+        result[key] &&
+        typeof result[key] === 'object' &&
+        !Array.isArray(result[key]) &&
+        !(result[key] instanceof Date)
+      ) {
         result[key] = this.serialize(result[key]);
       }
     }

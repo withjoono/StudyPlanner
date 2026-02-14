@@ -2,98 +2,70 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
- * 학습 성과 점수 산출 서비스
- * S = Σ(P × W_subject × I_complexity) × (1 + αQ)
+ * Study Performance Score 산출 서비스
+ * 공식: S = Σ(P × W_subject × I_complexity) × (1 + αQ)
+ * - P: 페이지/학습량
+ * - W_subject: 과목 난이도 가중치
+ * - I_complexity: 교재 난이도 (1~5)
+ * - Q: AI 퀴즈 정답률 (Phase 2 전까지 1.0)
+ * - α: 조절 상수 (기본 0.2)
  */
+
+// 과목별 가중치 — 수능 기준 난이도/중요도 반영
+const SUBJECT_WEIGHTS: Record<string, number> = {
+  korean: 1.0,
+  math: 1.3,
+  english: 1.0,
+  science: 1.2,
+  social: 1.0,
+  history: 0.9,
+  foreign: 0.8,
+  other: 0.7,
+};
+
 @Injectable()
 export class ScoringService {
   private readonly logger = new Logger(ScoringService.name);
-
-  // 과목 난이도 가중치 (W_subject)
-  private readonly subjectWeights: Record<string, number> = {
-    korean: 1.0,
-    math: 1.4,
-    english: 1.1,
-    science: 1.3,
-    social: 1.0,
-    history: 0.9,
-    foreign: 1.1,
-    other: 0.8,
-    // 한글 매핑
-    국어: 1.0,
-    수학: 1.4,
-    영어: 1.1,
-    과학: 1.3,
-    사회: 1.0,
-    한국사: 0.9,
-    제2외국어: 1.1,
-    기타: 0.8,
-  };
-
-  // 퀴즈 영향도 상수 (α)
-  private readonly QUIZ_ALPHA = 0.2;
+  private readonly ALPHA = parseFloat(process.env.SCORING_ALPHA || '0.2');
 
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * 미션 완료 시 성과 점수 계산
+   * 단일 미션 성과 점수 계산
    */
   calculateMissionScore(params: {
-    pages: number;
-    subject: string;
-    difficulty: number;
-    quizScore?: number;
-    studyMinutes?: number;
+    amount: number; // 학습량 (페이지 수 등)
+    subjectCode: string; // 과목 코드
+    difficulty: number; // 교재 난이도 1~5
+    quizScoreRate: number; // 퀴즈 정답률 0~1 (기본 1.0)
   }): number {
-    const W = this.subjectWeights[params.subject] || 1.0;
-    const I = params.difficulty || 3;
-    const P = params.pages;
-    const Q = params.quizScore ?? 0;
+    const { amount, subjectCode, difficulty, quizScoreRate } = params;
 
-    // 기본 점수: P × W × I
-    const baseScore = P * W * I;
+    const W = SUBJECT_WEIGHTS[subjectCode] || 1.0;
+    const I = Math.max(1, Math.min(5, difficulty)) / 3; // normalize: 1~5 → 0.33~1.67
+    const Q = Math.max(0, Math.min(1, quizScoreRate));
 
-    // 퀴즈 보너스: (1 + αQ)
-    const quizMultiplier = 1 + this.QUIZ_ALPHA * Q;
-
-    // 시간 보너스 (집중 시간이 있으면 약간의 가산)
-    const timeBonus = params.studyMinutes
-      ? Math.min(params.studyMinutes * 0.1, 5)
-      : 0;
-
-    const finalScore =
-      Math.round((baseScore * quizMultiplier + timeBonus) * 10) / 10;
-
-    this.logger.debug(
-      `Score: P=${P} × W=${W} × I=${I} × (1+${this.QUIZ_ALPHA}×${Q}) + timeBonus=${timeBonus} = ${finalScore}`,
-    );
-
-    return finalScore;
+    // S = P × W × I × (1 + αQ)
+    const score = amount * W * I * (1 + this.ALPHA * Q);
+    return Math.round(score * 100) / 100;
   }
 
   /**
-   * 일간 종합 점수 집계 및 DailyScore 모델에 저장
+   * 특정 학생의 특정 일자 전체 미션 기반 일간 점수 산출 및 저장
    */
-  async calculateDailyScore(
-    studentId: number,
-    date: Date,
-  ): Promise<{
-    totalScore: number;
-    missionCount: number;
-    completedCount: number;
-    studyMinutes: number;
-    breakdown: Array<{ subject: string; score: number; pages: number }>;
-  }> {
-    const dateStart = new Date(date);
-    dateStart.setHours(0, 0, 0, 0);
-    const dateEnd = new Date(date);
-    dateEnd.setHours(23, 59, 59, 999);
+  async calculateDailyScore(studentId: number, date?: Date) {
+    const targetDate = date || new Date();
+    const dateOnly = new Date(targetDate);
+    dateOnly.setHours(0, 0, 0, 0);
+    const nextDate = new Date(dateOnly);
+    nextDate.setDate(nextDate.getDate() + 1);
 
-    // 완료된 미션 조회
+    // 해당 날짜의 완료된 미션 + 결과 조회
     const missions = await this.prisma.dailyMission.findMany({
       where: {
         studentId: BigInt(studentId),
-        date: { gte: dateStart, lte: dateEnd },
+        date: dateOnly,
+        status: 'completed',
       },
       include: {
         missionResults: true,
@@ -103,119 +75,121 @@ export class ScoringService {
       },
     });
 
-    const completed = missions.filter((m: any) => m.status === 'completed');
-    const breakdown: Array<{ subject: string; score: number; pages: number }> =
-      [];
     let totalScore = 0;
     let totalStudyMinutes = 0;
 
-    for (const mission of completed) {
-      const pages =
-        mission.amount ||
-        (mission.endPage && mission.startPage
-          ? mission.endPage - mission.startPage + 1
-          : 0);
-      const subject = mission.subject || '기타';
-      const difficulty = (mission as any).plan?.material?.difficulty || 3;
+    for (const mission of missions) {
+      const result = mission.missionResults[0]; // 가장 최근 결과
+      if (!result) continue;
 
-      // 타이머 학습 시간 합산
-      const timerSessions = await this.prisma.timerSession.findMany({
-        where: {
-          missionId: mission.id,
-          isCompleted: true,
-        },
-      });
-      const studyMinutes = timerSessions.reduce(
-        (sum, s) => sum + s.durationMin,
-        0,
-      );
-      totalStudyMinutes += studyMinutes;
+      const amount = result.amount || mission.amount || 1;
+      const subjectCode = (mission.subject || 'other').toLowerCase();
+      const difficulty = mission.plan?.material?.difficulty || 3;
 
-      const score = this.calculateMissionScore({
-        pages,
-        subject,
+      // Phase 2 전까지 퀴즈 점수는 1.0
+      const quizScoreRate = 1.0;
+
+      const missionScore = this.calculateMissionScore({
+        amount,
+        subjectCode,
         difficulty,
-        studyMinutes,
+        quizScoreRate,
       });
 
-      breakdown.push({ subject, score, pages });
-      totalScore += score;
+      totalScore += missionScore;
+      totalStudyMinutes += result.studyMinutes || 0;
     }
 
-    const roundedScore = Math.round(totalScore * 10) / 10;
-
-    // DailyScore 테이블에 upsert
-    await this.prisma.dailyScore.upsert({
+    // DailyScore upsert
+    const dailyScore = await this.prisma.dailyScore.upsert({
       where: {
         uk_daily_score: {
           studentId: BigInt(studentId),
-          date: dateStart,
+          date: dateOnly,
         },
-      },
-      update: {
-        totalScore: roundedScore,
-        missionCount: completed.length,
-        studyMinutes: totalStudyMinutes,
       },
       create: {
         studentId: BigInt(studentId),
-        date: dateStart,
-        totalScore: roundedScore,
-        missionCount: completed.length,
+        date: dateOnly,
+        totalScore,
+        missionCount: missions.length,
+        studyMinutes: totalStudyMinutes,
+      },
+      update: {
+        totalScore,
+        missionCount: missions.length,
         studyMinutes: totalStudyMinutes,
       },
     });
 
-    return {
-      totalScore: roundedScore,
-      missionCount: missions.length,
-      completedCount: completed.length,
-      studyMinutes: totalStudyMinutes,
-      breakdown,
-    };
+    this.logger.log(
+      `DailyScore updated: student=${studentId}, date=${dateOnly.toISOString().split('T')[0]}, score=${totalScore}, missions=${missions.length}`,
+    );
+
+    return this.serialize(dailyScore);
   }
 
   /**
-   * 주간 점수 조회
+   * 학생의 일간 점수 조회 (기간)
    */
-  async getWeeklyScores(studentId: number, date?: Date) {
-    const targetDate = date || new Date();
-    const dayOfWeek = targetDate.getDay();
-    const monday = new Date(targetDate);
-    monday.setDate(targetDate.getDate() - ((dayOfWeek + 6) % 7));
-    monday.setHours(0, 0, 0, 0);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
+  async getDailyScores(studentId: number, days: number = 30) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
 
     const scores = await this.prisma.dailyScore.findMany({
       where: {
         studentId: BigInt(studentId),
-        date: { gte: monday, lte: sunday },
+        date: { gte: startDate },
       },
-      orderBy: { date: 'asc' },
+      orderBy: { date: 'desc' },
     });
 
-    const totalScore = scores.reduce(
-      (sum, s) => sum + Number(s.totalScore),
-      0,
-    );
-    const totalStudyMinutes = scores.reduce(
-      (sum, s) => sum + s.studyMinutes,
-      0,
-    );
+    return scores.map(this.serialize);
+  }
 
-    return {
-      weekStart: monday.toISOString().split('T')[0],
-      weekEnd: sunday.toISOString().split('T')[0],
-      totalScore: Math.round(totalScore * 10) / 10,
-      totalStudyMinutes,
-      dailyScores: scores.map((s) => ({
-        date: s.date.toISOString().split('T')[0],
-        totalScore: Number(s.totalScore),
-        missionCount: s.missionCount,
-        studyMinutes: s.studyMinutes,
-      })),
-    };
+  /**
+   * 오늘 점수 요약
+   */
+  async getTodayScore(studentId: number) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const score = await this.prisma.dailyScore.findUnique({
+      where: {
+        uk_daily_score: {
+          studentId: BigInt(studentId),
+          date: today,
+        },
+      },
+    });
+
+    return score
+      ? this.serialize(score)
+      : {
+          studentId,
+          date: today,
+          totalScore: 0,
+          missionCount: 0,
+          studyMinutes: 0,
+        };
+  }
+
+  private serialize(obj: any) {
+    if (!obj) return null;
+    const result: any = { ...obj };
+    for (const key of Object.keys(result)) {
+      if (typeof result[key] === 'bigint') {
+        result[key] = Number(result[key]);
+      } else if (
+        result[key] !== null &&
+        typeof result[key] === 'object' &&
+        typeof result[key].toNumber === 'function'
+      ) {
+        // Prisma Decimal
+        result[key] = result[key].toNumber();
+      }
+    }
+    return result;
   }
 }

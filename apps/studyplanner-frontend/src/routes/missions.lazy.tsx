@@ -19,6 +19,8 @@ import {
   Target,
   TrendingUp,
   Calendar,
+  Camera,
+  ImageIcon,
 } from 'lucide-react';
 import { useGetDailyMissions, useCompleteDailyMission } from '@/stores/server/planner';
 import type { DailyMission } from '@/stores/server/planner/mock-data';
@@ -777,69 +779,133 @@ function MissionItem({
 }) {
   const isCompleted = mission.status === 'completed';
   const color = SUBJECT_COLORS[mission.subject] || '#6b7280';
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationSubmitted, setVerificationSubmitted] = useState(false);
+
+  const handlePhotoUpload = () => {
+    // Phase 1: 사진 선택 → 즉시 인증 완료 (AI stub)
+    setVerificationSubmitted(true);
+    setTimeout(() => setShowVerification(false), 1500);
+  };
 
   return (
     <div
-      className={`flex items-center gap-3 rounded-lg border p-3 transition-all ${
+      className={`rounded-lg border p-3 transition-all ${
         isCompleted ? 'border-gray-200 bg-gray-50 opacity-60' : 'border-gray-200 hover:bg-gray-50'
       }`}
     >
-      {/* 완료 체크 버튼 */}
-      <button
-        onClick={() => onComplete(mission.id, isCompleted ? 0 : 100)}
-        className="flex-shrink-0"
-      >
-        {isCompleted ? (
-          <CheckCircle className="h-5 w-5 text-green-500" />
-        ) : (
-          <Circle className="h-5 w-5 text-gray-300 hover:text-gray-400" />
-        )}
-      </button>
+      <div className="flex items-center gap-3">
+        {/* 완료 체크 버튼 */}
+        <button
+          onClick={() => onComplete(mission.id, isCompleted ? 0 : 100)}
+          className="flex-shrink-0"
+        >
+          {isCompleted ? (
+            <CheckCircle className="h-5 w-5 text-green-500" />
+          ) : (
+            <Circle className="h-5 w-5 text-gray-300 hover:text-gray-400" />
+          )}
+        </button>
 
-      {/* 과목 색상 바 */}
-      <div className="h-10 w-1 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
+        {/* 과목 색상 바 */}
+        <div className="h-10 w-1 flex-shrink-0 rounded-full" style={{ backgroundColor: color }} />
 
-      {/* 내용 */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span
-            className="rounded px-2 py-0.5 text-xs font-medium text-white"
-            style={{ backgroundColor: color }}
-          >
-            {mission.subject}
-          </span>
+        {/* 내용 */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span
+              className="rounded px-2 py-0.5 text-xs font-medium text-white"
+              style={{ backgroundColor: color }}
+            >
+              {mission.subject}
+            </span>
+            {verificationSubmitted && (
+              <span className="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                <Camera className="h-3 w-3" /> 인증완료
+              </span>
+            )}
+          </div>
+          <p className={`mt-1 font-medium ${isCompleted ? 'text-gray-400 line-through' : ''}`}>
+            {mission.title}
+          </p>
+          <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+            <Clock className="h-3 w-3" />
+            <span>
+              {mission.startTime} - {mission.endTime}
+            </span>
+            <span className="text-gray-300">|</span>
+            <span>{mission.content}</span>
+            {mission.weekNumber && (
+              <>
+                <span className="text-gray-300">|</span>
+                <span className="text-blue-500">{mission.weekNumber}주차</span>
+              </>
+            )}
+          </div>
         </div>
-        <p className={`mt-1 font-medium ${isCompleted ? 'text-gray-400 line-through' : ''}`}>
-          {mission.title}
-        </p>
-        <div className="mt-1 flex items-center gap-2 text-xs text-gray-500">
-          <Clock className="h-3 w-3" />
-          <span>
-            {mission.startTime} - {mission.endTime}
-          </span>
-          <span className="text-gray-300">|</span>
-          <span>{mission.content}</span>
-          {mission.weekNumber && (
-            <>
-              <span className="text-gray-300">|</span>
-              <span className="text-blue-500">{mission.weekNumber}주차</span>
-            </>
+
+        {/* 진행률 + 인증 버튼 */}
+        <div className="flex items-center gap-2">
+          {isCompleted && !verificationSubmitted && (
+            <button
+              onClick={() => setShowVerification(!showVerification)}
+              className="flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-medium text-indigo-600 transition-all hover:bg-indigo-100"
+              title="사진 인증하기"
+            >
+              <Camera className="h-3.5 w-3.5" />
+              인증
+            </button>
+          )}
+          <div className="text-right">
+            <div className="text-lg font-bold" style={{ color: isCompleted ? '#22c55e' : color }}>
+              {mission.progress}%
+            </div>
+            <div className="text-xs text-gray-500">성취도</div>
+            {mission.weeklyTarget && mission.weeklyTarget > 0 && (
+              <div className="mt-1 text-[10px] text-blue-500">
+                주간 {mission.amount}/{mission.weeklyTarget}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 사진 인증 패널 */}
+      {showVerification && (
+        <div className="mt-3 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <ImageIcon className="h-4 w-4 text-indigo-500" />
+            <h4 className="text-sm font-semibold text-indigo-700">학습 인증 사진 업로드</h4>
+          </div>
+          <p className="mb-3 text-xs text-gray-500">학습한 교재 페이지를 촬영해서 업로드하세요.</p>
+          <div className="flex gap-2">
+            <label className="flex-1 cursor-pointer">
+              <div className="flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-indigo-200 bg-white py-3 text-sm font-medium text-indigo-600 transition-all hover:border-indigo-400 hover:bg-indigo-50">
+                <Camera className="h-4 w-4" />
+                파일 선택
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+            </label>
+            <button
+              onClick={() => setShowVerification(false)}
+              className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-500 hover:bg-gray-50"
+            >
+              취소
+            </button>
+          </div>
+          {verificationSubmitted && (
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-600">
+              <CheckCircle className="h-4 w-4" /> 인증이 완료되었습니다!
+            </div>
           )}
         </div>
-      </div>
-
-      {/* 진행률 */}
-      <div className="text-right">
-        <div className="text-lg font-bold" style={{ color: isCompleted ? '#22c55e' : color }}>
-          {mission.progress}%
-        </div>
-        <div className="text-xs text-gray-500">성취도</div>
-        {mission.weeklyTarget && mission.weeklyTarget > 0 && (
-          <div className="mt-1 text-[10px] text-blue-500">
-            주간 {mission.amount}/{mission.weeklyTarget}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

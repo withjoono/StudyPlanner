@@ -1,10 +1,12 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TimerController } from './timer.controller';
 import { TimerService } from './timer.service';
+import { ScoringModule } from '../scoring/scoring.module';
 
 @Module({
-    controllers: [TimerController],
-    providers: [TimerService],
-    exports: [TimerService],
+  imports: [forwardRef(() => ScoringModule)],
+  controllers: [TimerController],
+  providers: [TimerService],
+  exports: [TimerService],
 })
-export class TimerModule { }
+export class TimerModule {}

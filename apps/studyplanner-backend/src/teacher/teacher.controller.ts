@@ -23,10 +23,7 @@ export class TeacherController {
   }
 
   @Post('students')
-  async addStudent(
-    @Req() req: any,
-    @Body() body: { studentCode: string; subject?: string },
-  ) {
+  async addStudent(@Req() req: any, @Body() body: { studentCode: string; subject?: string }) {
     const userId = Number(req.user?.sub || 0);
     return this.teacherService.addStudent(userId, body.studentCode, body.subject);
   }
@@ -57,7 +54,8 @@ export class TeacherController {
   async createMission(
     @Req() req: any,
     @Param('studentId') studentId: string,
-    @Body() body: {
+    @Body()
+    body: {
       date: string;
       subject?: string;
       content?: string;
@@ -77,28 +75,10 @@ export class TeacherController {
     @Query('limit') limit?: string,
   ) {
     const userId = Number(req.user?.sub || 0);
-    return this.teacherService.getStudentPhotos(userId, parseInt(studentId), limit ? parseInt(limit) : undefined);
-  }
-
-  @Post('students/:studentId/exam-scores')
-  async addExamScore(
-    @Req() req: any,
-    @Param('studentId') studentId: string,
-    @Body() body: {
-      examType: string;
-      examName: string;
-      examDate: string;
-      subject: string;
-      rawScore?: number;
-      standardScore?: number;
-      percentile?: number;
-      grade?: number;
-      rank?: number;
-      totalStudents?: number;
-      memo?: string;
-    },
-  ) {
-    const userId = Number(req.user?.sub || 0);
-    return this.teacherService.addExamScore(userId, parseInt(studentId), body);
+    return this.teacherService.getStudentPhotos(
+      userId,
+      parseInt(studentId),
+      limit ? parseInt(limit) : undefined,
+    );
   }
 }

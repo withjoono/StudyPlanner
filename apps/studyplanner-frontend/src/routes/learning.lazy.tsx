@@ -583,6 +583,76 @@ function PlannerLearningPage() {
         </Card>
       )}
 
+      {/* 학습 성과 점수 */}
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">🏆 학습 성과 점수</CardTitle>
+            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+              이번 주
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* 오늘 점수 + 주간 점수 */}
+          <div className="mb-6 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 p-5 text-white shadow-lg shadow-indigo-200">
+              <p className="text-sm font-medium opacity-80">오늘의 점수</p>
+              <p className="mt-1 text-4xl font-bold">42.0</p>
+              <p className="mt-1 text-xs opacity-70">3개 미션 완료 · 75분 학습</p>
+            </div>
+            <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-5 text-white shadow-lg shadow-emerald-200">
+              <p className="text-sm font-medium opacity-80">주간 누적</p>
+              <p className="mt-1 text-4xl font-bold">186.5</p>
+              <p className="mt-1 text-xs opacity-70">총 12개 미션 · 320분 학습</p>
+            </div>
+          </div>
+
+          {/* 주간 막대 차트 (mock) */}
+          <div>
+            <h4 className="mb-3 text-sm font-semibold text-gray-700">이번 주 점수 추이</h4>
+            <div className="flex items-end gap-2">
+              {[
+                { day: '월', score: 35 },
+                { day: '화', score: 42 },
+                { day: '수', score: 28 },
+                { day: '목', score: 39 },
+                { day: '금', score: 42 },
+                { day: '토', score: 0 },
+                { day: '일', score: 0 },
+              ].map((d) => {
+                const maxScore = 50;
+                const height = d.score > 0 ? Math.max((d.score / maxScore) * 100, 8) : 4;
+                const isToday =
+                  d.day === ['일', '월', '화', '수', '목', '금', '토'][new Date().getDay()];
+                return (
+                  <div key={d.day} className="flex flex-1 flex-col items-center gap-1">
+                    <span className="text-xs font-medium text-gray-500">
+                      {d.score > 0 ? d.score : ''}
+                    </span>
+                    <div
+                      className={`w-full rounded-t-lg transition-all ${
+                        isToday
+                          ? 'bg-gradient-to-t from-indigo-500 to-indigo-400'
+                          : d.score > 0
+                            ? 'bg-indigo-200'
+                            : 'bg-gray-100'
+                      }`}
+                      style={{ height: `${height}px`, minHeight: '4px' }}
+                    />
+                    <span
+                      className={`text-xs ${isToday ? 'font-bold text-indigo-600' : 'text-gray-400'}`}
+                    >
+                      {d.day}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 최근 학습 */}
       <Card>
         <CardHeader>

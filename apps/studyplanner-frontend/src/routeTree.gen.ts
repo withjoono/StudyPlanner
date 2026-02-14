@@ -8,134 +8,145 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router';
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ProductsIndexRouteImport } from './routes/products/index'
-import { Route as OrderProductIdRouteImport } from './routes/order/$productId'
-import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
-import { Route as AuthRegisterRouteImport } from './routes/auth/register'
-import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as rootRouteImport } from './routes/__root';
+import { Route as IndexRouteImport } from './routes/index';
+import { Route as ProductsIndexRouteImport } from './routes/products/index';
+import { Route as OrderProductIdRouteImport } from './routes/order/$productId';
+import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password';
+import { Route as AuthRegisterRouteImport } from './routes/auth/register';
+import { Route as AuthLoginRouteImport } from './routes/auth/login';
 
-const RoutineLazyRouteImport = createFileRoute('/routine')()
-const PlansLazyRouteImport = createFileRoute('/plans')()
-const MissionsLazyRouteImport = createFileRoute('/missions')()
-const LearningLazyRouteImport = createFileRoute('/learning')()
+const TimerLazyRouteImport = createFileRoute('/timer')();
+const RoutineLazyRouteImport = createFileRoute('/routine')();
+const PlansLazyRouteImport = createFileRoute('/plans')();
+const MissionsLazyRouteImport = createFileRoute('/missions')();
+const LearningLazyRouteImport = createFileRoute('/learning')();
 
+const TimerLazyRoute = TimerLazyRouteImport.update({
+  id: '/timer',
+  path: '/timer',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/timer.lazy').then((d) => d.Route));
 const RoutineLazyRoute = RoutineLazyRouteImport.update({
   id: '/routine',
   path: '/routine',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/routine.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/routine.lazy').then((d) => d.Route));
 const PlansLazyRoute = PlansLazyRouteImport.update({
   id: '/plans',
   path: '/plans',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/plans.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/plans.lazy').then((d) => d.Route));
 const MissionsLazyRoute = MissionsLazyRouteImport.update({
   id: '/missions',
   path: '/missions',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/missions.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/missions.lazy').then((d) => d.Route));
 const LearningLazyRoute = LearningLazyRouteImport.update({
   id: '/learning',
   path: '/learning',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/learning.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/learning.lazy').then((d) => d.Route));
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ProductsIndexRoute = ProductsIndexRouteImport.update({
   id: '/products/',
   path: '/products/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const OrderProductIdRoute = OrderProductIdRouteImport.update({
   id: '/order/$productId',
   path: '/order/$productId',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   id: '/auth/reset-password',
   path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/auth/register',
   path: '/auth/register',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/learning': typeof LearningLazyRoute
-  '/missions': typeof MissionsLazyRoute
-  '/plans': typeof PlansLazyRoute
-  '/routine': typeof RoutineLazyRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/register': typeof AuthRegisterRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/order/$productId': typeof OrderProductIdRoute
-  '/products': typeof ProductsIndexRoute
+  '/': typeof IndexRoute;
+  '/learning': typeof LearningLazyRoute;
+  '/missions': typeof MissionsLazyRoute;
+  '/plans': typeof PlansLazyRoute;
+  '/routine': typeof RoutineLazyRoute;
+  '/timer': typeof TimerLazyRoute;
+  '/auth/login': typeof AuthLoginRoute;
+  '/auth/register': typeof AuthRegisterRoute;
+  '/auth/reset-password': typeof AuthResetPasswordRoute;
+  '/order/$productId': typeof OrderProductIdRoute;
+  '/products': typeof ProductsIndexRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/learning': typeof LearningLazyRoute
-  '/missions': typeof MissionsLazyRoute
-  '/plans': typeof PlansLazyRoute
-  '/routine': typeof RoutineLazyRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/register': typeof AuthRegisterRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/order/$productId': typeof OrderProductIdRoute
-  '/products': typeof ProductsIndexRoute
+  '/': typeof IndexRoute;
+  '/learning': typeof LearningLazyRoute;
+  '/missions': typeof MissionsLazyRoute;
+  '/plans': typeof PlansLazyRoute;
+  '/routine': typeof RoutineLazyRoute;
+  '/timer': typeof TimerLazyRoute;
+  '/auth/login': typeof AuthLoginRoute;
+  '/auth/register': typeof AuthRegisterRoute;
+  '/auth/reset-password': typeof AuthResetPasswordRoute;
+  '/order/$productId': typeof OrderProductIdRoute;
+  '/products': typeof ProductsIndexRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/learning': typeof LearningLazyRoute
-  '/missions': typeof MissionsLazyRoute
-  '/plans': typeof PlansLazyRoute
-  '/routine': typeof RoutineLazyRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/register': typeof AuthRegisterRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/order/$productId': typeof OrderProductIdRoute
-  '/products/': typeof ProductsIndexRoute
+  __root__: typeof rootRouteImport;
+  '/': typeof IndexRoute;
+  '/learning': typeof LearningLazyRoute;
+  '/missions': typeof MissionsLazyRoute;
+  '/plans': typeof PlansLazyRoute;
+  '/routine': typeof RoutineLazyRoute;
+  '/timer': typeof TimerLazyRoute;
+  '/auth/login': typeof AuthLoginRoute;
+  '/auth/register': typeof AuthRegisterRoute;
+  '/auth/reset-password': typeof AuthResetPasswordRoute;
+  '/order/$productId': typeof OrderProductIdRoute;
+  '/products/': typeof ProductsIndexRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
     | '/learning'
     | '/missions'
     | '/plans'
     | '/routine'
+    | '/timer'
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
     | '/order/$productId'
-    | '/products'
-  fileRoutesByTo: FileRoutesByTo
+    | '/products';
+  fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
     | '/learning'
     | '/missions'
     | '/plans'
     | '/routine'
+    | '/timer'
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
     | '/order/$productId'
-    | '/products'
+    | '/products';
   id:
     | '__root__'
     | '/'
@@ -143,98 +154,107 @@ export interface FileRouteTypes {
     | '/missions'
     | '/plans'
     | '/routine'
+    | '/timer'
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
     | '/order/$productId'
-    | '/products/'
-  fileRoutesById: FileRoutesById
+    | '/products/';
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  LearningLazyRoute: typeof LearningLazyRoute
-  MissionsLazyRoute: typeof MissionsLazyRoute
-  PlansLazyRoute: typeof PlansLazyRoute
-  RoutineLazyRoute: typeof RoutineLazyRoute
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthRegisterRoute: typeof AuthRegisterRoute
-  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
-  OrderProductIdRoute: typeof OrderProductIdRoute
-  ProductsIndexRoute: typeof ProductsIndexRoute
+  IndexRoute: typeof IndexRoute;
+  LearningLazyRoute: typeof LearningLazyRoute;
+  MissionsLazyRoute: typeof MissionsLazyRoute;
+  PlansLazyRoute: typeof PlansLazyRoute;
+  RoutineLazyRoute: typeof RoutineLazyRoute;
+  TimerLazyRoute: typeof TimerLazyRoute;
+  AuthLoginRoute: typeof AuthLoginRoute;
+  AuthRegisterRoute: typeof AuthRegisterRoute;
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute;
+  OrderProductIdRoute: typeof OrderProductIdRoute;
+  ProductsIndexRoute: typeof ProductsIndexRoute;
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/timer': {
+      id: '/timer';
+      path: '/timer';
+      fullPath: '/timer';
+      preLoaderRoute: typeof TimerLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/routine': {
-      id: '/routine'
-      path: '/routine'
-      fullPath: '/routine'
-      preLoaderRoute: typeof RoutineLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/routine';
+      path: '/routine';
+      fullPath: '/routine';
+      preLoaderRoute: typeof RoutineLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/plans': {
-      id: '/plans'
-      path: '/plans'
-      fullPath: '/plans'
-      preLoaderRoute: typeof PlansLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/plans';
+      path: '/plans';
+      fullPath: '/plans';
+      preLoaderRoute: typeof PlansLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/missions': {
-      id: '/missions'
-      path: '/missions'
-      fullPath: '/missions'
-      preLoaderRoute: typeof MissionsLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/missions';
+      path: '/missions';
+      fullPath: '/missions';
+      preLoaderRoute: typeof MissionsLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/learning': {
-      id: '/learning'
-      path: '/learning'
-      fullPath: '/learning'
-      preLoaderRoute: typeof LearningLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/learning';
+      path: '/learning';
+      fullPath: '/learning';
+      preLoaderRoute: typeof LearningLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/';
+      path: '/';
+      fullPath: '/';
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/products/': {
-      id: '/products/'
-      path: '/products'
-      fullPath: '/products'
-      preLoaderRoute: typeof ProductsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/products/';
+      path: '/products';
+      fullPath: '/products';
+      preLoaderRoute: typeof ProductsIndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/order/$productId': {
-      id: '/order/$productId'
-      path: '/order/$productId'
-      fullPath: '/order/$productId'
-      preLoaderRoute: typeof OrderProductIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/order/$productId';
+      path: '/order/$productId';
+      fullPath: '/order/$productId';
+      preLoaderRoute: typeof OrderProductIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/auth/reset-password': {
-      id: '/auth/reset-password'
-      path: '/auth/reset-password'
-      fullPath: '/auth/reset-password'
-      preLoaderRoute: typeof AuthResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/auth/reset-password';
+      path: '/auth/reset-password';
+      fullPath: '/auth/reset-password';
+      preLoaderRoute: typeof AuthResetPasswordRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/auth/register': {
-      id: '/auth/register'
-      path: '/auth/register'
-      fullPath: '/auth/register'
-      preLoaderRoute: typeof AuthRegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/auth/register';
+      path: '/auth/register';
+      fullPath: '/auth/register';
+      preLoaderRoute: typeof AuthRegisterRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/auth/login': {
-      id: '/auth/login'
-      path: '/auth/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/auth/login';
+      path: '/auth/login';
+      fullPath: '/auth/login';
+      preLoaderRoute: typeof AuthLoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
@@ -244,12 +264,13 @@ const rootRouteChildren: RootRouteChildren = {
   MissionsLazyRoute: MissionsLazyRoute,
   PlansLazyRoute: PlansLazyRoute,
   RoutineLazyRoute: RoutineLazyRoute,
+  TimerLazyRoute: TimerLazyRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   OrderProductIdRoute: OrderProductIdRoute,
   ProductsIndexRoute: ProductsIndexRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();
