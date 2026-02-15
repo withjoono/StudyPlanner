@@ -20,9 +20,12 @@ import { Route as AuthLoginRouteImport } from './routes/auth/login';
 
 const TimerLazyRouteImport = createFileRoute('/timer')();
 const RoutineLazyRouteImport = createFileRoute('/routine')();
+const ReportLazyRouteImport = createFileRoute('/report')();
+const QuizLazyRouteImport = createFileRoute('/quiz')();
 const PlansLazyRouteImport = createFileRoute('/plans')();
 const MissionsLazyRouteImport = createFileRoute('/missions')();
 const LearningLazyRouteImport = createFileRoute('/learning')();
+const ExamLazyRouteImport = createFileRoute('/exam')();
 
 const TimerLazyRoute = TimerLazyRouteImport.update({
   id: '/timer',
@@ -34,6 +37,16 @@ const RoutineLazyRoute = RoutineLazyRouteImport.update({
   path: '/routine',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/routine.lazy').then((d) => d.Route));
+const ReportLazyRoute = ReportLazyRouteImport.update({
+  id: '/report',
+  path: '/report',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/report.lazy').then((d) => d.Route));
+const QuizLazyRoute = QuizLazyRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/quiz.lazy').then((d) => d.Route));
 const PlansLazyRoute = PlansLazyRouteImport.update({
   id: '/plans',
   path: '/plans',
@@ -49,6 +62,11 @@ const LearningLazyRoute = LearningLazyRouteImport.update({
   path: '/learning',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/learning.lazy').then((d) => d.Route));
+const ExamLazyRoute = ExamLazyRouteImport.update({
+  id: '/exam',
+  path: '/exam',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/exam.lazy').then((d) => d.Route));
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -82,9 +100,12 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
+  '/exam': typeof ExamLazyRoute;
   '/learning': typeof LearningLazyRoute;
   '/missions': typeof MissionsLazyRoute;
   '/plans': typeof PlansLazyRoute;
+  '/quiz': typeof QuizLazyRoute;
+  '/report': typeof ReportLazyRoute;
   '/routine': typeof RoutineLazyRoute;
   '/timer': typeof TimerLazyRoute;
   '/auth/login': typeof AuthLoginRoute;
@@ -95,9 +116,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
+  '/exam': typeof ExamLazyRoute;
   '/learning': typeof LearningLazyRoute;
   '/missions': typeof MissionsLazyRoute;
   '/plans': typeof PlansLazyRoute;
+  '/quiz': typeof QuizLazyRoute;
+  '/report': typeof ReportLazyRoute;
   '/routine': typeof RoutineLazyRoute;
   '/timer': typeof TimerLazyRoute;
   '/auth/login': typeof AuthLoginRoute;
@@ -109,9 +133,12 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   '/': typeof IndexRoute;
+  '/exam': typeof ExamLazyRoute;
   '/learning': typeof LearningLazyRoute;
   '/missions': typeof MissionsLazyRoute;
   '/plans': typeof PlansLazyRoute;
+  '/quiz': typeof QuizLazyRoute;
+  '/report': typeof ReportLazyRoute;
   '/routine': typeof RoutineLazyRoute;
   '/timer': typeof TimerLazyRoute;
   '/auth/login': typeof AuthLoginRoute;
@@ -124,9 +151,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
+    | '/exam'
     | '/learning'
     | '/missions'
     | '/plans'
+    | '/quiz'
+    | '/report'
     | '/routine'
     | '/timer'
     | '/auth/login'
@@ -137,9 +167,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
+    | '/exam'
     | '/learning'
     | '/missions'
     | '/plans'
+    | '/quiz'
+    | '/report'
     | '/routine'
     | '/timer'
     | '/auth/login'
@@ -150,9 +183,12 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/exam'
     | '/learning'
     | '/missions'
     | '/plans'
+    | '/quiz'
+    | '/report'
     | '/routine'
     | '/timer'
     | '/auth/login'
@@ -164,9 +200,12 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
+  ExamLazyRoute: typeof ExamLazyRoute;
   LearningLazyRoute: typeof LearningLazyRoute;
   MissionsLazyRoute: typeof MissionsLazyRoute;
   PlansLazyRoute: typeof PlansLazyRoute;
+  QuizLazyRoute: typeof QuizLazyRoute;
+  ReportLazyRoute: typeof ReportLazyRoute;
   RoutineLazyRoute: typeof RoutineLazyRoute;
   TimerLazyRoute: typeof TimerLazyRoute;
   AuthLoginRoute: typeof AuthLoginRoute;
@@ -192,6 +231,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RoutineLazyRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/report': {
+      id: '/report';
+      path: '/report';
+      fullPath: '/report';
+      preLoaderRoute: typeof ReportLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/quiz': {
+      id: '/quiz';
+      path: '/quiz';
+      fullPath: '/quiz';
+      preLoaderRoute: typeof QuizLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/plans': {
       id: '/plans';
       path: '/plans';
@@ -211,6 +264,13 @@ declare module '@tanstack/react-router' {
       path: '/learning';
       fullPath: '/learning';
       preLoaderRoute: typeof LearningLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/exam': {
+      id: '/exam';
+      path: '/exam';
+      fullPath: '/exam';
+      preLoaderRoute: typeof ExamLazyRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/': {
@@ -260,9 +320,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ExamLazyRoute: ExamLazyRoute,
   LearningLazyRoute: LearningLazyRoute,
   MissionsLazyRoute: MissionsLazyRoute,
   PlansLazyRoute: PlansLazyRoute,
+  QuizLazyRoute: QuizLazyRoute,
+  ReportLazyRoute: ReportLazyRoute,
   RoutineLazyRoute: RoutineLazyRoute,
   TimerLazyRoute: TimerLazyRoute,
   AuthLoginRoute: AuthLoginRoute,

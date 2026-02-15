@@ -14,7 +14,7 @@ export class TeacherService {
   /** 담당 학생 목록 */
   async getStudents(teacherUserId: number) {
     const links = await this.prisma.teacherStudent.findMany({
-      where: { teacherId: BigInt(teacherUserId) },
+      where: { teacherId: String(teacherUserId) },
       include: {
         student: {
           select: {
@@ -45,7 +45,7 @@ export class TeacherService {
 
     const link = await this.prisma.teacherStudent.create({
       data: {
-        teacherId: BigInt(teacherUserId),
+        teacherId: String(teacherUserId),
         studentId: student.id,
         subject,
       },
@@ -57,7 +57,7 @@ export class TeacherService {
   async removeStudent(teacherUserId: number, studentId: number) {
     await this.prisma.teacherStudent.deleteMany({
       where: {
-        teacherId: BigInt(teacherUserId),
+        teacherId: String(teacherUserId),
         studentId: BigInt(studentId),
       },
     });
@@ -230,7 +230,7 @@ export class TeacherService {
   private async verifyTeacherAccess(teacherUserId: number, studentId: number) {
     const link = await this.prisma.teacherStudent.findUnique({
       where: {
-        uk_teacher_student: { teacherId: BigInt(teacherUserId), studentId: BigInt(studentId) },
+        uk_teacher_student: { teacherId: String(teacherUserId), studentId: BigInt(studentId) },
       },
     });
     if (!link) {

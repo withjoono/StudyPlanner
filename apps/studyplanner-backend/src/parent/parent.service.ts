@@ -14,7 +14,7 @@ export class ParentService {
   /** 자녀 목록 조회 */
   async getChildren(parentUserId: number) {
     const links = await this.prisma.parentStudent.findMany({
-      where: { parentId: BigInt(parentUserId) },
+      where: { parentId: String(parentUserId) },
       include: {
         student: {
           select: {
@@ -104,7 +104,11 @@ export class ParentService {
       },
       include: {
         missionResult: {
-          select: { id: true, completedDate: true, mission: { select: { subject: true, content: true } } },
+          select: {
+            id: true,
+            completedDate: true,
+            mission: { select: { subject: true, content: true } },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -148,7 +152,8 @@ export class ParentService {
       today: {
         totalMissions,
         completedMissions,
-        completionRate: totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0,
+        completionRate:
+          totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0,
         score: todayScore ? Number(todayScore.totalScore) : 0,
         studyMinutes: (todaySessions._sum as any)?.durationMin || 0,
       },
@@ -158,7 +163,9 @@ export class ParentService {
   /** 부모-학생 접근 권한 확인 */
   private async verifyParentAccess(parentUserId: number, studentId: number) {
     const link = await this.prisma.parentStudent.findUnique({
-      where: { uk_parent_student: { parentId: BigInt(parentUserId), studentId: BigInt(studentId) } },
+      where: {
+        uk_parent_student: { parentId: String(parentUserId), studentId: BigInt(studentId) },
+      },
     });
     if (!link) {
       throw new Error('해당 학생에 대한 접근 권한이 없습니다.');
@@ -173,7 +180,12 @@ export class ParentService {
         result[key] = Number(result[key]);
       } else if (result[key]?.constructor?.name === 'Decimal') {
         result[key] = Number(result[key]);
-      } else if (result[key] && typeof result[key] === 'object' && !Array.isArray(result[key]) && !(result[key] instanceof Date)) {
+      } else if (
+        result[key] &&
+        typeof result[key] === 'object' &&
+        !Array.isArray(result[key]) &&
+        !(result[key] instanceof Date)
+      ) {
         result[key] = this.serialize(result[key]);
       }
     }

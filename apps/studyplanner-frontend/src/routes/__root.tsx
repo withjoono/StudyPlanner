@@ -1,24 +1,10 @@
 import { createRootRoute, Outlet, Link, useNavigate } from '@tanstack/react-router';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { useAuthStore } from '@/stores/client/use-auth-store';
 
 import { useLogout, useSsoExchange } from '@/stores/server/auth';
 import { useEffect, useState } from 'react';
-import {
-  LogOut,
-  User,
-  ChevronLeft,
-  CreditCard,
-  Bell,
-  Share2,
-  LayoutDashboard,
-  Target,
-  CalendarClock,
-  BookOpen,
-  BarChart3,
-  X,
-  Timer,
-} from 'lucide-react';
+import { LogOut, User, Wallet, Bell, Share2, X } from 'lucide-react';
 
 // Hub URL
 const HUB_URL =
@@ -65,7 +51,7 @@ function RootLayout() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 네비게이션 */}
-      <nav className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm">
+      <nav className="sticky top-0 z-40 bg-white shadow-sm">
         <div className="mx-auto max-w-screen-xl px-4">
           <div className="flex h-14 items-center justify-between">
             {/* 왼쪽: 전체 서비스 링크 */}
@@ -74,7 +60,6 @@ function RootLayout() {
                 href={HUB_URL}
                 className="hover:text-ultrasonic-600 flex items-center gap-1 text-sm font-medium text-gray-600 transition-colors"
               >
-                <ChevronLeft className="h-4 w-4" />
                 <span>전체 서비스</span>
               </a>
 
@@ -91,24 +76,15 @@ function RootLayout() {
 
             {/* 중앙: 네비게이션 메뉴 */}
             <div className="hidden items-center gap-1 md:flex">
-              <NavLink to="/" icon={<LayoutDashboard className="h-4 w-4" />}>
-                플래너홈
-              </NavLink>
-              <NavLink to="/missions" icon={<Target className="h-4 w-4" />}>
-                나의 미션
-              </NavLink>
-              <NavLink to="/routine" icon={<CalendarClock className="h-4 w-4" />}>
-                주간 루틴
-              </NavLink>
-              <NavLink to="/plans" icon={<BookOpen className="h-4 w-4" />}>
-                장기 계획
-              </NavLink>
-              <NavLink to="/learning" icon={<BarChart3 className="h-4 w-4" />}>
-                학습 현황
-              </NavLink>
-              <NavLink to="/timer" icon={<Timer className="h-4 w-4" />}>
-                타이머
-              </NavLink>
+              <NavLink to="/">플래너홈</NavLink>
+              <NavLink to="/missions">나의 미션</NavLink>
+              <NavLink to="/routine">주간 루틴</NavLink>
+              <NavLink to="/plans">장기 계획</NavLink>
+              <NavLink to="/learning">학습 현황</NavLink>
+              <NavLink to="/timer">타이머</NavLink>
+              <NavLink to="/quiz">퀴즈</NavLink>
+              <NavLink to="/report">리포트</NavLink>
+              <NavLink to="/exam">성적</NavLink>
             </div>
 
             {/* 오른쪽: 아이콘 버튼 + 사용자 정보 */}
@@ -116,7 +92,7 @@ function RootLayout() {
               {/* 아이콘 버튼들 */}
               <IconButton
                 href={`${HUB_URL}/products`}
-                icon={<CreditCard className="h-4 w-4" />}
+                icon={<Wallet className="h-4 w-4" />}
                 label="결제"
               />
               <IconButton href="#" icon={<Bell className="h-4 w-4" />} label="알림" badge={3} />
@@ -192,12 +168,14 @@ function RootLayout() {
       {/* 모바일 하단 네비게이션 */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white md:hidden">
         <div className="flex items-center justify-around py-2">
-          <MobileNavLink to="/" icon={<LayoutDashboard className="h-5 w-5" />} label="홈" />
-          <MobileNavLink to="/missions" icon={<Target className="h-5 w-5" />} label="미션" />
-          <MobileNavLink to="/routine" icon={<CalendarClock className="h-5 w-5" />} label="루틴" />
-          <MobileNavLink to="/plans" icon={<BookOpen className="h-5 w-5" />} label="계획" />
-          <MobileNavLink to="/learning" icon={<BarChart3 className="h-5 w-5" />} label="현황" />
-          <MobileNavLink to="/timer" icon={<Timer className="h-5 w-5" />} label="타이머" />
+          <MobileNavLink to="/" label="홈" />
+          <MobileNavLink to="/missions" label="미션" />
+          <MobileNavLink to="/routine" label="루틴" />
+          <MobileNavLink to="/plans" label="계획" />
+          <MobileNavLink to="/learning" label="현황" />
+          <MobileNavLink to="/timer" label="타이머" />
+          <MobileNavLink to="/quiz" label="퀴즈" />
+          <MobileNavLink to="/report" label="리포트" />
         </div>
       </nav>
 
@@ -263,7 +241,7 @@ function IconButton({
   );
 }
 
-function MobileNavLink({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
+function MobileNavLink({ to, icon, label }: { to: string; icon?: React.ReactNode; label: string }) {
   return (
     <Link
       to={to}

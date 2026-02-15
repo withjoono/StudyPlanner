@@ -10,9 +10,10 @@ export class MessageController {
   @Post()
   async sendMessage(
     @Req() req: any,
-    @Body() body: { receiverId: number; studentId?: number; content: string },
+    @Body() body: { receiverId: string; studentId?: number; content: string },
   ) {
-    const userId = Number(req.user?.sub || req.user?.userId || 0);
+    const rawId = req.user?.sub || req.user?.userId;
+    const userId = rawId ? (String(rawId).startsWith('sp_') ? String(rawId) : `sp_${rawId}`) : '0';
     return this.messageService.sendMessage({
       senderId: userId,
       receiverId: body.receiverId,
@@ -27,7 +28,8 @@ export class MessageController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    const userId = Number(req.user?.sub || req.user?.userId || 0);
+    const rawId = req.user?.sub || req.user?.userId;
+    const userId = rawId ? (String(rawId).startsWith('sp_') ? String(rawId) : `sp_${rawId}`) : '0';
     return this.messageService.getInbox(userId, {
       limit: limit ? parseInt(limit) : undefined,
       offset: offset ? parseInt(offset) : undefined,
@@ -35,12 +37,9 @@ export class MessageController {
   }
 
   @Get('sent')
-  async getSent(
-    @Req() req: any,
-    @Query('limit') limit?: string,
-    @Query('offset') offset?: string,
-  ) {
-    const userId = Number(req.user?.sub || req.user?.userId || 0);
+  async getSent(@Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string) {
+    const rawId = req.user?.sub || req.user?.userId;
+    const userId = rawId ? (String(rawId).startsWith('sp_') ? String(rawId) : `sp_${rawId}`) : '0';
     return this.messageService.getSent(userId, {
       limit: limit ? parseInt(limit) : undefined,
       offset: offset ? parseInt(offset) : undefined,
@@ -49,7 +48,8 @@ export class MessageController {
 
   @Get('unread-count')
   async getUnreadCount(@Req() req: any) {
-    const userId = Number(req.user?.sub || req.user?.userId || 0);
+    const rawId = req.user?.sub || req.user?.userId;
+    const userId = rawId ? (String(rawId).startsWith('sp_') ? String(rawId) : `sp_${rawId}`) : '0';
     const count = await this.messageService.getUnreadCount(userId);
     return { count };
   }
@@ -60,17 +60,19 @@ export class MessageController {
     @Param('otherUserId') otherUserId: string,
     @Query('studentId') studentId?: string,
   ) {
-    const userId = Number(req.user?.sub || req.user?.userId || 0);
+    const rawId = req.user?.sub || req.user?.userId;
+    const userId = rawId ? (String(rawId).startsWith('sp_') ? String(rawId) : `sp_${rawId}`) : '0';
     return this.messageService.getConversation(
       userId,
-      parseInt(otherUserId),
+      otherUserId,
       studentId ? parseInt(studentId) : undefined,
     );
   }
 
   @Patch(':id/read')
   async markAsRead(@Req() req: any, @Param('id') id: string) {
-    const userId = Number(req.user?.sub || req.user?.userId || 0);
+    const rawId = req.user?.sub || req.user?.userId;
+    const userId = rawId ? (String(rawId).startsWith('sp_') ? String(rawId) : `sp_${rawId}`) : '0';
     return this.messageService.markAsRead(parseInt(id), userId);
   }
 }

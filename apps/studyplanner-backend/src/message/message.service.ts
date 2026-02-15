@@ -9,15 +9,15 @@ export class MessageService {
 
   /** 쪽지 발송 */
   async sendMessage(data: {
-    senderId: number;
-    receiverId: number;
+    senderId: string;
+    receiverId: string;
     studentId?: number;
     content: string;
   }) {
     const message = await this.prisma.message.create({
       data: {
-        senderId: BigInt(data.senderId),
-        receiverId: BigInt(data.receiverId),
+        senderId: String(data.senderId),
+        receiverId: String(data.receiverId),
         studentId: data.studentId ? BigInt(data.studentId) : null,
         content: data.content,
       },
@@ -30,9 +30,9 @@ export class MessageService {
   }
 
   /** 받은 쪽지 목록 */
-  async getInbox(userId: number, params?: { limit?: number; offset?: number }) {
+  async getInbox(userId: string, params?: { limit?: number; offset?: number }) {
     const messages = await this.prisma.message.findMany({
-      where: { receiverId: BigInt(userId) },
+      where: { receiverId: userId },
       include: {
         sender: { select: { id: true, name: true, role: true, avatarUrl: true } },
         student: { select: { id: true, name: true, studentCode: true } },
@@ -45,9 +45,9 @@ export class MessageService {
   }
 
   /** 보낸 쪽지 목록 */
-  async getSent(userId: number, params?: { limit?: number; offset?: number }) {
+  async getSent(userId: string, params?: { limit?: number; offset?: number }) {
     const messages = await this.prisma.message.findMany({
-      where: { senderId: BigInt(userId) },
+      where: { senderId: userId },
       include: {
         receiver: { select: { id: true, name: true, role: true, avatarUrl: true } },
         student: { select: { id: true, name: true, studentCode: true } },
@@ -60,11 +60,11 @@ export class MessageService {
   }
 
   /** 대화 스레드 (특정 상대와의 쪽지 목록) */
-  async getConversation(userId: number, otherUserId: number, studentId?: number) {
+  async getConversation(userId: string, otherUserId: string, studentId?: number) {
     const where: any = {
       OR: [
-        { senderId: BigInt(userId), receiverId: BigInt(otherUserId) },
-        { senderId: BigInt(otherUserId), receiverId: BigInt(userId) },
+        { senderId: userId, receiverId: otherUserId },
+        { senderId: otherUserId, receiverId: userId },
       ],
     };
     if (studentId) {
@@ -82,8 +82,8 @@ export class MessageService {
     // 읽음 처리
     await this.prisma.message.updateMany({
       where: {
-        senderId: BigInt(otherUserId),
-        receiverId: BigInt(userId),
+        senderId: otherUserId,
+        receiverId: userId,
         isRead: false,
       },
       data: { isRead: true },
@@ -93,18 +93,18 @@ export class MessageService {
   }
 
   /** 안 읽은 쪽지 수 */
-  async getUnreadCount(userId: number) {
+  async getUnreadCount(userId: string) {
     return this.prisma.message.count({
-      where: { receiverId: BigInt(userId), isRead: false },
+      where: { receiverId: userId, isRead: false },
     });
   }
 
   /** 읽음 처리 */
-  async markAsRead(messageId: number, userId: number) {
+  async markAsRead(messageId: number, userId: string) {
     await this.prisma.message.updateMany({
       where: {
         id: BigInt(messageId),
-        receiverId: BigInt(userId),
+        receiverId: userId,
       },
       data: { isRead: true },
     });
@@ -117,7 +117,12 @@ export class MessageService {
     for (const key of Object.keys(result)) {
       if (typeof result[key] === 'bigint') {
         result[key] = Number(result[key]);
-      } else if (result[key] && typeof result[key] === 'object' && !Array.isArray(result[key]) && !(result[key] instanceof Date)) {
+      } else if (
+        result[key] &&
+        typeof result[key] === 'object' &&
+        !Array.isArray(result[key]) &&
+        !(result[key] instanceof Date)
+      ) {
         result[key] = this.serialize(result[key]);
       }
     }

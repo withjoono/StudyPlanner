@@ -1,0 +1,41 @@
+Found 7 error(s).
+
+src/message/message.controller.ts:17:7 - error TS2322: Type 'number' is not assignable to type 'string'.
+
+17       senderId: userId,
+         ~~~~~~~~
+
+  src/message/message.service.ts:12:5
+    12     senderId: string;
+           ~~~~~~~~
+    The expected type comes from property 'senderId' which is declared here on type '{ senderId: string; receiverId: string; studentId?: number | undefined; content: string; }'
+src/message/message.controller.ts:18:7 - error TS2322: Type 'number' is not assignable to type 'string'.
+
+18       receiverId: body.receiverId,
+         ~~~~~~~~~~
+
+  src/message/message.service.ts:13:5
+    13     receiverId: string;
+           ~~~~~~~~~~
+    The expected type comes from property 'receiverId' which is declared here on type '{ senderId: string; receiverId: string; studentId?: number | undefined; content: string; }'
+src/message/message.controller.ts:31:41 - error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+
+31     return this.messageService.getInbox(userId, {
+                                           ~~~~~~
+src/message/message.controller.ts:44:40 - error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+
+44     return this.messageService.getSent(userId, {
+                                          ~~~~~~
+src/message/message.controller.ts:53:60 - error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+
+53     const count = await this.messageService.getUnreadCount(userId);
+                                                              ~~~~~~
+src/message/message.controller.ts:65:7 - error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+
+65       userId,
+         ~~~~~~
+src/message/message.controller.ts:74:57 - error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+
+74     return this.messageService.markAsRead(parseInt(id), userId);
+                                                           ~~~~~~
+
