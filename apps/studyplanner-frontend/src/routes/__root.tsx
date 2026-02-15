@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/client/use-auth-store';
 
 import { useLogout, useSsoExchange } from '@/stores/server/auth';
 import { useEffect, useState } from 'react';
-import { LogOut, User, Wallet, Bell, Share2, X } from 'lucide-react';
+import { LogOut, User, Wallet, Bell, Share2, X, GraduationCap } from 'lucide-react';
 
 // Hub URL
 const HUB_URL =
@@ -68,9 +68,9 @@ function RootLayout() {
 
               <Link to="/" className="flex items-center gap-2">
                 <div className="bg-ultrasonic-500 flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white">
-                  GP
+                  <GraduationCap className="h-5 w-5 text-white" />
                 </div>
-                <span className="hidden font-bold text-gray-900 sm:inline">플래너</span>
+                <span className="hidden font-bold text-gray-900 sm:inline">Study Planner</span>
               </Link>
             </div>
 
