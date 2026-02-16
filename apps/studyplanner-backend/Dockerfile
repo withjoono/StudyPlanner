@@ -9,14 +9,14 @@ WORKDIR /app
 
 # 패키지 파일 복사 (모노레포 구조)
 COPY package.json yarn.lock ./
-COPY apps/backend/package.json ./apps/backend/
+COPY apps/studyplanner-backend/package.json ./apps/studyplanner-backend/
 COPY packages/shared-types/package.json ./packages/shared-types/
 
 # 의존성 설치
 RUN yarn install --frozen-lockfile
 
 # 소스 코드 복사
-COPY apps/backend ./apps/backend
+COPY apps/studyplanner-backend ./apps/studyplanner-backend
 COPY packages/shared-types ./packages/shared-types
 
 # shared-types 먼저 빌드
@@ -24,7 +24,7 @@ WORKDIR /app/packages/shared-types
 RUN yarn build
 
 # Backend Prisma 생성 및 빌드
-WORKDIR /app/apps/backend
+WORKDIR /app/apps/studyplanner-backend
 RUN yarn prisma:generate
 RUN yarn build
 
@@ -39,20 +39,20 @@ WORKDIR /app
 
 # 프로덕션 의존성만 설치
 COPY package.json yarn.lock ./
-COPY apps/backend/package.json ./apps/backend/
+COPY apps/studyplanner-backend/package.json ./apps/studyplanner-backend/
 COPY packages/shared-types/package.json ./packages/shared-types/
 
 RUN yarn install --production --frozen-lockfile
 
 # 빌드된 파일 복사
-COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
-COPY --from=builder /app/apps/backend/prisma ./apps/backend/prisma
+COPY --from=builder /app/apps/studyplanner-backend/dist ./apps/studyplanner-backend/dist
+COPY --from=builder /app/apps/studyplanner-backend/prisma ./apps/studyplanner-backend/prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/packages/shared-types/dist ./packages/shared-types/dist
 
 # 작업 디렉토리를 backend로 변경
-WORKDIR /app/apps/backend
+WORKDIR /app/apps/studyplanner-backend
 
 # 포트 노출
 EXPOSE 8080
