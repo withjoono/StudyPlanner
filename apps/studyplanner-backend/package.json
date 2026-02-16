@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
+    "gcp-build": "npx prisma generate",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -21,7 +22,6 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
-    "@gb-planner/shared-types": "*",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^10.3.0",
     "@nestjs/config": "^3.1.1",
