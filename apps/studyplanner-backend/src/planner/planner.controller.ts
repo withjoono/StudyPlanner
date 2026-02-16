@@ -1,12 +1,60 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PlannerService } from './planner.service';
+import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePlannerItemDto, UpdatePlannerItemDto } from '@gb-planner/shared-types';
 
 @ApiTags('planner')
 @Controller('planner')
 export class PlannerController {
-  constructor(private readonly plannerService: PlannerService) {}
+  constructor(
+    private readonly plannerService: PlannerService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /** 사용자 ID prefix 기반 교육과정 판별 */
+  private getCurriculum(userId: string): '2015' | '2022' {
+    const idBody = userId.startsWith('sp_') ? userId.substring(3) : userId;
+    const prefix = idBody.substring(0, 4).toUpperCase();
+    if (['26H3', '26H4', '26H0'].includes(prefix)) return '2015';
+    return '2022';
+  }
+
+  @Get('subjects')
+  @ApiOperation({ summary: '사용 가능한 교과/과목 목록 (사용자 ID 기반)' })
+  async getSubjects(@Query('userId') userId?: string) {
+    const curriculum = this.getCurriculum(userId || '');
+    const tableName = curriculum === '2015' ? 'hub_2015_kyokwa_subject' : 'hub_2022_kyokwa_subject';
+
+    const subjects = (await this.prisma.$queryRawUnsafe(`
+      SELECT id, kyokwa, kyokwa_code, classification, classification_code,
+             subject_name, subject_code, evaluation_method
+      FROM ${tableName}
+      ORDER BY kyokwa_code, classification_code, subject_code
+    `)) as any[];
+
+    // 교과별 그룹핑
+    const grouped: Record<string, { kyokwa: string; kyokwaCode: string; subjects: any[] }> = {};
+    for (const s of subjects) {
+      const key = s.kyokwa_code || 'etc';
+      if (!grouped[key]) {
+        grouped[key] = { kyokwa: s.kyokwa, kyokwaCode: key, subjects: [] };
+      }
+      grouped[key].subjects.push({
+        id: s.id,
+        subjectName: s.subject_name,
+        subjectCode: s.subject_code,
+        classification: s.classification,
+        classificationCode: s.classification_code,
+        evaluationMethod: s.evaluation_method,
+      });
+    }
+
+    return {
+      curriculum,
+      groups: Object.values(grouped),
+    };
+  }
 
   @Get('items')
   @ApiOperation({ summary: '플래너 아이템 목록 조회' })

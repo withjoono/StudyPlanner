@@ -10,6 +10,10 @@ import { TeacherService } from './teacher.service';
 export class TeacherController {
   constructor(private readonly teacherService: TeacherService) {}
 
+  // ================================================================
+  // Dashboard & Students
+  // ================================================================
+
   @Get('dashboard')
   async getDashboard(@Req() req: any) {
     const userId = Number(req.user?.sub || 0);
@@ -23,9 +27,9 @@ export class TeacherController {
   }
 
   @Post('students')
-  async addStudent(@Req() req: any, @Body() body: { studentCode: string; subject?: string }) {
+  async addStudent(@Req() req: any, @Body() body: { studentCode: string }) {
     const userId = Number(req.user?.sub || 0);
-    return this.teacherService.addStudent(userId, body.studentCode, body.subject);
+    return this.teacherService.addStudent(userId, body.studentCode);
   }
 
   @Delete('students/:studentId')
@@ -39,6 +43,85 @@ export class TeacherController {
     const userId = Number(req.user?.sub || 0);
     return this.teacherService.getStudentDetail(userId, parseInt(studentId));
   }
+
+  // ================================================================
+  // Subjects (교과/과목)
+  // ================================================================
+
+  /** 사용 가능한 교과/과목 목록 (사용자 ID 기반 교육과정) */
+  @Get('subjects')
+  async getAvailableSubjects(@Query('userId') userId: string) {
+    return this.teacherService.getAvailableSubjects(userId);
+  }
+
+  /** 학생 관리 과목 추가 */
+  @Post('links/:teacherStudentId/subjects')
+  async addStudentSubject(
+    @Param('teacherStudentId') teacherStudentId: string,
+    @Body()
+    body: {
+      kyokwa?: string;
+      kyokwaCode?: string;
+      subjectName?: string;
+      subjectId?: string;
+      allSubjects?: boolean;
+      curriculum: string;
+      startDate: string;
+      endDate?: string;
+    },
+  ) {
+    return this.teacherService.addStudentSubject(parseInt(teacherStudentId), body);
+  }
+
+  /** 학생 관리 과목 목록 */
+  @Get('links/:teacherStudentId/subjects')
+  async getStudentSubjects(@Param('teacherStudentId') teacherStudentId: string) {
+    return this.teacherService.getStudentSubjects(parseInt(teacherStudentId));
+  }
+
+  /** 관리 과목 제거 */
+  @Delete('subjects/:subjectId')
+  async removeStudentSubject(@Param('subjectId') subjectId: string) {
+    return this.teacherService.removeStudentSubject(parseInt(subjectId));
+  }
+
+  // ================================================================
+  // Comments (코멘트)
+  // ================================================================
+
+  /** 코멘트 목록 */
+  @Get('links/:teacherStudentId/comments')
+  async getComments(
+    @Param('teacherStudentId') teacherStudentId: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.teacherService.getComments(
+      parseInt(teacherStudentId),
+      limit ? parseInt(limit) : undefined,
+    );
+  }
+
+  /** 코멘트 작성 */
+  @Post('links/:teacherStudentId/comments')
+  async addComment(
+    @Req() req: any,
+    @Param('teacherStudentId') teacherStudentId: string,
+    @Body() body: { content: string },
+  ) {
+    const authorId = req.user?.sub ? `sp_${req.user.sub}` : '';
+    return this.teacherService.addComment(parseInt(teacherStudentId), authorId, body.content);
+  }
+
+  /** 코멘트 읽음 처리 */
+  @Post('links/:teacherStudentId/comments/read')
+  async markCommentsRead(@Req() req: any, @Param('teacherStudentId') teacherStudentId: string) {
+    const readerId = req.user?.sub ? `sp_${req.user.sub}` : '';
+    return this.teacherService.markCommentsRead(parseInt(teacherStudentId), readerId);
+  }
+
+  // ================================================================
+  // Missions & Photos (기존)
+  // ================================================================
 
   @Get('students/:studentId/missions')
   async getStudentMissions(

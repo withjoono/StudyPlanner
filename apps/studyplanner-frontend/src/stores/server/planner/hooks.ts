@@ -21,6 +21,8 @@ import {
   type ExtendedLongTermPlan,
 } from './mock-data';
 import type { Routine, LongTermPlan } from '@/types/planner';
+import { plannerClient } from '@/lib/api/instances';
+import { useAuthStore } from '@/stores/client';
 
 // ============================================
 // Query Keys
@@ -36,6 +38,8 @@ export const plannerKeys = {
   notices: () => [...plannerKeys.all, 'notices'] as const,
   mentors: () => [...plannerKeys.all, 'mentors'] as const,
   rank: (period: string) => [...plannerKeys.all, 'rank', period] as const,
+  // 교과/과목 (사용자 ID 기반)
+  subjects: (userId?: string) => [...plannerKeys.all, 'subjects', userId] as const,
   // 교재 관련
   materials: () => [...plannerKeys.all, 'materials'] as const,
   material: (id: number) => [...plannerKeys.all, 'material', id] as const,
@@ -444,6 +448,58 @@ export function useCompleteDailyMission() {
       queryClient.invalidateQueries({ queryKey: plannerKeys.dashboard() });
     },
   });
+}
+
+// ============================================
+// 교과/과목 Hooks (사용자 ID 기반)
+// ============================================
+
+export interface SubjectItem {
+  id: number;
+  subjectName: string;
+  subjectCode: string;
+  classification: string;
+  classificationCode: string;
+  evaluationMethod: string;
+}
+
+export interface SubjectGroup {
+  kyokwa: string;
+  kyokwaCode: string;
+  subjects: SubjectItem[];
+}
+
+export interface SubjectsResponse {
+  curriculum: '2015' | '2022';
+  groups: SubjectGroup[];
+}
+
+/** 사용자 ID 기반 교과/과목 목록 조회 */
+export function useGetSubjects() {
+  const user = useAuthStore((state) => state.user);
+  const userId = user?.id ? `sp_${user.id}` : undefined;
+
+  return useQuery({
+    queryKey: plannerKeys.subjects(userId),
+    queryFn: async (): Promise<SubjectsResponse> => {
+      const response = await plannerClient.get('/planner/subjects', {
+        params: { userId },
+      });
+      return response.data;
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 30, // 30분 캐시 (과목 데이터는 자주 안 바뀜)
+  });
+}
+
+/** 과목명 flat 리스트 (루틴 폼의 소분류 선택에 사용) */
+export function useSubjectNames(): string[] {
+  const { data } = useGetSubjects();
+  if (!data?.groups) return ['국어', '영어', '수학', '과학', '사회', '기타'];
+
+  // 교과 목록을 교과명으로 반환 (중복 제거)
+  const kyokwaNames = data.groups.map((g) => g.kyokwa);
+  return [...kyokwaNames, '기타'];
 }
 
 // ============================================

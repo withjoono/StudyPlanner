@@ -3,13 +3,64 @@ import { PrismaService } from '../prisma/prisma.service';
 
 /**
  * 선생님용 서비스
- * 담당 학생 관리, 미션 조정, 성적 입력
+ * 담당 학생 관리, 과목별 관리, 미션 조정, 코멘트
  */
 @Injectable()
 export class TeacherService {
   private readonly logger = new Logger(TeacherService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  // ================================================================
+  // Curriculum Helper
+  // ================================================================
+
+  /** 사용자 ID prefix 기반 교육과정 판별 */
+  private getCurriculum(userId: string): '2015' | '2022' {
+    const idBody = userId.startsWith('sp_') ? userId.substring(3) : userId;
+    const prefix = idBody.substring(0, 4).toUpperCase();
+    if (['26H3', '26H4', '26H0'].includes(prefix)) return '2015';
+    return '2022';
+  }
+
+  /** 사용 가능한 교과/과목 목록 조회 (사용자 ID 기반) */
+  async getAvailableSubjects(userId: string) {
+    const curriculum = this.getCurriculum(userId);
+    const tableName = curriculum === '2015' ? 'hub_2015_kyokwa_subject' : 'hub_2022_kyokwa_subject';
+
+    const subjects = (await this.prisma.$queryRawUnsafe(`
+      SELECT id, kyokwa, kyokwa_code, classification, classification_code,
+             subject_name, subject_code, evaluation_method
+      FROM ${tableName}
+      ORDER BY kyokwa_code, classification_code, subject_code
+    `)) as any[];
+
+    // 교과별 그룹핑
+    const grouped: Record<string, { kyokwa: string; kyokwaCode: string; subjects: any[] }> = {};
+    for (const s of subjects) {
+      const key = s.kyokwa_code || 'etc';
+      if (!grouped[key]) {
+        grouped[key] = { kyokwa: s.kyokwa, kyokwaCode: key, subjects: [] };
+      }
+      grouped[key].subjects.push({
+        id: s.id,
+        subjectName: s.subject_name,
+        subjectCode: s.subject_code,
+        classification: s.classification,
+        classificationCode: s.classification_code,
+        evaluationMethod: s.evaluation_method,
+      });
+    }
+
+    return {
+      curriculum,
+      groups: Object.values(grouped),
+    };
+  }
+
+  // ================================================================
+  // 담당 학생 관리
+  // ================================================================
 
   /** 담당 학생 목록 */
   async getStudents(teacherUserId: number) {
@@ -28,16 +79,31 @@ export class TeacherService {
             parentPhone: true,
           },
         },
+        managedSubjects: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            kyokwa: true,
+            kyokwaCode: true,
+            subjectName: true,
+            subjectId: true,
+            allSubjects: true,
+            curriculum: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
       },
     });
     return links.map((l: any) => ({
       ...this.serialize(l.student),
-      subject: l.subject,
+      teacherStudentId: Number(l.id),
+      managedSubjects: l.managedSubjects.map(this.serialize),
     }));
   }
 
   /** 학생 추가 (학생코드로) */
-  async addStudent(teacherUserId: number, studentCode: string, subject?: string) {
+  async addStudent(teacherUserId: number, studentCode: string) {
     const student = await this.prisma.student.findUnique({
       where: { studentCode },
     });
@@ -47,7 +113,6 @@ export class TeacherService {
       data: {
         teacherId: String(teacherUserId),
         studentId: student.id,
-        subject,
       },
     });
     return this.serialize(link);
@@ -63,6 +128,106 @@ export class TeacherService {
     });
     return { success: true };
   }
+
+  // ================================================================
+  // 과목 관리
+  // ================================================================
+
+  /** 학생에게 관리 과목 추가 */
+  async addStudentSubject(
+    teacherStudentId: number,
+    data: {
+      kyokwa?: string;
+      kyokwaCode?: string;
+      subjectName?: string;
+      subjectId?: string;
+      allSubjects?: boolean;
+      curriculum: string;
+      startDate: string;
+      endDate?: string;
+    },
+  ) {
+    const subject = await this.prisma.teacherStudentSubject.create({
+      data: {
+        teacherStudentId: BigInt(teacherStudentId),
+        kyokwa: data.kyokwa,
+        kyokwaCode: data.kyokwaCode,
+        subjectName: data.subjectName,
+        subjectId: data.subjectId,
+        allSubjects: data.allSubjects || false,
+        curriculum: data.curriculum,
+        startDate: new Date(data.startDate),
+        endDate: data.endDate ? new Date(data.endDate) : null,
+      },
+    });
+    return this.serialize(subject);
+  }
+
+  /** 관리 과목 제거 */
+  async removeStudentSubject(subjectId: number) {
+    await this.prisma.teacherStudentSubject.delete({
+      where: { id: BigInt(subjectId) },
+    });
+    return { success: true };
+  }
+
+  /** 관리 과목 목록 조회 */
+  async getStudentSubjects(teacherStudentId: number) {
+    const subjects = await this.prisma.teacherStudentSubject.findMany({
+      where: { teacherStudentId: BigInt(teacherStudentId), isActive: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return subjects.map(this.serialize);
+  }
+
+  // ================================================================
+  // 코멘트 (선생님 ↔ 학생)
+  // ================================================================
+
+  /** 코멘트 목록 조회 */
+  async getComments(teacherStudentId: number, limit: number = 50) {
+    const comments = await this.prisma.teacherStudentComment.findMany({
+      where: { teacherStudentId: BigInt(teacherStudentId) },
+      include: {
+        author: { select: { id: true, name: true, role: true, avatarUrl: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    return comments.map(this.serialize);
+  }
+
+  /** 코멘트 작성 */
+  async addComment(teacherStudentId: number, authorId: string, content: string) {
+    const comment = await this.prisma.teacherStudentComment.create({
+      data: {
+        teacherStudentId: BigInt(teacherStudentId),
+        authorId,
+        content,
+      },
+      include: {
+        author: { select: { id: true, name: true, role: true, avatarUrl: true } },
+      },
+    });
+    return this.serialize(comment);
+  }
+
+  /** 코멘트 읽음 처리 */
+  async markCommentsRead(teacherStudentId: number, readerId: string) {
+    await this.prisma.teacherStudentComment.updateMany({
+      where: {
+        teacherStudentId: BigInt(teacherStudentId),
+        authorId: { not: readerId },
+        isRead: false,
+      },
+      data: { isRead: true },
+    });
+    return { success: true };
+  }
+
+  // ================================================================
+  // 학생 상세 & 미션 (기존)
+  // ================================================================
 
   /** 학생 상세 (대시보드) */
   async getStudentDetail(teacherUserId: number, studentId: number) {
@@ -203,7 +368,7 @@ export class TeacherService {
           studentId: student.id,
           studentName: student.name,
           grade: student.grade,
-          subject: student.subject,
+          managedSubjects: student.managedSubjects,
           totalMissions: total,
           completedMissions: completed,
           completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
@@ -226,6 +391,10 @@ export class TeacherService {
       students: summaries,
     };
   }
+
+  // ================================================================
+  // Helpers
+  // ================================================================
 
   private async verifyTeacherAccess(teacherUserId: number, studentId: number) {
     const link = await this.prisma.teacherStudent.findUnique({

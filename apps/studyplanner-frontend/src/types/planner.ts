@@ -47,38 +47,11 @@ export const MAJOR_CATEGORY_COLORS: Record<
   schedule: { bg: 'bg-slate-500', border: 'border-slate-600', text: 'text-slate-600' },
 };
 
-/** 소분류 (과목) 목록 - 수업/자습용 */
-export const ROUTINE_SUBJECTS: RoutineSubject[] = ['국어', '영어', '수학', '과학', '사회', '기타'];
-
-/** 과목 정렬 순서 */
-export const SUBJECT_ORDER: Record<string, number> = {
-  국어: 1,
-  수학: 2,
-  영어: 3,
-  사회: 4,
-  과학: 5,
-  한국사: 6,
-  제2외국어: 7,
-  기타: 8,
-};
-
 /** 요일 */
 export const DAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 
 /** 요일 (영문) */
 export const DAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
-
-/** 과목 목록 */
-export const SUBJECTS = [
-  '국어',
-  '수학',
-  '영어',
-  '사회',
-  '과학',
-  '한국사',
-  '제2외국어',
-  '기타',
-] as const;
 
 /** 기간 유형 라벨 */
 export const PERIOD_TYPE_LABELS: Record<PeriodType, string> = {
@@ -95,9 +68,6 @@ export const PERIOD_TYPE_LABELS: Record<PeriodType, string> = {
 
 // 대분류: 수업, 자습, 운동, 일정
 export type RoutineMajorCategory = 'class' | 'self_study' | 'exercise' | 'schedule';
-
-// 소분류 (수업/자습용): 국어, 영어, 수학, 과학, 사회, 기타
-export type RoutineSubject = '국어' | '영어' | '수학' | '과학' | '사회' | '기타';
 
 // 기존 카테고리 (하위 호환용)
 export type RoutineCategory = 'fixed' | 'study' | 'rest' | 'other';
@@ -116,7 +86,7 @@ export interface Routine {
   memberId?: number;
   title: string;
   majorCategory: RoutineMajorCategory; // 대분류 (수업/자습/운동/일정)
-  subject?: RoutineSubject; // 소분류 - 수업/자습인 경우 과목
+  subject?: string; // 소분류 - 수업/자습인 경우 과목 (교과명)
   category?: RoutineCategory; // 기존 카테고리 (하위 호환)
   startTime: string; // "09:00"
   endTime: string; // "10:30"

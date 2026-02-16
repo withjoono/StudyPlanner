@@ -11,14 +11,10 @@ import {
   useCreateRoutine,
   useUpdateRoutine,
   useDeleteRoutine,
+  useSubjectNames,
 } from '@/stores/server/planner';
-import type { Routine, RoutineMajorCategory, RoutineSubject } from '@/types/planner';
-import {
-  MAJOR_CATEGORY_LABELS,
-  MAJOR_CATEGORY_COLORS,
-  ROUTINE_SUBJECTS,
-  SUBJECT_COLORS,
-} from '@/types/planner';
+import type { Routine, RoutineMajorCategory } from '@/types/planner';
+import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, SUBJECT_COLORS } from '@/types/planner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -610,13 +606,14 @@ function RoutineFormDialog({
   onSubmit,
   isLoading,
 }: RoutineFormDialogProps) {
+  const subjectNames = useSubjectNames();
   const defaultStartDate = formatDateStr(getWeekStart(new Date()));
   const defaultEndDate = formatDateStr(new Date(new Date().setMonth(new Date().getMonth() + 3)));
 
   const [formData, setFormData] = useState({
     title: routine?.title || '',
     majorCategory: routine?.majorCategory || ('self_study' as RoutineMajorCategory),
-    subject: routine?.subject || ('' as RoutineSubject | ''),
+    subject: routine?.subject || ('' as string),
     startTime: routine?.startTime || '09:00',
     endTime: routine?.endTime || '10:00',
     repeat: routine?.repeat ?? true,
@@ -646,7 +643,7 @@ function RoutineFormDialog({
     e.preventDefault();
     onSubmit({
       ...formData,
-      subject: formData.subject as RoutineSubject | undefined,
+      subject: formData.subject || undefined,
     } as Omit<Routine, 'id'>);
   };
 
@@ -740,7 +737,7 @@ function RoutineFormDialog({
             <div>
               <Label>소분류 (과목)</Label>
               <div className="mt-2 grid grid-cols-3 gap-2">
-                {ROUTINE_SUBJECTS.map((subject) => (
+                {subjectNames.map((subject) => (
                   <button
                     key={subject}
                     type="button"

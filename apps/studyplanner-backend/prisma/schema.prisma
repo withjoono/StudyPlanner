@@ -103,6 +103,7 @@ model User {
   teacherLinks   TeacherStudent[] @relation("TeacherUser")
   sentMessages   Message[]        @relation("MessageSender")
   receivedMessages Message[]      @relation("MessageReceiver")
+  comments       TeacherStudentComment[] @relation("CommentAuthor")
 
   @@map("sp_auth_member")
 }
@@ -129,11 +130,12 @@ model TeacherStudent {
   id        BigInt   @id @default(autoincrement())
   teacherId String   @map("teacher_id")
   studentId BigInt   @map("student_id")
-  subject   String?  @db.VarChar(50)
   createdAt DateTime @default(now()) @map("created_at")
 
-  teacher User    @relation("TeacherUser", fields: [teacherId], references: [id], onDelete: Cascade)
-  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher         User                    @relation("TeacherUser", fields: [teacherId], references: [id], onDelete: Cascade)
+  student         Student                 @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  managedSubjects TeacherStudentSubject[]
+  comments        TeacherStudentComment[]
 
   @@unique([teacherId, studentId], name: "uk_teacher_student")
   @@index([teacherId], name: "idx_ts_teacher")
@@ -746,4 +748,80 @@ model ExamScore {
   @@index([studentId, subject], name: "idx_exam_student_subject")
   @@index([examDate], name: "idx_exam_date")
   @@map("sp_exam_score")
+}
+
+// ================================================================
+// Hub 교과/과목 참조 테이블 (public schema, read-only)
+// ================================================================
+
+/// 2015 개정교육과정 교과/과목
+model Hub2015KyokwaSubject {
+  id                 String  @id @db.VarChar(20)
+  kyokwa             String? @db.VarChar(50)
+  kyokwaCode         String? @map("kyokwa_code") @db.VarChar(10)
+  classification     String? @db.VarChar(50)
+  classificationCode Int?    @map("classification_code")
+  subjectName        String? @map("subject_name") @db.VarChar(100)
+  subjectCode        Int?    @map("subject_code")
+  evaluationMethod   String? @map("evaluation_method") @db.VarChar(50)
+
+  @@map("hub_2015_kyokwa_subject")
+}
+
+/// 2022 개정교육과정 교과/과목
+model Hub2022KyokwaSubject {
+  id                 String  @id @db.VarChar(20)
+  kyokwa             String? @db.VarChar(50)
+  kyokwaCode         String? @map("kyokwa_code") @db.VarChar(10)
+  classification     String? @db.VarChar(50)
+  classificationCode Int?    @map("classification_code")
+  subjectName        String? @map("subject_name") @db.VarChar(100)
+  subjectCode        Int?    @map("subject_code")
+  evaluationMethod   String? @map("evaluation_method") @db.VarChar(50)
+
+  @@map("hub_2022_kyokwa_subject")
+}
+
+// ================================================================
+// 선생님-학생 과목 관리 & 코멘트
+// ================================================================
+
+/// 선생님-학생 과목 관리 관계
+model TeacherStudentSubject {
+  id               BigInt    @id @default(autoincrement())
+  teacherStudentId BigInt    @map("teacher_student_id")
+  kyokwa           String?   @db.VarChar(50)           // 교과 (국어, 수학 등)
+  kyokwaCode       String?   @map("kyokwa_code") @db.VarChar(10)
+  subjectName      String?   @map("subject_name") @db.VarChar(100) // 과목명 (null if allSubjects)
+  subjectId        String?   @map("subject_id") @db.VarChar(20)    // hub subject table id
+  allSubjects      Boolean   @default(false) @map("all_subjects")  // true = 해당 교과 전과목
+  curriculum       String    @db.VarChar(10)           // "2015" | "2022"
+  startDate        DateTime  @map("start_date") @db.Date
+  endDate          DateTime? @map("end_date") @db.Date // null = 기한없음
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  teacherStudent   TeacherStudent @relation(fields: [teacherStudentId], references: [id], onDelete: Cascade)
+
+  @@index([teacherStudentId], name: "idx_tss_teacher_student")
+  @@map("sp_teacher_student_subject")
+}
+
+/// 선생님-학생 코멘트
+model TeacherStudentComment {
+  id               BigInt   @id @default(autoincrement())
+  teacherStudentId BigInt   @map("teacher_student_id")
+  authorId         String   @map("author_id")         // 작성자 ID (선생 or 학생)
+  content          String   @db.Text
+  isRead           Boolean  @default(false) @map("is_read")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  teacherStudent   TeacherStudent @relation(fields: [teacherStudentId], references: [id], onDelete: Cascade)
+  author           User           @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([teacherStudentId], name: "idx_tsc_teacher_student")
+  @@index([authorId], name: "idx_tsc_author")
+  @@index([teacherStudentId, createdAt], name: "idx_tsc_timeline")
+  @@map("sp_teacher_student_comment")
 }
