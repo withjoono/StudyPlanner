@@ -32,6 +32,7 @@ import {
   useGetRoutines,
   useDeletePlan,
 } from '@/stores/server/planner';
+import { useGetTutorBoardEvents, type TutorBoardEvent } from '@/stores/server/planner/tutorboard';
 import type { Material, ExtendedLongTermPlan } from '@/stores/server/planner/mock-data';
 import type { LongTermPlan } from '@/types/planner';
 import { Button } from '@/components/ui/button';
@@ -743,6 +744,22 @@ function MonthlyCalendar({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // 튜터보드 일정 가져오기
+  const { data: tbEvents } = useGetTutorBoardEvents();
+
+  // 날짜별 튜터보드 이벤트 필터링
+  const getTbEventsForDate = (date: Date) => {
+    if (!tbEvents) return [];
+
+    // YYYY-MM-DD 포맷 비교
+    const dateStr = date.toISOString().split('T')[0];
+
+    const assignments = tbEvents.assignments.filter((a) => a.date && a.date.startsWith(dateStr));
+    const tests = tbEvents.tests.filter((t) => t.date && t.date.startsWith(dateStr));
+
+    return [...assignments, ...tests];
+  };
+
   const DAYS_KR = ['일', '월', '화', '수', '목', '금', '토'];
 
   const navigate = (direction: 'prev' | 'next') => {
@@ -816,6 +833,16 @@ function MonthlyCalendar({
           </button>
         </div>
 
+        {/* 범례 추가 */}
+        <div className="mb-2 flex items-center justify-end gap-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-orange-500"></span> 과제
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-red-500"></span> 시험
+          </span>
+        </div>
+
         <div className="mb-2 grid grid-cols-7 text-center text-sm">
           {DAYS_KR.map((day, i) => (
             <div
@@ -876,6 +903,33 @@ function MonthlyCalendar({
                     })}
                   </div>
                 )}
+
+                {/* 튜터보드 이벤트 (과제/시험) */}
+                {isCurrentMonth &&
+                  getTbEventsForDate(date).map((event) => (
+                    <div
+                      key={`${event.type}-${event.id}`}
+                      className={`group relative mt-0.5 w-full cursor-help truncate rounded border px-0.5 py-px text-[10px] font-medium ${
+                        event.type === 'test'
+                          ? 'border-red-200 bg-red-50 text-red-700'
+                          : 'border-orange-200 bg-orange-50 text-orange-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span
+                          className={`inline-block h-1 w-1 rounded-full ${event.type === 'test' ? 'bg-red-500' : 'bg-orange-500'}`}
+                        ></span>
+                        <span className="truncate">{event.title}</span>
+                      </div>
+
+                      {/* 툴팁 */}
+                      <div className="pointer-events-none absolute left-0 top-full z-10 hidden w-max max-w-[200px] rounded-lg border bg-white p-2 text-gray-800 shadow-lg group-hover:block">
+                        <p className="text-xs font-bold">{event.title}</p>
+                        <p className="text-[10px] text-gray-500">{event.lessonTitle}</p>
+                        <p className="text-[10px] text-gray-400">{event.className}</p>
+                      </div>
+                    </div>
+                  ))}
               </div>
             );
           })}

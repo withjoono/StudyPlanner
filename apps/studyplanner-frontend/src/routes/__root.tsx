@@ -96,7 +96,13 @@ function RootLayout() {
                 label="결제"
               />
               <IconButton href="#" icon={<Bell className="h-4 w-4" />} label="알림" badge={3} />
-              <IconButton href="#" icon={<Share2 className="h-4 w-4" />} label="공유" />
+              <Link
+                to="/connections"
+                className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                title="계정 공유"
+              >
+                <Share2 className="h-4 w-4" />
+              </Link>
 
               {/* 구분선 */}
               <div className="mx-2 h-6 w-px bg-gray-200" />

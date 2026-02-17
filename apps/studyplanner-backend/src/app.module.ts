@@ -13,6 +13,7 @@ import { PrismaModule } from './prisma';
 import { MessageModule } from './message/message.module';
 import { ParentModule } from './parent/parent.module';
 import { TeacherModule } from './teacher/teacher.module';
+import { StudentModule } from './student/student.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { TeacherModule } from './teacher/teacher.module';
     MessageModule,
     ParentModule,
     TeacherModule,
+    StudentModule,
   ],
 })
 export class AppModule {}

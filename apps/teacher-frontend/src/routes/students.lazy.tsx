@@ -1,28 +1,26 @@
-/**
- * 선생님 학생 관리 페이지
- */
 import { createLazyFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Users, Plus, Search, Trash2, BookOpen, Camera, BarChart } from 'lucide-react';
+import { useStudents } from '../hooks/useStudents';
 
 export const Route = createLazyFileRoute('/students')({
   component: StudentsPage,
 });
 
-const MOCK_STUDENTS = [
-  { id: 1, name: '김민수', grade: '고2', school: '서울고등학교', subject: '수학', phone: '010-1111-2222', completionRate: 38 },
-  { id: 2, name: '이수진', grade: '고2', school: '서울고등학교', subject: '수학', phone: '010-3333-4444', completionRate: 100 },
-  { id: 3, name: '박지영', grade: '고1', school: '서울고등학교', subject: '영어', phone: '010-5555-6666', completionRate: 29 },
-  { id: 4, name: '최동현', grade: '고3', school: '한양고등학교', subject: '수학', phone: '010-7777-8888', completionRate: 80 },
-  { id: 5, name: '한미라', grade: '고2', school: '한양고등학교', subject: '영어', phone: '010-9999-0000', completionRate: 20 },
-];
-
 function StudentsPage() {
+  const { data: students, isLoading } = useStudents();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const filteredStudents = MOCK_STUDENTS.filter((s) =>
-    s.name.includes(searchQuery) || s.school.includes(searchQuery) || s.subject.includes(searchQuery),
+  if (isLoading) {
+    return <div className="p-8 text-center text-gray-500">학생 목록을 불러오는 중...</div>;
+  }
+
+  const filteredStudents = (students || []).filter(
+    (s) =>
+      s.name.includes(searchQuery) ||
+      (s.schoolName || '').includes(searchQuery) ||
+      s.managedSubjects.some((sub) => sub.kyokwa?.includes(searchQuery)),
   );
 
   return (
@@ -56,36 +54,67 @@ function StudentsPage() {
 
       {/* 학생 카드 */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredStudents.map((student) => {
-          const isAtRisk = student.completionRate < 50;
-          return (
-            <div key={student.id} className="rounded-xl bg-white p-5 shadow-sm transition-all hover:shadow-md">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-full text-lg font-bold text-white ${
-                    isAtRisk
-                      ? 'bg-gradient-to-br from-red-400 to-red-500'
-                      : 'bg-gradient-to-br from-emerald-400 to-teal-500'
-                  }`}>
-                    {student.name.charAt(0)}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{student.name}</h3>
-                    <p className="text-xs text-gray-500">{student.school} · {student.grade}</p>
-                  </div>
-                </div>
-                <button className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
+        {filteredStudents.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-gray-500">
+            등록된 학생이 없습니다.
+          </div>
+        ) : (
+          filteredStudents.map((student) => {
+            // Mocking completion rate for now as it's not in the main list API yet (or I missed it in getStudents response)
+            // getStudents in backend creates specific serialization.
+            // Let's assume 0 for now or fetch detail?
+            // Previous backend `getStudents` implementation:
+            // it returns `managedSubjects`. It does NOT return `completionRate`.
+            // `getDashboard` returns completionRate.
+            // For now, I will omit completion rate or use 0.
 
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">과목</span>
-                  <span className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                    {student.subject}
-                  </span>
+            const managedSubjectNames = student.managedSubjects.map((s) => s.kyokwa).join(', ');
+            // const isAtRisk = student.completionRate < 50;
+            const isAtRisk = false;
+
+            return (
+              <div
+                key={student.id}
+                className="rounded-xl bg-white p-5 shadow-sm transition-all hover:shadow-md"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-lg font-bold text-white`}
+                    >
+                      {student.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{student.name}</h3>
+                      <p className="text-xs text-gray-500">
+                        {student.schoolName || '학교미입력'} · {student.grade || '학년미입력'}
+                      </p>
+                    </div>
+                  </div>
+                  <button className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
+
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">관리 과목</span>
+                    <div className="flex flex-wrap justify-end gap-1">
+                      {student.managedSubjects.length > 0 ? (
+                        student.managedSubjects.map((sub) => (
+                          <span
+                            key={sub.id}
+                            className="rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                          >
+                            {sub.kyokwa}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-gray-400">관리 과목 없음</span>
+                      )}
+                    </div>
+                  </div>
+                  {/*
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">오늘 완료율</span>
                   <span className={`font-medium ${isAtRisk ? 'text-red-500' : 'text-emerald-600'}`}>
@@ -100,22 +129,24 @@ function StudentsPage() {
                     style={{ width: `${student.completionRate}%` }}
                   />
                 </div>
-              </div>
+                */}
+                </div>
 
-              <div className="mt-4 flex gap-2">
-                <button className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">
-                  <BookOpen className="h-3 w-3" /> 미션
-                </button>
-                <button className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">
-                  <Camera className="h-3 w-3" /> 사진
-                </button>
-                <button className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">
-                  <BarChart className="h-3 w-3" /> 성적
-                </button>
+                <div className="mt-4 flex gap-2">
+                  <button className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                    <BookOpen className="h-3 w-3" /> 미션
+                  </button>
+                  <button className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                    <Camera className="h-3 w-3" /> 사진
+                  </button>
+                  <button className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                    <BarChart className="h-3 w-3" /> 성적
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* 학생 추가 모달 */}
@@ -130,14 +161,6 @@ function StudentsPage() {
                 <input
                   type="text"
                   placeholder="STU001"
-                  className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">담당 과목</label>
-                <input
-                  type="text"
-                  placeholder="수학"
                   className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
                 />
               </div>

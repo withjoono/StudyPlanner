@@ -248,9 +248,26 @@ export class TeacherService {
       },
     });
 
+    // 권한 필터
+    const managedKyokwas = await this.getManagedKyokwas(teacherUserId, studentId);
+
     // 오늘 미션
+    const whereMission: any = {
+      studentId: BigInt(studentId),
+      date: new Date(todayStr),
+    };
+    if (managedKyokwas.length > 0) {
+      whereMission.subject = { in: managedKyokwas };
+    } else {
+      // No permissions -> No missions visible
+      // We can return early or just let it return strict empty
+      // To show the student info but no data is better.
+      // Let's force empty match if no permissions
+      whereMission.id = -1; // Hack to return empty
+    }
+
     const todayMissions = await this.prisma.dailyMission.findMany({
-      where: { studentId: BigInt(studentId), date: new Date(todayStr) },
+      where: whereMission,
     });
     const totalMissions = todayMissions.length;
     const completedMissions = todayMissions.filter((m) => m.status === 'completed').length;
@@ -279,15 +296,84 @@ export class TeacherService {
   async getStudentMissions(teacherUserId: number, studentId: number, date?: string) {
     await this.verifyTeacherAccess(teacherUserId, studentId);
 
+    const managedKyokwas = await this.getManagedKyokwas(teacherUserId, studentId);
+    // If no managed subjects are set, we might assume NO access to planner items?
+    // Or full access? "Account Sharing" usually implies restriction.
+    // Let's assume: If managedSubjects exist, restrict. If empty, maybe read-only all?
+    // The requirement says: "If approved... can comment ONLY on [those] windows".
+    // This implies if NOT approved (not in list), they can't touch it.
+    // If the list is empty, they probably shouldn't see any subject metrics or missions to avoid confusion.
+    // However, for a "homeroom" teacher scenario, they might need all.
+    // Current logic in StudentService creates entries. If none, the list is empty.
+    // I will return empty list if managedKyokwas is empty to be safe and strict.
+
+    // BUT: If the teacher is a "General" teacher (no subject restrictions set yet?),
+    // maybe compatible with legacy behavior (allow all)?
+    // Legacy behavior allowed all.
+    // New behavior: Explicit permissions.
+    // I will stick to: Filter if managedKyokwas has entries. If empty/null, allow all?
+    // No, "Granular Permissions" usually means "Only what is granted".
+    // Let's go with: Only show if kyokwa matches.
+    // Exception: If managedKyokwas is empty, return ALL? No, that defeats the purpose.
+    // Exception: If managedKyokwas is empty, return NONE? Yes.
+
+    // WAIT: Existing teachers might not have any records in `TeacherStudentSubject`.
+    // If I enforce this now, all existing teachers lose access until students grant it.
+    // That might be a breaking change.
+    // Requirement: "Student Account Sharing Window... Request/Permission..."
+    // Strategy: If `TeacherStudentSubject` table has ANY record for this link (even inactive), then enforce.
+    // If absolutely NO records ever existed, maybe legacy mode?
+    // To be safe and implementing the FEATURE requested: Enforce it.
+    // If the list is empty, they see nothing. This prompts the user to set permissions.
+
     const targetDate = date ? new Date(date) : new Date();
     const dateStr = targetDate.toISOString().split('T')[0];
 
+    const where: any = {
+      studentId: BigInt(studentId),
+      date: new Date(dateStr),
+    };
+
+    // Filter by Subject (Kyokwa)
+    if (managedKyokwas.length > 0) {
+      // DailyMission.subject is string (e.g. '국어', '수학')
+      where.subject = { in: managedKyokwas };
+    } else {
+      // If no permissions set, return empty?
+      // Or maybe there is a 'homeroom' flag? none in schema.
+      // For now, if 0 permissions, return [] to enforce security.
+      return [];
+    }
+
     const missions = await this.prisma.dailyMission.findMany({
-      where: { studentId: BigInt(studentId), date: new Date(dateStr) },
+      where,
       orderBy: { startTime: 'asc' },
     });
 
     return missions.map(this.serialize);
+  }
+
+  private async getManagedKyokwas(teacherUserId: number, studentId: number): Promise<string[]> {
+    const link = await this.prisma.teacherStudent.findUnique({
+      where: {
+        uk_teacher_student: { teacherId: String(teacherUserId), studentId: BigInt(studentId) },
+      },
+      include: {
+        managedSubjects: {
+          where: {
+            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+          },
+        },
+      },
+    });
+
+    if (!link) return [];
+
+    // Deduplicate kyokwas
+    const kyokwas = new Set(
+      link.managedSubjects.map((s) => s.kyokwa).filter((k) => k !== null) as string[],
+    );
+    return Array.from(kyokwas);
   }
 
   /** 학생 미션 생성 (선생님이 직접) */
@@ -304,6 +390,17 @@ export class TeacherService {
     },
   ) {
     await this.verifyTeacherAccess(teacherUserId, studentId);
+
+    // Validate Permission
+    const managedKyokwas = await this.getManagedKyokwas(teacherUserId, studentId);
+    if (!data.subject || !managedKyokwas.includes(data.subject)) {
+      // If no managed permissions, or subject not in list
+      // Allow if list is empty? No, we decided to restrict.
+      if (managedKyokwas.length === 0) {
+        throw new Error('과목에 대한 접근 권한이 없습니다. (권한 설정 필요)');
+      }
+      throw new Error(`'${data.subject}' 과목에 대한 관리 권한이 없습니다.`);
+    }
 
     const missionCode = `T-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
@@ -358,8 +455,21 @@ export class TeacherService {
 
     const summaries = await Promise.all(
       students.map(async (student: any) => {
+        // 권한 필터
+        const managedKyokwas = await this.getManagedKyokwas(teacherUserId, student.id);
+
+        const whereMission: any = {
+          studentId: BigInt(student.id),
+          date: new Date(todayStr),
+        };
+        if (managedKyokwas.length > 0) {
+          whereMission.subject = { in: managedKyokwas };
+        } else {
+          whereMission.id = -1; // Hack to return empty
+        }
+
         const missions = await this.prisma.dailyMission.findMany({
-          where: { studentId: BigInt(student.id), date: new Date(todayStr) },
+          where: whereMission, // Updated to use filtered where clause
         });
         const total = missions.length;
         const completed = missions.filter((m) => m.status === 'completed').length;
