@@ -50,46 +50,39 @@ function RootLayout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 네비게이션 */}
-      <nav className="sticky top-0 z-40 bg-white shadow-sm">
+      {/* 네비게이션 — Hub 스타일 다크 테마 */}
+      <nav className="sticky top-0 z-40 bg-gray-900">
         <div className="mx-auto max-w-screen-xl px-4">
-          <div className="flex h-14 items-center justify-between">
-            {/* 왼쪽: 전체 서비스 링크 */}
-            <div className="flex items-center gap-4">
-              <a
-                href={HUB_URL}
-                className="hover:text-ultrasonic-600 flex items-center gap-1 text-sm font-medium text-gray-600 transition-colors"
-              >
-                <span>전체 서비스</span>
-              </a>
-
-              {/* 로고 구분선 */}
-              <div className="hidden h-6 w-px bg-gray-200 sm:block" />
-
+          <div className="flex h-12 items-center justify-between">
+            {/* 왼쪽: 로고 */}
+            <div className="flex items-center gap-3">
               <Link to="/" className="flex items-center gap-2">
-                <div className="bg-ultrasonic-500 flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white">
-                  <GraduationCap className="h-5 w-5 text-white" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-500 text-sm font-bold text-white">
+                  <GraduationCap className="h-4 w-4 text-white" />
                 </div>
-                <span className="hidden font-bold text-gray-900 sm:inline">Study Planner</span>
+                <span className="hidden text-sm font-bold text-white sm:inline">Study Planner</span>
               </Link>
             </div>
 
             {/* 중앙: 네비게이션 메뉴 */}
-            <div className="hidden items-center gap-1 md:flex">
+            <div className="hidden items-center gap-0.5 md:flex">
               <NavLink to="/">플래너홈</NavLink>
               <NavLink to="/missions">나의 미션</NavLink>
               <NavLink to="/routine">주간 루틴</NavLink>
               <NavLink to="/plans">장기 계획</NavLink>
               <NavLink to="/learning">학습 현황</NavLink>
-              <NavLink to="/timer">타이머</NavLink>
-              <NavLink to="/quiz">퀴즈</NavLink>
-              <NavLink to="/report">리포트</NavLink>
-              <NavLink to="/exam">성적</NavLink>
+              <NavLink to="/timer">⏱️</NavLink>
             </div>
 
             {/* 오른쪽: 아이콘 버튼 + 사용자 정보 */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               {/* 아이콘 버튼들 */}
+              <IconButton
+                href={HUB_URL}
+                icon={<span className="text-xs font-bold">G</span>}
+                label="전체 서비스"
+                circle
+              />
               <IconButton
                 href={`${HUB_URL}/products`}
                 icon={<Wallet className="h-4 w-4" />}
@@ -98,46 +91,46 @@ function RootLayout() {
               <IconButton href="#" icon={<Bell className="h-4 w-4" />} label="알림" badge={3} />
               <Link
                 to="/connections"
-                className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                className="relative flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
                 title="계정 공유"
               >
                 <Share2 className="h-4 w-4" />
               </Link>
 
               {/* 구분선 */}
-              <div className="mx-2 h-6 w-px bg-gray-200" />
+              <div className="mx-2 h-5 w-px bg-gray-700" />
 
               {/* 사용자 정보 / 로그인 버튼 */}
               {isAuthenticated && user ? (
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-700">
                       {user.profileImageUrl ? (
                         <img
                           src={user.profileImageUrl}
                           alt={user.userName}
-                          className="h-8 w-8 rounded-full object-cover"
+                          className="h-7 w-7 rounded-full object-cover"
                         />
                       ) : (
-                        <User className="h-4 w-4 text-gray-500" />
+                        <User className="h-3.5 w-3.5 text-gray-300" />
                       )}
                     </div>
-                    <span className="hidden text-sm font-medium text-gray-700 sm:inline">
+                    <span className="hidden text-sm font-medium text-gray-300 sm:inline">
                       {user.userName}
                     </span>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100"
+                    className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
                     disabled={logoutMutation.isPending}
                   >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ) : (
                 <Link
                   to="/auth/login"
-                  className="bg-ultrasonic-500 hover:bg-ultrasonic-600 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+                  className="rounded-md bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
                 >
                   로그인
                 </Link>
@@ -149,20 +142,20 @@ function RootLayout() {
 
       {/* 로그인 유도 배너 (비로그인 시) */}
       {!isAuthenticated && !bannerDismissed && (
-        <div className="border-ultrasonic-200 from-ultrasonic-50 relative border-b bg-gradient-to-r to-blue-50">
+        <div className="relative border-b border-gray-700 bg-gray-800">
           <div className="mx-auto flex max-w-screen-xl items-center justify-between px-4 py-2.5">
-            <p className="text-ultrasonic-700 flex-1 text-center text-sm font-medium">
+            <p className="flex-1 text-center text-sm font-medium text-gray-300">
               로그인하면 학생, 선생님, 학부모가 함께 하는 스터디플래너를 실행할 수 있습니다{' '}
               <Link
                 to="/auth/login"
-                className="text-ultrasonic-600 hover:text-ultrasonic-800 ml-1 inline-flex items-center gap-1 font-bold underline underline-offset-2"
+                className="ml-1 inline-flex items-center gap-1 font-bold text-amber-400 underline underline-offset-2 hover:text-amber-300"
               >
                 로그인하기 →
               </Link>
             </p>
             <button
               onClick={() => setBannerDismissed(true)}
-              className="text-ultrasonic-400 hover:bg-ultrasonic-100 hover:text-ultrasonic-600 ml-3 flex-shrink-0 rounded-full p-1 transition-colors"
+              className="ml-3 flex-shrink-0 rounded-full p-1 text-gray-500 transition-colors hover:bg-gray-700 hover:text-gray-300"
               aria-label="배너 닫기"
             >
               <X className="h-4 w-4" />
@@ -172,16 +165,14 @@ function RootLayout() {
       )}
 
       {/* 모바일 하단 네비게이션 */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-700 bg-gray-900 md:hidden">
         <div className="flex items-center justify-around py-2">
           <MobileNavLink to="/" label="홈" />
           <MobileNavLink to="/missions" label="미션" />
           <MobileNavLink to="/routine" label="루틴" />
           <MobileNavLink to="/plans" label="계획" />
           <MobileNavLink to="/learning" label="현황" />
-          <MobileNavLink to="/timer" label="타이머" />
-          <MobileNavLink to="/quiz" label="퀴즈" />
-          <MobileNavLink to="/report" label="리포트" />
+          <MobileNavLink to="/timer" label="⏱️" />
         </div>
       </nav>
 
@@ -208,10 +199,10 @@ function NavLink({
   return (
     <Link
       to={to}
-      className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+      className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800 hover:text-white"
       activeProps={{
         className:
-          'flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-ultrasonic-600 bg-ultrasonic-50 rounded-lg',
+          'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gray-800 rounded-md',
       }}
     >
       {icon}
@@ -225,16 +216,22 @@ function IconButton({
   icon,
   label,
   badge,
+  circle,
 }: {
   href: string;
   icon: React.ReactNode;
   label: string;
   badge?: number;
+  circle?: boolean;
 }) {
   return (
     <a
       href={href}
-      className="relative flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+      className={`relative flex h-8 w-8 items-center justify-center text-gray-400 transition-colors hover:text-white ${
+        circle
+          ? 'rounded-full border border-gray-600 hover:border-gray-400'
+          : 'rounded-full hover:bg-gray-700'
+      }`}
       title={label}
     >
       {icon}
@@ -251,9 +248,9 @@ function MobileNavLink({ to, icon, label }: { to: string; icon?: React.ReactNode
   return (
     <Link
       to={to}
-      className="flex flex-col items-center gap-1 px-3 py-1 text-gray-500"
+      className="flex flex-col items-center gap-1 px-3 py-1 text-gray-400"
       activeProps={{
-        className: 'flex flex-col items-center gap-1 px-3 py-1 text-ultrasonic-600',
+        className: 'flex flex-col items-center gap-1 px-3 py-1 text-amber-400',
       }}
     >
       {icon}

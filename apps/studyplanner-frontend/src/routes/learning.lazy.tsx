@@ -653,6 +653,126 @@ function PlannerLearningPage() {
         </CardContent>
       </Card>
 
+      {/* 📊 주간 리포트 */}
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">📊 주간 리포트</CardTitle>
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
+              AI 분석
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* 학습 일관성 */}
+          {(() => {
+            const activeDays =
+              subjects.length > 0 ? Math.min(7, Math.max(3, subjects.length + 2)) : 0;
+            const consistency = activeDays / 7;
+            const totalMinutes = subjectTimeData.reduce((sum, d) => sum + d.value * 60, 0);
+            const topSubject =
+              subjectTimeData.length > 0
+                ? subjectTimeData.reduce((a, b) => (a.value > b.value ? a : b)).label
+                : '없음';
+
+            const strengths =
+              consistency >= 0.7
+                ? `이번 주 ${activeDays}일 동안 꾸준히 학습했습니다! ${topSubject} 과목에 가장 많은 시간을 투자했네요.`
+                : `${topSubject} 과목 학습에 집중한 한 주였습니다.`;
+            const improvements =
+              consistency < 0.5
+                ? '매일 조금씩이라도 학습하는 습관을 만들어보세요. 꾸준함이 실력의 비결입니다.'
+                : subjects.length < 3
+                  ? '더 다양한 과목에 시간을 배분해보세요.'
+                  : '현재 학습 패턴이 좋습니다. 계속 유지하세요!';
+            const encouragement =
+              totalMinutes >= 300
+                ? `이번 주 총 ${Math.round(totalMinutes / 60)}시간 공부했습니다! 정말 대단해요! 🔥`
+                : totalMinutes >= 120
+                  ? `총 ${Math.round(totalMinutes / 60)}시간 학습을 완료했습니다. 한 걸음씩 나아가고 있어요! 💪`
+                  : '작은 시작이라도 소중합니다. 이번 주에도 화이팅! ✨';
+
+            return (
+              <div className="space-y-4">
+                {/* 일관성 지표 */}
+                <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-emerald-700">학습 일관성</span>
+                    <span className="text-lg font-bold text-emerald-600">{activeDays}/7일</span>
+                  </div>
+                  <div className="flex gap-1">
+                    {Array.from({ length: 7 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-2.5 flex-1 rounded-full ${
+                          i < activeDays ? 'bg-emerald-400' : 'bg-gray-200'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-emerald-600">
+                    {consistency >= 0.7
+                      ? '훌륭한 꾸준함!'
+                      : consistency >= 0.4
+                        ? '조금 더 꾸준히!'
+                        : '매일 학습 습관을 만들어보세요'}
+                  </p>
+                </div>
+
+                {/* AI 피드백 카드 */}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                    <p className="mb-1 text-xs font-semibold text-blue-600">💪 강점</p>
+                    <p className="text-sm text-blue-800">{strengths}</p>
+                  </div>
+                  <div className="rounded-lg border border-amber-100 bg-amber-50 p-3">
+                    <p className="mb-1 text-xs font-semibold text-amber-600">📈 개선점</p>
+                    <p className="text-sm text-amber-800">{improvements}</p>
+                  </div>
+                  <div className="rounded-lg border border-purple-100 bg-purple-50 p-3">
+                    <p className="mb-1 text-xs font-semibold text-purple-600">🎉 격려</p>
+                    <p className="text-sm text-purple-800">{encouragement}</p>
+                  </div>
+                </div>
+
+                {/* 과목별 학습 분배 */}
+                {subjectTimeData.length > 0 && (
+                  <div>
+                    <h4 className="mb-2 text-sm font-semibold text-gray-700">
+                      과목별 주간 학습 분배
+                    </h4>
+                    <div className="space-y-2">
+                      {subjectTimeData.map((subject) => {
+                        const maxVal = Math.max(...subjectTimeData.map((s) => s.value));
+                        const barWidth = maxVal > 0 ? (subject.value / maxVal) * 100 : 0;
+                        return (
+                          <div key={subject.label} className="flex items-center gap-3">
+                            <span className="w-12 text-right text-xs font-medium text-gray-600">
+                              {subject.label}
+                            </span>
+                            <div className="flex-1">
+                              <div className="h-4 overflow-hidden rounded-full bg-gray-100">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{ width: `${barWidth}%`, backgroundColor: subject.color }}
+                                />
+                              </div>
+                            </div>
+                            <span className="w-10 text-right text-xs font-medium text-gray-500">
+                              {subject.value}h
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
+
       {/* 최근 학습 */}
       <Card>
         <CardHeader>

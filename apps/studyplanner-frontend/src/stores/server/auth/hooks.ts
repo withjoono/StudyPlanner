@@ -4,7 +4,9 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import { publicClient, authClient, setTokens, clearTokens } from '@/lib/api';
+import { env } from '@/lib/config/env';
 import type {
   LoginWithEmailRequest,
   RegisterWithEmailRequest,
@@ -269,7 +271,11 @@ export function useSsoExchange() {
 
   return useMutation({
     mutationFn: async (code: string) => {
-      const response = await publicClient.post<LoginResponse>('/auth/sso/exchange', { code });
+      // plannerClient는 auth 인터셉터가 있어서 SSO 교환(공개 엔드포인트)에 401 발생
+      // 직접 axios 호출로 인터셉터 없이 요청
+      const response = await axios.post<LoginResponse>(`${env.apiUrlPlanner}/auth/sso/exchange`, {
+        code,
+      });
       return response.data;
     },
     onSuccess: async (data) => {

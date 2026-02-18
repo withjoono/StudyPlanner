@@ -26,6 +26,7 @@ const PlansLazyRouteImport = createFileRoute('/plans')();
 const MissionsLazyRouteImport = createFileRoute('/missions')();
 const LearningLazyRouteImport = createFileRoute('/learning')();
 const ExamLazyRouteImport = createFileRoute('/exam')();
+const ConnectionsLazyRouteImport = createFileRoute('/connections')();
 
 const TimerLazyRoute = TimerLazyRouteImport.update({
   id: '/timer',
@@ -67,6 +68,11 @@ const ExamLazyRoute = ExamLazyRouteImport.update({
   path: '/exam',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/exam.lazy').then((d) => d.Route));
+const ConnectionsLazyRoute = ConnectionsLazyRouteImport.update({
+  id: '/connections',
+  path: '/connections',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/connections.lazy').then((d) => d.Route));
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -100,6 +106,7 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
+  '/connections': typeof ConnectionsLazyRoute;
   '/exam': typeof ExamLazyRoute;
   '/learning': typeof LearningLazyRoute;
   '/missions': typeof MissionsLazyRoute;
@@ -116,6 +123,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
+  '/connections': typeof ConnectionsLazyRoute;
   '/exam': typeof ExamLazyRoute;
   '/learning': typeof LearningLazyRoute;
   '/missions': typeof MissionsLazyRoute;
@@ -133,6 +141,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   '/': typeof IndexRoute;
+  '/connections': typeof ConnectionsLazyRoute;
   '/exam': typeof ExamLazyRoute;
   '/learning': typeof LearningLazyRoute;
   '/missions': typeof MissionsLazyRoute;
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
+    | '/connections'
     | '/exam'
     | '/learning'
     | '/missions'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
+    | '/connections'
     | '/exam'
     | '/learning'
     | '/missions'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/connections'
     | '/exam'
     | '/learning'
     | '/missions'
@@ -200,6 +212,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
+  ConnectionsLazyRoute: typeof ConnectionsLazyRoute;
   ExamLazyRoute: typeof ExamLazyRoute;
   LearningLazyRoute: typeof LearningLazyRoute;
   MissionsLazyRoute: typeof MissionsLazyRoute;
@@ -273,6 +286,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamLazyRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/connections': {
+      id: '/connections';
+      path: '/connections';
+      fullPath: '/connections';
+      preLoaderRoute: typeof ConnectionsLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/': {
       id: '/';
       path: '/';
@@ -320,6 +340,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ConnectionsLazyRoute: ConnectionsLazyRoute,
   ExamLazyRoute: ExamLazyRoute,
   LearningLazyRoute: LearningLazyRoute,
   MissionsLazyRoute: MissionsLazyRoute,

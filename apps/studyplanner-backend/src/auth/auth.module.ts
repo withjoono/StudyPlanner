@@ -15,12 +15,20 @@ import { AuthService } from './auth.service';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get('AUTH_SECRET') || 'studyplanner-secret-key-change-in-production',
-        signOptions: {
-          expiresIn: '2h', // 2시간
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secretBase64 =
+          configService.get('AUTH_SECRET') || 'studyplanner-secret-key-change-in-production';
+        return {
+          secret: Buffer.from(secretBase64, 'base64'),
+          signOptions: {
+            expiresIn: '2h',
+            algorithm: 'HS512' as const,
+          },
+          verifyOptions: {
+            algorithms: ['HS512' as const],
+          },
+        };
+      },
     }),
     HttpModule,
   ],
