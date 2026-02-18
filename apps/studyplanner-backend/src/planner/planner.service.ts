@@ -8,10 +8,14 @@ import type {
 } from '@gb-planner/shared-types';
 import { PrismaService } from '../prisma';
 import { Category, MissionStatus } from '@prisma/client';
+import { SharedScheduleService } from '../shared-schedule/shared-schedule.service';
 
 @Injectable()
 export class PlannerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sharedSchedule: SharedScheduleService,
+  ) {}
 
   private mapToPlannerItem(mission: any): PlannerItem {
     return {
@@ -104,6 +108,9 @@ export class PlannerService {
       },
     });
 
+    // 공유 스케줄에 동기화
+    this.sharedSchedule.syncMission(mission);
+
     return this.mapToPlannerItem(mission);
   }
 
@@ -127,6 +134,9 @@ export class PlannerService {
       data: updateData,
     });
 
+    // 공유 스케줄에 동기화
+    this.sharedSchedule.syncMission(mission);
+
     return this.mapToPlannerItem(mission);
   }
 
@@ -143,6 +153,8 @@ export class PlannerService {
       await this.prisma.dailyMission.delete({
         where: { id: BigInt(id) },
       });
+      // 공유 스케줄에서 제거
+      this.sharedSchedule.removeMission(BigInt(id));
       return true;
     } catch {
       return false;

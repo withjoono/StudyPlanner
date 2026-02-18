@@ -825,3 +825,30 @@ model TeacherStudentComment {
   @@index([teacherStudentId, createdAt], name: "idx_tsc_timeline")
   @@map("sp_teacher_student_comment")
 }
+
+// ================================================================
+// 공유 스케줄 (Hub 스키마 — StudyPlanner ↔ TutorBoard 공유)
+// ================================================================
+
+/// 앱 간 공유 스케줄 이벤트
+model HubSharedSchedule {
+  id          BigInt    @id @default(autoincrement())
+  hubUserId   String    @map("hub_user_id") @db.VarChar(100)
+  sourceApp   String    @map("source_app") @db.VarChar(20)   // 'studyplanner' | 'tutorboard'
+  eventType   String    @map("event_type") @db.VarChar(30)   // 'mission' | 'routine' | 'assignment' | 'test'
+  sourceId    String    @map("source_id") @db.VarChar(50)    // 원본 레코드 ID
+  title       String    @db.VarChar(200)
+  description String?   @db.Text
+  eventDate   DateTime  @map("event_date") @db.Date
+  startTime   DateTime? @map("start_time") @db.Time(0)
+  endTime     DateTime? @map("end_time") @db.Time(0)
+  subject     String?   @db.VarChar(50)
+  metadata    Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([sourceApp, eventType, sourceId], name: "uk_hub_schedule_source")
+  @@index([hubUserId], name: "idx_hub_schedule_user")
+  @@index([hubUserId, eventDate], name: "idx_hub_schedule_date")
+  @@map("hub_shared_schedule")
+}

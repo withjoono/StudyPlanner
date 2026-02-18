@@ -12,6 +12,7 @@ import { MessageModule } from './message/message.module';
 import { ParentModule } from './parent/parent.module';
 import { TeacherModule } from './teacher/teacher.module';
 import { StudentModule } from './student/student.module';
+import { SharedScheduleModule } from './shared-schedule/shared-schedule.module';
 
 @Module({
   imports: [
@@ -40,6 +41,9 @@ import { StudentModule } from './student/student.module';
     ParentModule,
     TeacherModule,
     StudentModule,
+
+    // Shared (Hub)
+    SharedScheduleModule,
   ],
 })
 export class AppModule {}

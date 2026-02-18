@@ -2,9 +2,9 @@ import { createRootRoute, Outlet, Link, useNavigate } from '@tanstack/react-rout
 import { Toaster, toast } from 'sonner';
 import { useAuthStore } from '@/stores/client/use-auth-store';
 
-import { useLogout, useSsoExchange } from '@/stores/server/auth';
+import { useSsoExchange } from '@/stores/server/auth';
 import { useEffect, useState } from 'react';
-import { LogOut, User, Wallet, Bell, Share2, X, GraduationCap, LayoutGrid } from 'lucide-react';
+import { Wallet, Bell, Share2, X, GraduationCap, LayoutGrid } from 'lucide-react';
 
 // Hub URL
 const HUB_URL =
@@ -18,7 +18,6 @@ export const Route = createRootRoute({
 function RootLayout() {
   const { user, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
-  const logoutMutation = useLogout();
   const ssoExchangeMutation = useSsoExchange();
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
@@ -42,11 +41,6 @@ function RootLayout() {
       });
     }
   }, []);
-
-  const handleLogout = async () => {
-    await logoutMutation.mutateAsync();
-    navigate({ to: '/auth/login' });
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,13 +103,13 @@ function RootLayout() {
 
               {/* 사용자 정보 / 로그인 버튼 */}
               {isAuthenticated && user ? (
-                <span className="rounded-md bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white">
+                <span className="rounded-md bg-amber-500 px-5 py-2 text-sm font-semibold text-white">
                   {user.userName}
                 </span>
               ) : (
                 <Link
                   to="/auth/login"
-                  className="rounded-md bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+                  className="rounded-md bg-amber-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
                 >
                   로그인
                 </Link>
