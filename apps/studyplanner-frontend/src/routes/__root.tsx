@@ -20,6 +20,10 @@ function RootLayout() {
   const navigate = useNavigate();
   const ssoExchangeMutation = useSsoExchange();
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [isSSOLoading, setIsSSOLoading] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return !!params.get('sso_code');
+  });
 
   // SSO 코드 처리
   useEffect(() => {
@@ -33,9 +37,11 @@ function RootLayout() {
           const newUrl = window.location.pathname;
           window.history.replaceState({}, document.title, newUrl);
           toast.success('로그인되었습니다.');
+          setIsSSOLoading(false);
         },
         onError: () => {
           toast.error('SSO 로그인에 실패했습니다.');
+          setIsSSOLoading(false);
           navigate({ to: '/auth/login' });
         },
       });
@@ -44,6 +50,41 @@ function RootLayout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {isSSOLoading && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(255,255,255,0.95)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          <div
+            style={{
+              fontSize: '2.5rem',
+              marginBottom: '1rem',
+              animation: 'spin 1.2s linear infinite',
+            }}
+          >
+            ⏳
+          </div>
+          <p
+            style={{
+              fontSize: '1.1rem',
+              color: '#374151',
+              fontWeight: 500,
+            }}
+          >
+            자동 로그인 중입니다...
+          </p>
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
       {/* 네비게이션 — Hub 스타일 다크 테마 */}
       <nav className="sticky top-0 z-40 bg-gray-900">
         <div className="mx-auto max-w-screen-xl px-4">
