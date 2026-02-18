@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/client/use-auth-store';
 
 import { useLogout, useSsoExchange } from '@/stores/server/auth';
 import { useEffect, useState } from 'react';
-import { LogOut, User, Wallet, Bell, Share2, X, GraduationCap } from 'lucide-react';
+import { LogOut, User, Wallet, Bell, Share2, X, GraduationCap, LayoutGrid } from 'lucide-react';
 
 // Hub URL
 const HUB_URL =
@@ -66,23 +66,30 @@ function RootLayout() {
 
             {/* 중앙: 네비게이션 메뉴 */}
             <div className="hidden items-center gap-0.5 md:flex">
+              <a
+                href={HUB_URL}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
+                title="전체 서비스"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </a>
               <NavLink to="/">플래너홈</NavLink>
               <NavLink to="/missions">나의 미션</NavLink>
               <NavLink to="/routine">주간 루틴</NavLink>
               <NavLink to="/plans">장기 계획</NavLink>
               <NavLink to="/learning">학습 현황</NavLink>
-              <NavLink to="/timer">⏱️</NavLink>
             </div>
 
             {/* 오른쪽: 아이콘 버튼 + 사용자 정보 */}
             <div className="flex items-center gap-0.5">
               {/* 아이콘 버튼들 */}
-              <IconButton
-                href={HUB_URL}
-                icon={<span className="text-xs font-bold">G</span>}
-                label="전체 서비스"
-                circle
-              />
+              <Link
+                to="/timer"
+                className="relative flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+                title="타이머"
+              >
+                <span className="text-base">⏱️</span>
+              </Link>
               <IconButton
                 href={`${HUB_URL}/products`}
                 icon={<Wallet className="h-4 w-4" />}
@@ -102,31 +109,9 @@ function RootLayout() {
 
               {/* 사용자 정보 / 로그인 버튼 */}
               {isAuthenticated && user ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-700">
-                      {user.profileImageUrl ? (
-                        <img
-                          src={user.profileImageUrl}
-                          alt={user.userName}
-                          className="h-7 w-7 rounded-full object-cover"
-                        />
-                      ) : (
-                        <User className="h-3.5 w-3.5 text-gray-300" />
-                      )}
-                    </div>
-                    <span className="hidden text-sm font-medium text-gray-300 sm:inline">
-                      {user.userName}
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
-                    disabled={logoutMutation.isPending}
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                <span className="rounded-md bg-amber-500 px-4 py-1.5 text-sm font-semibold text-white">
+                  {user.userName}
+                </span>
               ) : (
                 <Link
                   to="/auth/login"
