@@ -85,17 +85,28 @@ function RootLayout() {
           <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
         </div>
       )}
-      {/* 네비게이션 — Hub 스타일 다크 테마 */}
-      <nav className="sticky top-0 z-40 bg-gray-900">
+      {/* 네비게이션 — 토스 스타일 헤더 */}
+      <nav
+        className="gb-header"
+        style={{ backdropFilter: 'blur(12px)', background: 'rgba(255,255,255,0.92)' }}
+      >
         <div className="mx-auto max-w-screen-xl px-4">
-          <div className="flex h-12 items-center justify-between">
+          <div className="flex h-14 items-center justify-between">
             {/* 왼쪽: 로고 */}
             <div className="flex items-center gap-3">
-              <Link to="/" className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-500 text-sm font-bold text-white">
+              <Link to="/" className="gb-header-brand">
+                <div
+                  className="flex h-7 w-7 items-center justify-center rounded-md"
+                  style={{ background: 'var(--color-primary)' }}
+                >
                   <GraduationCap className="h-4 w-4 text-white" />
                 </div>
-                <span className="hidden text-sm font-bold text-white sm:inline">Study Planner</span>
+                <span
+                  className="hidden text-[15px] font-bold tracking-tight sm:inline"
+                  style={{ color: 'var(--color-primary)' }}
+                >
+                  Study Planner
+                </span>
               </Link>
             </div>
 
@@ -103,7 +114,8 @@ function RootLayout() {
             <div className="hidden items-center gap-0.5 md:flex">
               <a
                 href={HUB_URL}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
+                className="gb-header-nav-link"
+                style={{ color: 'var(--color-primary)' }}
                 title="전체 서비스"
               >
                 <LayoutGrid className="h-4 w-4" />
@@ -144,13 +156,17 @@ function RootLayout() {
 
               {/* 사용자 정보 / 로그인 버튼 */}
               {isAuthenticated && user ? (
-                <span className="rounded-md bg-amber-500 px-5 py-2 text-sm font-semibold text-white">
+                <span
+                  className="rounded-full px-5 py-2 text-sm font-semibold text-white"
+                  style={{ background: 'var(--color-primary)' }}
+                >
                   {user.userName}
                 </span>
               ) : (
                 <Link
                   to="/auth/login"
-                  className="rounded-md bg-amber-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
+                  className="gb-btn gb-btn-primary gb-btn-sm"
+                  style={{ borderRadius: '9999px' }}
                 >
                   로그인
                 </Link>
