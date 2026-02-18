@@ -4,6 +4,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { routeTree } from './routeTree.gen';
 import { setupInterceptors } from './lib/api';
+import './styles/design-system/index.css';
 import './index.css';
 
 // API 인터셉터 설정 (앱 시작 시 한 번만)
