@@ -4,16 +4,8 @@ import { useAuthStore } from '@/stores/client/use-auth-store';
 
 import { useSsoExchange } from '@/stores/server/auth';
 import { useEffect, useState } from 'react';
-import {
-  Wallet,
-  Bell,
-  X,
-  GraduationCap,
-  LayoutGrid,
-  Users,
-  ChevronDown,
-  LogOut,
-} from 'lucide-react';
+import { Bell, X, GraduationCap, LayoutGrid, Users, LogOut } from 'lucide-react';
+import { WonCircle } from '@/components/icons';
 
 // Hub URL
 const HUB_URL =
@@ -25,11 +17,10 @@ export const Route = createRootRoute({
 });
 
 function RootLayout() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, clearAuth } = useAuthStore();
   const navigate = useNavigate();
   const ssoExchangeMutation = useSsoExchange();
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSSOLoading, setIsSSOLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -144,10 +135,10 @@ function RootLayout() {
               {/* 결제 */}
               <a
                 href={`${HUB_URL}/products`}
-                className="relative flex h-9 w-9 items-center justify-center rounded-full text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700"
+                className="text-primary hover:bg-primary/10 relative flex h-9 w-9 items-center justify-center rounded-full transition-colors"
                 title="결제"
               >
-                <Wallet className="h-5 w-5" />
+                <WonCircle className="h-5 w-5" />
               </a>
               {/* 알림 */}
               <button
@@ -171,43 +162,23 @@ function RootLayout() {
 
               {/* 사용자 정보 / 로그인 버튼 */}
               {isAuthenticated && user ? (
-                <div className="relative">
-                  <button
-                    onClick={() => setUserMenuOpen(!userMenuOpen)}
-                    className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
-                  >
-                    <span>{user.userName}</span>
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
-                  {userMenuOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
-                      <Link
-                        to="/"
-                        className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        onClick={() => setUserMenuOpen(false)}
-                      >
-                        설정
-                      </Link>
-                      <button
-                        onClick={() => {
-                          setUserMenuOpen(false);
-                          // TODO: implement logout
-                        }}
-                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-gray-50"
-                      >
-                        <LogOut className="h-4 w-4" />
-                        로그아웃
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => {
+                    clearAuth();
+                    window.location.href = HUB_URL;
+                  }}
+                  className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                >
+                  <LogOut className="h-4 w-4" />
+                  로그아웃
+                </button>
               ) : (
-                <Link
-                  to="/auth/login"
+                <a
+                  href={`${HUB_URL}/login?redirect=${encodeURIComponent(window.location.href)}`}
                   className="rounded-full bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
                 >
                   로그인
-                </Link>
+                </a>
               )}
 
               {/* 모바일 햄버거 */}
