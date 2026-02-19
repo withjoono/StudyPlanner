@@ -1,4 +1,4 @@
-import { createRootRoute, Outlet, Link, useNavigate } from '@tanstack/react-router';
+import { createRootRoute, Outlet, Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Toaster, toast } from 'sonner';
 import { useAuthStore } from '@/stores/client/use-auth-store';
 
@@ -6,6 +6,7 @@ import { useSsoExchange } from '@/stores/server/auth';
 import { useEffect, useState } from 'react';
 import { Bell, X, GraduationCap, LayoutGrid, Users, LogOut } from 'lucide-react';
 import { WonCircle } from '@/components/icons';
+import PromoPage from '@/components/PromoPage';
 
 // Hub URL
 const HUB_URL =
@@ -19,6 +20,7 @@ export const Route = createRootRoute({
 function RootLayout() {
   const { user, isAuthenticated, clearAuth } = useAuthStore();
   const navigate = useNavigate();
+  const router = useRouterState();
   const ssoExchangeMutation = useSsoExchange();
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -26,6 +28,10 @@ function RootLayout() {
     const params = new URLSearchParams(window.location.search);
     return !!params.get('sso_code');
   });
+
+  // 비로그인 + 홈 경로일 때 프로모 페이지 표시
+  const isHomePath = router.location.pathname === '/';
+  const showPromo = !isAuthenticated && isHomePath && !isSSOLoading;
 
   // SSO 코드 처리
   useEffect(() => {
@@ -226,8 +232,8 @@ function RootLayout() {
         </div>
       </nav>
 
-      {/* 로그인 유도 배너 (비로그인 시) */}
-      {!isAuthenticated && !bannerDismissed && (
+      {/* 로그인 유도 배너 (비로그인 시, 프로모 페이지에서는 숨김) */}
+      {!isAuthenticated && !bannerDismissed && !showPromo && (
         <div className="relative border-b border-indigo-200 bg-indigo-50">
           <div className="mx-auto flex max-w-screen-xl items-center justify-between px-4 py-2.5">
             <p className="flex-1 text-center text-sm font-medium text-indigo-700">
@@ -250,20 +256,22 @@ function RootLayout() {
         </div>
       )}
 
-      {/* 모바일 하단 네비게이션 */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white md:hidden">
-        <div className="flex items-center justify-around py-2">
-          <MobileNavLink to="/" label="홈" />
-          <MobileNavLink to="/plans" label="장기계획" />
-          <MobileNavLink to="/routine" label="주간루틴" />
-          <MobileNavLink to="/missions" label="금일계획" />
-          <MobileNavLink to="/learning" label="분석" />
-        </div>
-      </nav>
+      {/* 모바일 하단 네비게이션 (프로모 페이지에서는 숨김) */}
+      {!showPromo && (
+        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white md:hidden">
+          <div className="flex items-center justify-around py-2">
+            <MobileNavLink to="/" label="홈" />
+            <MobileNavLink to="/plans" label="장기계획" />
+            <MobileNavLink to="/routine" label="주간루틴" />
+            <MobileNavLink to="/missions" label="금일계획" />
+            <MobileNavLink to="/learning" label="분석" />
+          </div>
+        </nav>
+      )}
 
       {/* 메인 콘텐츠 */}
-      <main className="pb-20 md:pb-10">
-        <Outlet />
+      <main className={showPromo ? '' : 'pb-20 md:pb-10'}>
+        {showPromo ? <PromoPage /> : <Outlet />}
       </main>
 
       {/* Toast notifications */}
