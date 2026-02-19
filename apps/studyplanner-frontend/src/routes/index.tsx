@@ -14,6 +14,8 @@ import {
   useGetPlannerMentors,
   useGetPlannerItems,
 } from '@/stores/server/planner';
+import { useGetRecentUnread } from '@/stores/server/planner/comments';
+import { useAuthStore } from '@/stores/client';
 import {
   usePlannerStore,
   useIsToday,
@@ -37,6 +39,7 @@ import {
   Circle,
   Clock,
   Bookmark,
+  MessageSquare,
 } from 'lucide-react';
 
 export const Route = createFileRoute('/')({
@@ -738,6 +741,9 @@ function PlannerDashboard() {
             </CardContent>
           </Card>
 
+          {/* 최근 코멘트 */}
+          <RecentCommentsCard />
+
           {/* 빠른 링크 */}
           <Card>
             <CardHeader>
@@ -747,13 +753,118 @@ function PlannerDashboard() {
               <div className="space-y-2">
                 <QuickLink to="/routine" label="주간 루틴 설정" />
                 <QuickLink to="/plans" label="장기 계획 관리" />
-                <QuickLink to="/learning" label="학습 현황" />
+                <QuickLink to="/learning" label="학습 분석" />
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================
+// 최근 코멘트 카드 (API 연동)
+// ============================================
+
+function RecentCommentsCard() {
+  const user = useAuthStore((s) => s.user);
+  const { data: recentComments, isLoading } = useGetRecentUnread(user?.id ?? 0, 3);
+
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return '방금';
+    if (minutes < 60) return `${minutes}분 전`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}시간 전`;
+    const days = Math.floor(hours / 24);
+    return `${days}일 전`;
+  };
+
+  const roleStyles: Record<
+    string,
+    { border: string; bg: string; text: string; avatar: string; avatarText: string }
+  > = {
+    teacher: {
+      border: 'border-indigo-100',
+      bg: 'bg-indigo-50',
+      text: 'text-indigo-800',
+      avatar: 'bg-indigo-200',
+      avatarText: 'text-indigo-700',
+    },
+    parent: {
+      border: 'border-amber-100',
+      bg: 'bg-amber-50',
+      text: 'text-amber-800',
+      avatar: 'bg-amber-200',
+      avatarText: 'text-amber-700',
+    },
+    student: {
+      border: 'border-emerald-100',
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-800',
+      avatar: 'bg-emerald-200',
+      avatarText: 'text-emerald-700',
+    },
+  };
+
+  const roleLabel: Record<string, string> = {
+    teacher: '선생님',
+    parent: '학부모',
+    student: '학생',
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <MessageSquare className="h-4 w-4 text-indigo-500" />
+          최근 코멘트
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </div>
+        ) : recentComments && recentComments.length > 0 ? (
+          <div className="space-y-3">
+            {recentComments.map((comment) => {
+              const styles = roleStyles[comment.authorRole] || roleStyles.student;
+              const authorName = comment.author?.name || '알 수 없음';
+              return (
+                <div
+                  key={comment.id}
+                  className={`rounded-lg border ${styles.border} ${styles.bg} p-3`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`flex h-6 w-6 items-center justify-center rounded-full ${styles.avatar} text-xs font-bold ${styles.avatarText}`}
+                    >
+                      {authorName.charAt(0)}
+                    </div>
+                    <span className={`text-xs font-medium ${styles.avatarText}`}>
+                      {authorName} {roleLabel[comment.authorRole] || ''}
+                    </span>
+                    <span className="text-[10px] text-gray-400">{timeAgo(comment.createdAt)}</span>
+                    {comment.subject && (
+                      <span className="rounded bg-white/60 px-1.5 py-0.5 text-[10px] text-gray-500">
+                        {comment.subject}
+                      </span>
+                    )}
+                  </div>
+                  <p className={`mt-1.5 text-xs ${styles.text} line-clamp-2`}>{comment.content}</p>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="py-4 text-center text-sm text-gray-500">새 코멘트가 없습니다</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

@@ -104,6 +104,7 @@ model User {
   sentMessages   Message[]        @relation("MessageSender")
   receivedMessages Message[]      @relation("MessageReceiver")
   comments       TeacherStudentComment[] @relation("CommentAuthor")
+  plannerComments PlannerComment[]        @relation("PlannerCommentAuthor")
 
   @@map("sp_auth_member")
 }
@@ -199,6 +200,7 @@ model Student {
   parentLinks       ParentStudent[]
   teacherLinks      TeacherStudent[]
   messages          Message[]
+  plannerComments   PlannerComment[]
 
   @@index([studentCode], name: "idx_student_code")
   @@index([year], name: "idx_student_year")
@@ -231,6 +233,7 @@ model WeeklyRoutine {
   // Relations
   student       Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
   dailyMissions DailyMission[]
+  plannerComments PlannerComment[]
 
   @@index([studentId], name: "idx_routine_student")
   @@index([isActive], name: "idx_routine_active")
@@ -267,6 +270,7 @@ model LongTermPlan {
   student       Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
   material      Material?      @relation("MaterialToLongTermPlan", fields: [materialId], references: [id], onDelete: SetNull)
   dailyMissions DailyMission[]
+  plannerComments PlannerComment[]
 
   @@index([studentId], name: "idx_plan_student")
   @@index([startDate, endDate], name: "idx_plan_date")
@@ -303,6 +307,7 @@ model DailyMission {
   routine        WeeklyRoutine?  @relation(fields: [routineId], references: [id], onDelete: SetNull)
   missionResults MissionResult[]
   timerSessions  TimerSession[]
+  plannerComments PlannerComment[]
 
   @@index([studentId], name: "idx_mission_student")
   @@index([date], name: "idx_mission_date")
@@ -851,4 +856,45 @@ model HubSharedSchedule {
   @@index([hubUserId], name: "idx_hub_schedule_user")
   @@index([hubUserId, eventDate], name: "idx_hub_schedule_date")
   @@map("hub_shared_schedule")
+}
+
+// ================================================================
+// 플래너 코멘트 (선생님/학부모/학생 → 플래너 항목별 코멘트)
+// ================================================================
+
+/// 플래너 코멘트
+model PlannerComment {
+  id               BigInt   @id @default(autoincrement())
+  studentId        BigInt   @map("student_id")
+  authorId         String   @map("author_id")
+  authorRole       UserRole @map("author_role")
+
+  // 대상 (하나만 설정)
+  missionId        BigInt?  @map("mission_id")
+  routineId        BigInt?  @map("routine_id")
+  planId           BigInt?  @map("plan_id")
+
+  // 코멘트 내용
+  content          String   @db.Text
+  subject          String?  @db.VarChar(50)
+  period           String?  @db.VarChar(10)   // daily / weekly / monthly
+
+  isRead           Boolean  @default(false) @map("is_read")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  student          Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  author           User           @relation("PlannerCommentAuthor", fields: [authorId], references: [id])
+  mission          DailyMission?  @relation(fields: [missionId], references: [id], onDelete: SetNull)
+  routine          WeeklyRoutine? @relation(fields: [routineId], references: [id], onDelete: SetNull)
+  plan             LongTermPlan?  @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@index([studentId], name: "idx_pc_student")
+  @@index([authorId], name: "idx_pc_author")
+  @@index([missionId], name: "idx_pc_mission")
+  @@index([routineId], name: "idx_pc_routine")
+  @@index([planId], name: "idx_pc_plan")
+  @@index([studentId, isRead], name: "idx_pc_unread")
+  @@map("sp_planner_comment")
 }

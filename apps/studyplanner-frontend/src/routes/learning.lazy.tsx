@@ -1,5 +1,5 @@
 /**
- * 학습 현황 페이지
+ * 학습 분석 페이지
  */
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
@@ -450,7 +450,7 @@ function PlannerLearningPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">학습 현황</h1>
+          <h1 className="text-2xl font-bold">학습 분석</h1>
           <p className="mt-1 text-gray-500">학습 성취도를 확인하세요</p>
         </div>
       </div>

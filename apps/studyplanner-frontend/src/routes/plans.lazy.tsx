@@ -23,6 +23,7 @@ import {
   Calendar,
   Sparkles,
   Check,
+  MessageSquare,
 } from 'lucide-react';
 import {
   useGetPlans,
@@ -43,6 +44,7 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { CommentDialog } from '@/components/planner/CommentDialog';
 
 export const Route = createLazyFileRoute('/plans')({
   component: PlannerPlansPage,
@@ -947,10 +949,12 @@ function PlanCard({
   plan,
   onDistribute,
   onDelete,
+  onComment,
 }: {
   plan: ExtendedLongTermPlan;
   onDistribute: () => void;
   onDelete: () => void;
+  onComment: () => void;
 }) {
   const colors = SUBJECT_COLORS[plan.subject ?? ''] || { bg: 'bg-gray-500', text: 'text-gray-600' };
   const progress =
@@ -1020,6 +1024,13 @@ function PlanCard({
 
           {/* 액션 버튼 */}
           <div className="flex flex-col gap-2">
+            <button
+              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-indigo-50 hover:text-indigo-500"
+              title="코멘트"
+              onClick={onComment}
+            >
+              <MessageSquare className="h-4 w-4" />
+            </button>
             {!plan.isDistributed && (
               <Button variant="outline" size="sm" onClick={onDistribute} className="gap-1">
                 <Sparkles className="h-3 w-3" />
@@ -1059,6 +1070,10 @@ function PlannerPlansPage() {
   const [selectedStartChapter, setSelectedStartChapter] = useState(1);
   const [selectedEndChapter, setSelectedEndChapter] = useState(1);
   const { guard, LoginGuardModal } = useLoginGuard();
+
+  // 코멘트 다이얼로그 상태
+  const [commentOpen, setCommentOpen] = useState(false);
+  const [commentTarget, setCommentTarget] = useState<LongTermPlan | null>(null);
 
   // 현재 월 상태 (월간 미션 요약용)
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -1255,6 +1270,10 @@ function PlannerPlansPage() {
               plan={plan as ExtendedLongTermPlan}
               onDistribute={() => guard(() => handleDistribute(plan as ExtendedLongTermPlan))}
               onDelete={() => guard(() => handleDelete(plan.id))}
+              onComment={() => {
+                setCommentTarget(plan);
+                setCommentOpen(true);
+              }}
             />
           ))
         ) : (
@@ -1292,6 +1311,20 @@ function PlannerPlansPage() {
       />
 
       {LoginGuardModal}
+
+      {/* 코멘트 다이얼로그 */}
+      {commentTarget && (
+        <CommentDialog
+          open={commentOpen}
+          onOpenChange={setCommentOpen}
+          target={{
+            studentId: 1,
+            planId: commentTarget.id,
+            title: commentTarget.title,
+            subject: commentTarget.subject,
+          }}
+        />
+      )}
     </div>
   );
 }

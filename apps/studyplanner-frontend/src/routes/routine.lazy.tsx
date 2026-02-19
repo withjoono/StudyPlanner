@@ -4,7 +4,7 @@
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, ArrowLeft, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, ArrowLeft, Loader2, MessageSquare } from 'lucide-react';
 import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
   useGetRoutines,
@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CommentDialog } from '@/components/planner/CommentDialog';
 
 export const Route = createLazyFileRoute('/routine')({
   component: PlannerRoutinePage,
@@ -830,6 +831,10 @@ function PlannerRoutinePage() {
   const [editingRoutine, setEditingRoutine] = useState<Routine | undefined>();
   const { guard, LoginGuardModal } = useLoginGuard();
 
+  // 코멘트 다이얼로그 상태
+  const [commentOpen, setCommentOpen] = useState(false);
+  const [commentTarget, setCommentTarget] = useState<Routine | null>(null);
+
   const handleCreate = () => {
     guard(() => {
       setEditingRoutine(undefined);
@@ -860,6 +865,11 @@ function PlannerRoutinePage() {
         deleteMutation.mutateAsync(id);
       }
     });
+  };
+
+  const handleComment = (routine: Routine) => {
+    setCommentTarget(routine);
+    setCommentOpen(true);
   };
 
   if (isLoading) {
@@ -943,6 +953,13 @@ function PlannerRoutinePage() {
                     </div>
 
                     <div className="flex gap-2">
+                      <button
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-indigo-50 hover:text-indigo-500"
+                        title="코멘트"
+                        onClick={() => handleComment(routine)}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </button>
                       <Button variant="ghost" size="sm" onClick={() => handleEdit(routine)}>
                         수정
                       </Button>
@@ -980,6 +997,20 @@ function PlannerRoutinePage() {
       />
 
       {LoginGuardModal}
+
+      {/* 코멘트 다이얼로그 */}
+      {commentTarget && (
+        <CommentDialog
+          open={commentOpen}
+          onOpenChange={setCommentOpen}
+          target={{
+            studentId: 1,
+            routineId: commentTarget.id,
+            title: commentTarget.title,
+            subject: commentTarget.subject,
+          }}
+        />
+      )}
     </div>
   );
 }

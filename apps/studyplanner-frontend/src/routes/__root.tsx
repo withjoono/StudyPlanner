@@ -4,7 +4,16 @@ import { useAuthStore } from '@/stores/client/use-auth-store';
 
 import { useSsoExchange } from '@/stores/server/auth';
 import { useEffect, useState } from 'react';
-import { Wallet, Bell, Timer, X, GraduationCap, LayoutGrid, Users, ChevronDown, LogOut } from 'lucide-react';
+import {
+  Wallet,
+  Bell,
+  X,
+  GraduationCap,
+  LayoutGrid,
+  Users,
+  ChevronDown,
+  LogOut,
+} from 'lucide-react';
 
 // Hub URL
 const HUB_URL =
@@ -94,9 +103,7 @@ function RootLayout() {
             {/* 왼쪽: 로고 */}
             <div className="flex items-center gap-3">
               <Link to="/" className="flex items-center gap-2" style={{ textDecoration: 'none' }}>
-                <div
-                  className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-600"
-                >
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-600">
                   <GraduationCap className="h-4 w-4 text-white" />
                 </div>
                 <span className="hidden text-[15px] font-bold tracking-tight text-indigo-600 sm:inline">
@@ -109,29 +116,30 @@ function RootLayout() {
             <div className="hidden items-center gap-1 md:flex">
               <a
                 href={HUB_URL}
-                className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium text-indigo-600 transition-colors hover:bg-indigo-50"
+                className="text-primary hover:bg-primary/10 flex h-9 w-9 items-center justify-center rounded-full transition-colors"
                 title="전체 서비스"
               >
-                <LayoutGrid className="h-4 w-4" />
-                <span>전체 서비스</span>
+                <LayoutGrid className="h-5 w-5" />
               </a>
               <div className="mx-1 h-5 w-px bg-gray-200" />
-              <NavLink to="/">플래너홈</NavLink>
-              <NavLink to="/missions">나의 미션</NavLink>
-              <NavLink to="/routine">주간 루틴</NavLink>
-              <NavLink to="/plans">장기 계획</NavLink>
-              <NavLink to="/learning">학습 현황</NavLink>
+              <NavLink to="/">홈</NavLink>
+              <NavLink to="/plans">장기계획</NavLink>
+              <NavLink to="/routine">주간루틴</NavLink>
+              <NavLink to="/missions">금일계획</NavLink>
+              <NavLink to="/learning">분석</NavLink>
             </div>
 
             {/* 오른쪽: 아이콘 버튼 + 사용자 정보 */}
             <div className="flex items-center gap-1">
-              {/* 타이머 */}
+              {/* 타이머 (이모콘) */}
               <Link
                 to="/timer"
-                className="relative flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                className="relative flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-indigo-50"
                 title="타이머"
               >
-                <Timer className="h-5 w-5" />
+                <span className="text-lg" role="img" aria-label="타이머">
+                  ⏱️
+                </span>
               </Link>
               {/* 결제 */}
               <a
@@ -172,7 +180,7 @@ function RootLayout() {
                     <ChevronDown className="h-4 w-4" />
                   </button>
                   {userMenuOpen && (
-                    <div className="absolute right-0 top-full mt-1 w-40 rounded-md border border-gray-200 bg-white py-1 shadow-lg z-50">
+                    <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
                       <Link
                         to="/"
                         className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -217,17 +225,20 @@ function RootLayout() {
           {mobileMenuOpen && (
             <div className="border-t border-gray-200 pb-3 pt-2 md:hidden">
               <div className="space-y-1">
-                <a href={HUB_URL} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50">
-                  <LayoutGrid className="h-4 w-4" /> 전체 서비스
+                <a
+                  href={HUB_URL}
+                  className="text-primary hover:bg-primary/10 flex h-9 w-9 items-center justify-center rounded-full transition-colors"
+                  title="전체 서비스"
+                >
+                  <LayoutGrid className="h-5 w-5" />
                 </a>
                 <div className="my-1 border-t border-gray-100" />
                 {[
-                  { to: '/', label: '플래너홈' },
-                  { to: '/missions', label: '나의 미션' },
-                  { to: '/routine', label: '주간 루틴' },
-                  { to: '/plans', label: '장기 계획' },
-                  { to: '/learning', label: '학습 현황' },
-                  { to: '/timer', label: '타이머' },
+                  { to: '/', label: '홈' },
+                  { to: '/plans', label: '장기계획' },
+                  { to: '/routine', label: '주간루틴' },
+                  { to: '/missions', label: '금일계획' },
+                  { to: '/learning', label: '분석' },
                 ].map((item) => (
                   <Link
                     key={item.to}
@@ -272,11 +283,10 @@ function RootLayout() {
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white md:hidden">
         <div className="flex items-center justify-around py-2">
           <MobileNavLink to="/" label="홈" />
-          <MobileNavLink to="/missions" label="미션" />
-          <MobileNavLink to="/routine" label="루틴" />
-          <MobileNavLink to="/plans" label="계획" />
-          <MobileNavLink to="/learning" label="현황" />
-          <MobileNavLink to="/timer" label="타이머" icon={<Timer className="h-4 w-4" />} />
+          <MobileNavLink to="/plans" label="장기계획" />
+          <MobileNavLink to="/routine" label="주간루틴" />
+          <MobileNavLink to="/missions" label="금일계획" />
+          <MobileNavLink to="/learning" label="분석" />
         </div>
       </nav>
 
@@ -314,7 +324,6 @@ function NavLink({
     </Link>
   );
 }
-
 
 function MobileNavLink({ to, icon, label }: { to: string; icon?: React.ReactNode; label: string }) {
   return (

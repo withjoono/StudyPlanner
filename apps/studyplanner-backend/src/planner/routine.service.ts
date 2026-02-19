@@ -7,10 +7,14 @@ import type {
 } from '@gb-planner/shared-types';
 import { PrismaService } from '../prisma';
 import { Category } from '@prisma/client';
+import { SharedScheduleService } from '../shared-schedule/shared-schedule.service';
 
 @Injectable()
 export class RoutineService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sharedSchedule: SharedScheduleService,
+  ) {}
 
   private mapToRoutine(routine: any): Routine {
     return {
@@ -108,6 +112,9 @@ export class RoutineService {
       },
     });
 
+    // 공유 스케줄에 동기화
+    this.sharedSchedule.syncRoutine(routine);
+
     return this.mapToRoutine(routine);
   }
 
@@ -143,6 +150,9 @@ export class RoutineService {
       data: updateData,
     });
 
+    // 공유 스케줄에 동기화
+    this.sharedSchedule.syncRoutine(routine);
+
     return this.mapToRoutine(routine);
   }
 
@@ -151,6 +161,8 @@ export class RoutineService {
       await this.prisma.weeklyRoutine.delete({
         where: { id: BigInt(id) },
       });
+      // 공유 스케줄에서 제거
+      this.sharedSchedule.removeScheduleBySource('routine', String(id));
       return true;
     } catch {
       return false;

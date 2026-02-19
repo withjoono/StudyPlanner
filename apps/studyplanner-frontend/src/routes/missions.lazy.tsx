@@ -1,5 +1,5 @@
 /**
- * 나의 미션 페이지
+ * 금일계획 페이지
  * - 월간/주간/일간 드롭다운으로 기간 선택
  * - 장기계획과 주간루틴에서 생성된 미션 표시
  * - 기간별 캘린더
@@ -21,6 +21,7 @@ import {
   Calendar,
   Camera,
   ImageIcon,
+  MessageSquare,
 } from 'lucide-react';
 import { useGetDailyMissions, useCompleteDailyMission } from '@/stores/server/planner';
 import type { DailyMission } from '@/stores/server/planner/mock-data';
@@ -29,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CommentDialog } from '@/components/planner/CommentDialog';
 
 export const Route = createLazyFileRoute('/missions')({
   component: MyMissionsPage,
@@ -773,9 +775,11 @@ function MonthlyCalendar({
 function MissionItem({
   mission,
   onComplete,
+  onComment,
 }: {
   mission: DailyMission;
   onComplete: (id: number, progress: number) => void;
+  onComment: (mission: DailyMission) => void;
 }) {
   const isCompleted = mission.status === 'completed';
   const color = SUBJECT_COLORS[mission.subject] || '#6b7280';
@@ -867,6 +871,14 @@ function MissionItem({
               </div>
             )}
           </div>
+          {/* 코멘트 버튼 */}
+          <button
+            onClick={() => onComment(mission)}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-indigo-50 hover:text-indigo-500"
+            title="코멘트"
+          >
+            <MessageSquare className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
@@ -964,8 +976,17 @@ function MyMissionsPage() {
 
   const { guard, LoginGuardModal } = useLoginGuard();
 
+  // 코멘트 다이얼로그 상태
+  const [commentDialogOpen, setCommentDialogOpen] = useState(false);
+  const [commentTarget, setCommentTarget] = useState<DailyMission | null>(null);
+
   const handleComplete = (missionId: number, progress: number) => {
     guard(() => completeMutation.mutate({ missionId, progress }));
+  };
+
+  const handleComment = (mission: DailyMission) => {
+    setCommentTarget(mission);
+    setCommentDialogOpen(true);
   };
 
   if (isLoading) {
@@ -987,8 +1008,8 @@ function MyMissionsPage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold">나의 미션</h1>
-            <p className="mt-1 text-gray-500">장기 계획과 주간 루틴에서 생성된 학습 미션</p>
+            <h1 className="text-2xl font-bold">금일계획</h1>
+            <p className="mt-1 text-gray-500">장기계획과 주간루틴에서 생성된 학습 미션</p>
           </div>
         </div>
 
@@ -1101,7 +1122,12 @@ function MyMissionsPage() {
                   return a.startTime.localeCompare(b.startTime);
                 })
                 .map((mission) => (
-                  <MissionItem key={mission.id} mission={mission} onComplete={handleComplete} />
+                  <MissionItem
+                    key={mission.id}
+                    mission={mission}
+                    onComplete={handleComplete}
+                    onComment={handleComment}
+                  />
                 ))}
             </div>
           ) : (
@@ -1147,6 +1173,20 @@ function MyMissionsPage() {
       )}
 
       {LoginGuardModal}
+
+      {/* 코멘트 다이얼로그 */}
+      {commentTarget && (
+        <CommentDialog
+          open={commentDialogOpen}
+          onOpenChange={setCommentDialogOpen}
+          target={{
+            studentId: 1,
+            missionId: commentTarget.id,
+            title: commentTarget.title,
+            subject: commentTarget.subject,
+          }}
+        />
+      )}
     </div>
   );
 }
