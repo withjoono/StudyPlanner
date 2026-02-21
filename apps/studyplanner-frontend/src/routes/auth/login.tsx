@@ -96,7 +96,7 @@ function LoginPage() {
           </Button>
         </form>
 
-        {/* 거북스쿨 계정으로 로그인 */}
+        {/* G Skool 계정으로 로그인 */}
         <div className="mt-6">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -114,11 +114,10 @@ function LoginPage() {
               className="w-full border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
               onClick={() => redirectToHubLogin('/')}
             >
-              <ExternalLink className="mr-2 h-4 w-4" />
-              거북스쿨 계정으로 로그인
+              <ExternalLink className="mr-2 h-4 w-4" />G Skool 계정으로 로그인
             </Button>
             <p className="mt-2 text-center text-xs text-gray-500">
-              거북스쿨 계정이 있다면 바로 이용 가능합니다
+              G Skool 계정이 있다면 바로 이용 가능합니다
             </p>
           </div>
         </div>
@@ -132,7 +131,7 @@ function LoginPage() {
               onClick={() => redirectToHubRegister('/')}
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
-              거북스쿨 회원가입
+              G Skool 회원가입
             </button>
           </p>
         </div>

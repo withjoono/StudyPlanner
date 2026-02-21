@@ -1,6 +1,6 @@
 /**
  * Hub 로그인 연동 유틸리티
- * StudyPlanner에서 Hub(거북스쿨) 로그인 페이지로 리디렉트
+ * StudyPlanner에서 Hub(G Skool) 로그인 페이지로 리디렉트
  */
 
 import { env } from '@/lib/config/env';

@@ -611,7 +611,7 @@ function PromoFooter() {
           <span className="text-sm font-bold text-gray-700">Study Planner</span>
         </div>
         <p className="text-xs text-gray-500">
-          © 2026 거북스쿨. 학생, 선생님, 학부모를 위한 스마트 학습 플래너.
+          © 2026 G Skool. 학생, 선생님, 학부모를 위한 스마트 학습 플래너.
         </p>
       </div>
     </footer>
