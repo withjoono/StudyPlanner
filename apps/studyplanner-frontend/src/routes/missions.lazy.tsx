@@ -24,7 +24,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { useGetDailyMissions, useCompleteDailyMission } from '@/stores/server/planner';
-import type { DailyMission } from '@/stores/server/planner/mock-data';
+import type { DailyMission } from '@/stores/server/planner/planner-types';
 import { SUBJECT_COLORS } from '@/types/planner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

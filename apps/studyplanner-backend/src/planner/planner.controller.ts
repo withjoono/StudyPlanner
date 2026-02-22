@@ -14,7 +14,12 @@ export class PlannerController {
 
   /** 사용자 ID prefix 기반 교육과정 판별 */
   private getCurriculum(userId: string): '2015' | '2022' {
-    const idBody = userId.startsWith('sp_') ? userId.substring(3) : userId;
+    // sp_ 접두사 제거
+    let idBody = userId.startsWith('sp_') ? userId.substring(3) : userId;
+    // S(학생)/T(선생)/P(학부모) 역할 접두사 제거
+    if (/^[STP]/i.test(idBody)) {
+      idBody = idBody.substring(1);
+    }
     const prefix = idBody.substring(0, 4).toUpperCase();
     if (['26H3', '26H4', '26H0'].includes(prefix)) return '2015';
     return '2022';

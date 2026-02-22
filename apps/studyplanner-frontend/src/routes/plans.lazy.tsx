@@ -1,7 +1,6 @@
 /**
  * 장기 계획 관리 페이지
- * - 교재 DB에서 교재 선택
- * - 목차 범위 선택
+ * - 계획명, 교과/과목 선택, 기간 설정을 하나의 다이얼로그로 통합
  * - 자동 분배 기능
  */
 
@@ -11,30 +10,29 @@ import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   Plus,
   ArrowLeft,
   Loader2,
   BookOpen,
-  Video,
+  MonitorPlay,
+  FileText,
   Target,
   TrendingUp,
-  Search,
   Calendar,
   Sparkles,
-  Check,
   MessageSquare,
+  Info,
 } from 'lucide-react';
 import {
   useGetPlans,
-  useGetMaterials,
-  useCreatePlanWithMaterial,
   useDistributePlan,
   useGetRoutines,
   useDeletePlan,
+  useGetSubjects,
+  useCreatePlan,
 } from '@/stores/server/planner';
-import { useGetTutorBoardEvents, type TutorBoardEvent } from '@/stores/server/planner/tutorboard';
-import type { Material, ExtendedLongTermPlan } from '@/stores/server/planner/mock-data';
+import { useGetTutorBoardEvents } from '@/stores/server/planner/tutorboard';
+import type { ExtendedLongTermPlan } from '@/stores/server/planner/planner-types';
 import type { LongTermPlan } from '@/types/planner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,322 +61,40 @@ const SUBJECT_COLORS: Record<string, { bg: string; text: string }> = {
   한국사: { bg: 'bg-purple-500', text: 'text-purple-600' },
 };
 
-const SUBJECT_CODE_MAP: Record<string, string> = {
-  korean: '국어',
-  math: '수학',
-  english: '영어',
-  science: '과학',
-  social: '사회',
-  history: '한국사',
-  foreign: '제2외국어',
-  other: '기타',
-};
-
 // ============================================
-// 교재 선택 다이얼로그
+// 장기 계획 설정 다이얼로그 (통합 + 3탭)
 // ============================================
 
-interface MaterialSelectDialogProps {
+type PlanTab = 'textbook' | 'lecture' | 'other';
+
+interface PlanSetupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (material: Material, startChapter: number, endChapter: number) => void;
-}
-
-function MaterialSelectDialog({ open, onOpenChange, onSelect }: MaterialSelectDialogProps) {
-  const { data: materials } = useGetMaterials();
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
-  const [startChapter, setStartChapter] = useState(1);
-  const [endChapter, setEndChapter] = useState(1);
-  const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set());
-
-  const filteredMaterials = useMemo(() => {
-    if (!materials) return [];
-    if (!searchKeyword) return materials;
-    const lower = searchKeyword.toLowerCase();
-    return materials.filter(
-      (m) =>
-        m.name.toLowerCase().includes(lower) ||
-        m.publisher?.toLowerCase().includes(lower) ||
-        m.author?.toLowerCase().includes(lower),
-    );
-  }, [materials, searchKeyword]);
-
-  const toggleChapter = (chapterId: number) => {
-    const newSet = new Set(expandedChapters);
-    if (newSet.has(chapterId)) {
-      newSet.delete(chapterId);
-    } else {
-      newSet.add(chapterId);
-    }
-    setExpandedChapters(newSet);
-  };
-
-  const handleSelectMaterial = (material: Material) => {
-    setSelectedMaterial(material);
-    setStartChapter(1);
-    setEndChapter(material.chapters.length);
-  };
-
-  const handleConfirm = () => {
-    if (selectedMaterial) {
-      onSelect(selectedMaterial, startChapter, endChapter);
-      onOpenChange(false);
-      setSelectedMaterial(null);
-      setSearchKeyword('');
-    }
-  };
-
-  // 선택된 범위의 페이지/강의 수 계산
-  const selectedRange = useMemo(() => {
-    if (!selectedMaterial) return { pages: 0, lectures: 0, estimatedHours: 0 };
-
-    const chapters = selectedMaterial.chapters.filter(
-      (c) => c.chapterNumber >= startChapter && c.chapterNumber <= endChapter,
-    );
-
-    const pages = chapters.reduce((sum, c) => sum + (c.pageCount || 0), 0);
-    const lectures = chapters.reduce((sum, c) => sum + (c.lectureCount || 0), 0);
-    const estimatedMinutes = chapters.reduce((sum, c) => sum + (c.estimatedTime || 0), 0);
-
-    return {
-      pages,
-      lectures,
-      estimatedHours: Math.round(estimatedMinutes / 60),
-    };
-  }, [selectedMaterial, startChapter, endChapter]);
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-[800px]">
-        <DialogHeader>
-          <DialogTitle>교재 선택</DialogTitle>
-        </DialogHeader>
-
-        <div className="flex h-[600px] gap-4">
-          {/* 왼쪽: 교재 목록 */}
-          <div className="flex w-1/2 flex-col border-r pr-4">
-            {/* 검색 */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                placeholder="교재명, 출판사, 저자 검색..."
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            {/* 교재 목록 */}
-            <div className="flex-1 space-y-2 overflow-y-auto">
-              {filteredMaterials.map((material) => (
-                <div
-                  key={material.id}
-                  onClick={() => handleSelectMaterial(material)}
-                  className={`cursor-pointer rounded-lg border p-3 transition-colors ${
-                    selectedMaterial?.id === material.id
-                      ? 'border-ultrasonic-500 bg-ultrasonic-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${
-                        material.category === 'lecture' ? 'bg-purple-100' : 'bg-blue-100'
-                      }`}
-                    >
-                      {material.category === 'lecture' ? (
-                        <Video className="h-5 w-5 text-purple-600" />
-                      ) : (
-                        <BookOpen className="h-5 w-5 text-blue-600" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-medium text-white ${
-                            SUBJECT_COLORS[SUBJECT_CODE_MAP[material.subjectCode] || '기타']?.bg ||
-                            'bg-gray-500'
-                          }`}
-                        >
-                          {SUBJECT_CODE_MAP[material.subjectCode] || '기타'}
-                        </span>
-                        <span className="text-[10px] text-gray-400">
-                          {material.category === 'lecture'
-                            ? '인강'
-                            : material.category === 'textbook'
-                              ? '교과서'
-                              : '참고서'}
-                        </span>
-                      </div>
-                      <p className="mt-1 truncate text-sm font-medium">{material.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {material.publisher}
-                        {material.author && ` · ${material.author}`}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-400">
-                        {material.totalPages
-                          ? `${material.totalPages}p`
-                          : `${material.totalLectures}강`}{' '}
-                        · 예상 {material.estimatedHours}시간
-                      </p>
-                    </div>
-                    {selectedMaterial?.id === material.id && (
-                      <Check className="text-ultrasonic-500 h-5 w-5" />
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 오른쪽: 목차 선택 */}
-          <div className="flex w-1/2 flex-col pl-2">
-            {selectedMaterial ? (
-              <>
-                <h4 className="mb-3 font-semibold">{selectedMaterial.name} - 목차</h4>
-
-                {/* 범위 선택 */}
-                <div className="mb-4 rounded-lg bg-gray-50 p-3">
-                  <p className="mb-2 text-sm font-medium text-gray-700">학습 범위 선택</p>
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={startChapter}
-                      onChange={(e) => setStartChapter(Number(e.target.value))}
-                      className="rounded border px-2 py-1 text-sm"
-                    >
-                      {selectedMaterial.chapters.map((c) => (
-                        <option key={c.id} value={c.chapterNumber}>
-                          {c.chapterNumber}장
-                        </option>
-                      ))}
-                    </select>
-                    <span className="text-gray-500">~</span>
-                    <select
-                      value={endChapter}
-                      onChange={(e) => setEndChapter(Number(e.target.value))}
-                      className="rounded border px-2 py-1 text-sm"
-                    >
-                      {selectedMaterial.chapters
-                        .filter((c) => c.chapterNumber >= startChapter)
-                        .map((c) => (
-                          <option key={c.id} value={c.chapterNumber}>
-                            {c.chapterNumber}장
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                  <p className="mt-2 text-xs text-gray-500">
-                    선택된 범위:{' '}
-                    {selectedMaterial.category === 'lecture'
-                      ? `${selectedRange.lectures}강`
-                      : `${selectedRange.pages}페이지`}{' '}
-                    · 예상 {selectedRange.estimatedHours}시간
-                  </p>
-                </div>
-
-                {/* 목차 트리 */}
-                <div className="flex-1 space-y-1 overflow-y-auto">
-                  {selectedMaterial.chapters.map((chapter) => {
-                    const isInRange =
-                      chapter.chapterNumber >= startChapter && chapter.chapterNumber <= endChapter;
-                    const isExpanded = expandedChapters.has(chapter.id);
-
-                    return (
-                      <div key={chapter.id}>
-                        <div
-                          onClick={() => toggleChapter(chapter.id)}
-                          className={`flex cursor-pointer items-center gap-2 rounded-lg p-2 ${
-                            isInRange ? 'bg-ultrasonic-50' : 'bg-gray-50'
-                          }`}
-                        >
-                          <ChevronDown
-                            className={`h-4 w-4 text-gray-400 transition-transform ${
-                              isExpanded ? '' : '-rotate-90'
-                            }`}
-                          />
-                          <span
-                            className={`text-sm font-medium ${
-                              isInRange ? 'text-ultrasonic-700' : 'text-gray-600'
-                            }`}
-                          >
-                            {chapter.chapterNumber}장. {chapter.title}
-                          </span>
-                          <span className="ml-auto text-xs text-gray-400">
-                            {chapter.pageCount
-                              ? `${chapter.startPage}~${chapter.endPage}p`
-                              : `${chapter.lectureCount}강`}
-                          </span>
-                        </div>
-
-                        {/* 세부 목차 */}
-                        {isExpanded && chapter.sections && (
-                          <div className="ml-6 space-y-1 py-1">
-                            {chapter.sections.map((section) => (
-                              <div
-                                key={section.id}
-                                className={`rounded px-2 py-1 text-xs ${
-                                  isInRange ? 'text-gray-600' : 'text-gray-400'
-                                }`}
-                              >
-                                {section.sectionNumber}. {section.title}
-                                {section.pageCount && (
-                                  <span className="ml-2 text-gray-400">
-                                    ({section.startPage}~{section.endPage}p)
-                                  </span>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* 확인 버튼 */}
-                <Button onClick={handleConfirm} className="mt-4 w-full gap-2">
-                  <Check className="h-4 w-4" />이 교재로 계획 생성
-                </Button>
-              </>
-            ) : (
-              <div className="flex flex-1 items-center justify-center text-gray-400">
-                <div className="text-center">
-                  <BookOpen className="mx-auto mb-2 h-12 w-12 opacity-50" />
-                  <p>왼쪽에서 교재를 선택하세요</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ============================================
-// 계획 생성 다이얼로그 (기간 설정)
-// ============================================
-
-interface PlanCreateDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  material: Material | null;
-  startChapter: number;
-  endChapter: number;
-  onSubmit: (startDate: string, endDate: string) => void;
+  onSubmit: (data: {
+    planName: string;
+    kyokwa: string;
+    subject: string;
+    startDate: string;
+    endDate: string;
+    totalAmount: number;
+    type: 'textbook' | 'lecture';
+  }) => void;
   isLoading?: boolean;
 }
 
-function PlanCreateDialog({
-  open,
-  onOpenChange,
-  material,
-  startChapter,
-  endChapter,
-  onSubmit,
-  isLoading,
-}: PlanCreateDialogProps) {
+function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupDialogProps) {
+  const { data: subjectsData } = useGetSubjects();
+  const groups = subjectsData?.groups || [];
+
+  const [planName, setPlanName] = useState('');
+  const [selectedKyokwa, setSelectedKyokwa] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [activeTab, setActiveTab] = useState<PlanTab>('textbook');
+
+  // 기타 탭 전용
+  const [totalAmount, setTotalAmount] = useState(100);
+  const [amountUnit, setAmountUnit] = useState<'page' | 'lecture'>('page');
+
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -389,26 +105,24 @@ function PlanCreateDialog({
     return future.toISOString().split('T')[0];
   });
 
-  // 선택된 범위 계산
-  const selectedRange = useMemo(() => {
-    if (!material) return { pages: 0, lectures: 0, estimatedHours: 0 };
+  // 선택된 교과에 속하는 과목 목록
+  const availableSubjects = useMemo(() => {
+    if (!selectedKyokwa) return [];
+    const group = groups.find((g: any) => g.kyokwa === selectedKyokwa);
+    return group?.subjects || [];
+  }, [selectedKyokwa, groups]);
 
-    const chapters = material.chapters.filter(
-      (c) => c.chapterNumber >= startChapter && c.chapterNumber <= endChapter,
-    );
-
-    const pages = chapters.reduce((sum, c) => sum + (c.pageCount || 0), 0);
-    const lectures = chapters.reduce((sum, c) => sum + (c.lectureCount || 0), 0);
-
-    return { pages, lectures };
-  }, [material, startChapter, endChapter]);
+  // 교과 변경 시 과목 초기화
+  const handleKyokwaChange = (kyokwa: string) => {
+    setSelectedKyokwa(kyokwa);
+    setSelectedSubject('');
+  };
 
   // 주 단위 기반 학습 일정 계산
   const schedule = useMemo(() => {
     const start = new Date(startDate);
     const end = new Date(endDate);
     const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    // 첫 월요일 찾기
     const startDay = start.getDay();
     const firstMondayOffset = startDay === 0 ? 1 : startDay === 1 ? 0 : 8 - startDay;
     const firstMonday = new Date(start);
@@ -418,121 +132,302 @@ function PlanCreateDialog({
     );
     const nWeeks = Math.max(1, Math.floor(totalDaysFromMonday / 7));
     const remainderDays = totalDaysFromMonday % 7;
-
-    const totalAmount = selectedRange.pages || selectedRange.lectures;
     const weeklyTarget = Math.ceil(totalAmount / nWeeks);
 
     return { days, nWeeks, weeklyTarget, remainderDays };
-  }, [startDate, endDate, selectedRange]);
+  }, [startDate, endDate, totalAmount]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(startDate, endDate);
+    if (!planName.trim()) {
+      toast.error('계획명을 입력해주세요.');
+      return;
+    }
+    if (!selectedKyokwa) {
+      toast.error('교과를 선택해주세요.');
+      return;
+    }
+    if (!selectedSubject) {
+      toast.error('과목을 선택해주세요.');
+      return;
+    }
+    if (activeTab !== 'other') {
+      toast.info('교재/인강 데이터가 아직 준비되지 않았습니다. 기타 계획을 이용해주세요.');
+      return;
+    }
+    onSubmit({
+      planName: planName.trim(),
+      kyokwa: selectedKyokwa,
+      subject: selectedSubject,
+      startDate,
+      endDate,
+      totalAmount,
+      type: amountUnit === 'lecture' ? 'lecture' : 'textbook',
+    });
   };
 
-  if (!material) return null;
+  // 다이얼로그 닫힐 때 상태 초기화
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setPlanName('');
+      setSelectedKyokwa('');
+      setSelectedSubject('');
+      setTotalAmount(100);
+      setActiveTab('textbook');
+    }
+    onOpenChange(isOpen);
+  };
+
+  const tabItems: { key: PlanTab; label: string; icon: React.ReactNode }[] = [
+    { key: 'textbook', label: '교재 계획', icon: <BookOpen className="h-3.5 w-3.5" /> },
+    { key: 'lecture', label: '인강 계획', icon: <MonitorPlay className="h-3.5 w-3.5" /> },
+    { key: 'other', label: '기타 계획', icon: <FileText className="h-3.5 w-3.5" /> },
+  ];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>계획 기간 설정</DialogTitle>
+          <DialogTitle className="text-lg">장기 계획 설정</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* 선택된 교재 정보 */}
-          <div className="rounded-lg bg-gray-50 p-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg ${
-                  material.category === 'lecture' ? 'bg-purple-100' : 'bg-blue-100'
-                }`}
-              >
-                {material.category === 'lecture' ? (
-                  <Video className="h-6 w-6 text-purple-600" />
-                ) : (
-                  <BookOpen className="h-6 w-6 text-blue-600" />
-                )}
-              </div>
-              <div>
-                <p className="font-medium">{material.name}</p>
-                <p className="text-sm text-gray-500">
-                  {startChapter}장 ~ {endChapter}장 (
-                  {selectedRange.pages
-                    ? `${selectedRange.pages}페이지`
-                    : `${selectedRange.lectures}강`}
-                  )
-                </p>
-              </div>
-            </div>
+          {/* ===== 공통 상단: 계획명 + 교과/과목 ===== */}
+          <div>
+            <Label htmlFor="planName" className="text-sm font-semibold text-gray-700">
+              계획명
+            </Label>
+            <Input
+              id="planName"
+              placeholder="예: 수학 개념원리 1학기 완성"
+              value={planName}
+              onChange={(e) => setPlanName(e.target.value)}
+              className="mt-1.5"
+              required
+            />
           </div>
 
-          {/* 기간 설정 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="startDate">시작일</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+              <Label htmlFor="kyokwa" className="text-sm font-semibold text-gray-700">
+                교과 선택
+              </Label>
+              <select
+                id="kyokwa"
+                value={selectedKyokwa}
+                onChange={(e) => handleKyokwaChange(e.target.value)}
+                className="mt-1.5 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 required
-              />
+              >
+                <option value="">교과를 선택하세요</option>
+                {groups.map((g: any) => (
+                  <option key={g.kyokwaCode || g.kyokwa} value={g.kyokwa}>
+                    {g.kyokwa}
+                  </option>
+                ))}
+              </select>
+              {subjectsData?.curriculum && (
+                <p className="mt-1 text-[10px] text-gray-400">
+                  {subjectsData.curriculum} 교육과정 적용
+                </p>
+              )}
             </div>
             <div>
-              <Label htmlFor="endDate">종료일</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                min={startDate}
+              <Label htmlFor="subject" className="text-sm font-semibold text-gray-700">
+                과목 선택
+              </Label>
+              <select
+                id="subject"
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                className="mt-1.5 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+                disabled={!selectedKyokwa}
                 required
-              />
+              >
+                <option value="">
+                  {selectedKyokwa ? '과목을 선택하세요' : '교과를 먼저 선택'}
+                </option>
+                {availableSubjects.map((s: any) => (
+                  <option key={s.subjectCode || s.subjectName} value={s.subjectName}>
+                    {s.subjectName}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* 자동 계산된 일정 */}
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <Sparkles className="text-ultrasonic-500 h-4 w-4" />
-              <span className="text-sm font-medium text-gray-700">자동 계산된 학습 일정</span>
+          {/* ===== 3개 탭 ===== */}
+          <div>
+            <div className="flex border-b border-gray-200">
+              {tabItems.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors ${
+                    activeTab === tab.key
+                      ? 'border-b-2 border-blue-500 text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
             </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-lg bg-gray-50 p-2 text-center">
-                <p className="text-xs text-gray-500">학습 기간</p>
-                <p className="font-semibold">
-                  {schedule.nWeeks}주
-                  {schedule.remainderDays > 0 && (
-                    <span className="text-xs font-normal text-gray-400">
-                      {' '}
-                      (+{schedule.remainderDays}일)
-                    </span>
-                  )}
-                </p>
+
+            {/* 탭 내용 */}
+            <div className="min-h-[120px] pt-4">
+              {activeTab === 'textbook' && (
+                <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center">
+                  <BookOpen className="mb-2 h-8 w-8 text-gray-300" />
+                  <p className="font-medium text-gray-500">교재 데이터 준비 중</p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    크롤링한 교재 목록이 연동되면 여기에서 교재를 선택할 수 있습니다
+                  </p>
+                </div>
+              )}
+
+              {activeTab === 'lecture' && (
+                <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center">
+                  <MonitorPlay className="mb-2 h-8 w-8 text-gray-300" />
+                  <p className="font-medium text-gray-500">인강 데이터 준비 중</p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    크롤링한 인강 목록이 연동되면 여기에서 인강을 선택할 수 있습니다
+                  </p>
+                </div>
+              )}
+
+              {activeTab === 'other' && (
+                <div>
+                  <Label className="text-sm font-semibold text-gray-700">총 분량</Label>
+                  <div className="mt-1.5 flex items-center gap-3">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={totalAmount}
+                      onChange={(e) => setTotalAmount(Number(e.target.value) || 1)}
+                      className="w-28"
+                    />
+                    <div className="flex rounded-md border border-gray-300">
+                      <button
+                        type="button"
+                        onClick={() => setAmountUnit('page')}
+                        className={`px-3 py-1.5 text-sm transition-colors ${
+                          amountUnit === 'page'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        } rounded-l-md`}
+                      >
+                        페이지
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAmountUnit('lecture')}
+                        className={`px-3 py-1.5 text-sm transition-colors ${
+                          amountUnit === 'lecture'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        } rounded-r-md border-l`}
+                      >
+                        강의
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ===== 공통 하단: 기간 + 일정 + 루틴 안내 ===== */}
+          <div>
+            <Label className="text-sm font-semibold text-gray-700">계획 기간</Label>
+            <div className="mt-1.5 grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="startDate" className="text-xs text-gray-500">
+                  시작일
+                </Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="mt-1"
+                  required
+                />
               </div>
-              <div className="rounded-lg bg-gray-50 p-2 text-center">
-                <p className="text-xs text-gray-500">
-                  주간 할당량 ({selectedRange.pages ? 'p' : '강'})
-                </p>
-                <p className="font-semibold text-blue-600">{schedule.weeklyTarget}</p>
-              </div>
-              <div className="rounded-lg bg-gray-50 p-2 text-center">
-                <p className="text-xs text-gray-500">총 분량</p>
-                <p className="font-semibold">
-                  {selectedRange.pages || selectedRange.lectures}
-                  {selectedRange.pages ? 'p' : '강'}
-                </p>
+              <div>
+                <Label htmlFor="endDate" className="text-xs text-gray-500">
+                  종료일
+                </Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate}
+                  className="mt-1"
+                  required
+                />
               </div>
             </div>
           </div>
 
-          <p className="text-xs text-gray-500">
-            💡 주간 루틴에 설정된 자습 시간에 자동으로 미션이 배정됩니다.
-          </p>
+          {/* 자동 계산된 일정 (기타 탭에서만 의미 있음) */}
+          {activeTab === 'other' && (
+            <div className="rounded-lg border border-dashed border-gray-300 bg-white p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <Sparkles className="text-ultrasonic-500 h-4 w-4" />
+                <span className="text-sm font-medium text-gray-700">자동 계산된 학습 일정</span>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div className="rounded-lg bg-gray-50 p-2 text-center">
+                  <p className="text-xs text-gray-500">학습 기간</p>
+                  <p className="font-semibold">
+                    {schedule.nWeeks}주
+                    {schedule.remainderDays > 0 && (
+                      <span className="text-xs font-normal text-gray-400">
+                        {' '}
+                        (+{schedule.remainderDays}일)
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-2 text-center">
+                  <p className="text-xs text-gray-500">주간 할당량</p>
+                  <p className="font-semibold text-blue-600">
+                    {schedule.weeklyTarget}
+                    {amountUnit === 'page' ? 'p' : '강'}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-2 text-center">
+                  <p className="text-xs text-gray-500">총 분량</p>
+                  <p className="font-semibold">
+                    {totalAmount}
+                    {amountUnit === 'page' ? 'p' : '강'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          {/* 주간 루틴 안내 */}
+          <div className="flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 p-3">
+            <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-500" />
+            <p className="text-sm font-medium text-blue-700">
+              요일과 시간 설정은{' '}
+              <Link
+                to="/routine"
+                className="font-bold underline underline-offset-2 hover:text-blue-900"
+              >
+                주간루틴 설정
+              </Link>
+              에서 입력하세요
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               취소
             </Button>
             <Button type="submit" disabled={isLoading} className="gap-2">
@@ -541,7 +436,7 @@ function PlanCreateDialog({
               ) : (
                 <Calendar className="h-4 w-4" />
               )}
-              계획 생성 및 분배
+              계획 생성
             </Button>
           </div>
         </form>
@@ -976,7 +871,7 @@ function PlanCard({
             }`}
           >
             {plan.type === 'lecture' ? (
-              <Video className="h-6 w-6 text-purple-600" />
+              <MonitorPlay className="h-6 w-6 text-purple-600" />
             ) : (
               <BookOpen className="h-6 w-6 text-blue-600" />
             )}
@@ -1059,16 +954,12 @@ function PlanCard({
 function PlannerPlansPage() {
   const { data: plans, isLoading } = useGetPlans();
   const { data: routines } = useGetRoutines();
-  const createPlanMutation = useCreatePlanWithMaterial();
+  const createPlanMutation = useCreatePlan();
   const distributeMutation = useDistributePlan();
   const deleteMutation = useDeletePlan();
 
   // 다이얼로그 상태
-  const [isMaterialSelectOpen, setIsMaterialSelectOpen] = useState(false);
-  const [isPlanCreateOpen, setIsPlanCreateOpen] = useState(false);
-  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
-  const [selectedStartChapter, setSelectedStartChapter] = useState(1);
-  const [selectedEndChapter, setSelectedEndChapter] = useState(1);
+  const [isPlanSetupOpen, setIsPlanSetupOpen] = useState(false);
   const { guard, LoginGuardModal } = useLoginGuard();
 
   // 코멘트 다이얼로그 상태
@@ -1078,39 +969,29 @@ function PlannerPlansPage() {
   // 현재 월 상태 (월간 미션 요약용)
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  const handleMaterialSelect = (material: Material, startChapter: number, endChapter: number) => {
-    setSelectedMaterial(material);
-    setSelectedStartChapter(startChapter);
-    setSelectedEndChapter(endChapter);
-    setIsMaterialSelectOpen(false);
-    setIsPlanCreateOpen(true);
-  };
-
-  const handleCreatePlan = async (startDate: string, endDate: string) => {
-    if (!selectedMaterial) return;
-
+  const handleCreatePlan = async (data: {
+    planName: string;
+    kyokwa: string;
+    subject: string;
+    startDate: string;
+    endDate: string;
+    totalAmount: number;
+    type: 'textbook' | 'lecture';
+  }) => {
     try {
       const newPlan = await createPlanMutation.mutateAsync({
-        material: selectedMaterial,
-        startChapter: selectedStartChapter,
-        endChapter: selectedEndChapter,
-        startDate,
-        endDate,
+        title: data.planName,
+        type: data.type,
+        subject: data.subject,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        totalAmount: data.totalAmount,
+        completedAmount: 0,
+        weeklyTarget: 0,
       });
 
-      // 자동 분배 실행
-      if (routines && routines.length > 0) {
-        await distributeMutation.mutateAsync({
-          plan: newPlan as ExtendedLongTermPlan,
-          routines,
-          startDate: new Date(startDate),
-          endDate: new Date(endDate),
-        });
-      }
-
-      toast.success('계획이 생성되고 일정이 분배되었습니다!');
-      setIsPlanCreateOpen(false);
-      setSelectedMaterial(null);
+      toast.success('계획이 생성되었습니다!');
+      setIsPlanSetupOpen(false);
     } catch {
       toast.error('계획 생성에 실패했습니다.');
     }
@@ -1189,12 +1070,12 @@ function PlannerPlansPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold">장기 계획</h1>
-            <p className="mt-1 text-gray-500">교재를 선택하면 자동으로 일정이 분배됩니다</p>
+            <p className="mt-1 text-gray-500">계획을 세우고 일정을 관리하세요</p>
           </div>
         </div>
-        <Button onClick={() => guard(() => setIsMaterialSelectOpen(true))} className="gap-2">
+        <Button onClick={() => guard(() => setIsPlanSetupOpen(true))} className="gap-2">
           <Plus className="h-4 w-4" />
-          교재 선택하여 계획 추가
+          장기계획 세우기
         </Button>
       </div>
 
@@ -1282,9 +1163,9 @@ function PlannerPlansPage() {
               <BookOpen className="mx-auto mb-4 h-12 w-12 text-gray-300" />
               <p className="mb-2 text-gray-500">등록된 장기 계획이 없습니다.</p>
               <p className="mb-4 text-sm text-gray-400">
-                교재를 선택하면 목차에서 범위를 정하고 자동으로 일정이 분배됩니다.
+                계획명, 교과, 과목을 선택하고 기간을 설정하여 장기 계획을 시작하세요.
               </p>
-              <Button onClick={() => guard(() => setIsMaterialSelectOpen(true))} className="gap-2">
+              <Button onClick={() => guard(() => setIsPlanSetupOpen(true))} className="gap-2">
                 <Plus className="h-4 w-4" />첫 계획 추가하기
               </Button>
             </CardContent>
@@ -1292,22 +1173,12 @@ function PlannerPlansPage() {
         )}
       </div>
 
-      {/* 교재 선택 다이얼로그 */}
-      <MaterialSelectDialog
-        open={isMaterialSelectOpen}
-        onOpenChange={setIsMaterialSelectOpen}
-        onSelect={handleMaterialSelect}
-      />
-
-      {/* 계획 생성 다이얼로그 */}
-      <PlanCreateDialog
-        open={isPlanCreateOpen}
-        onOpenChange={setIsPlanCreateOpen}
-        material={selectedMaterial}
-        startChapter={selectedStartChapter}
-        endChapter={selectedEndChapter}
+      {/* 장기 계획 설정 다이얼로그 */}
+      <PlanSetupDialog
+        open={isPlanSetupOpen}
+        onOpenChange={setIsPlanSetupOpen}
         onSubmit={handleCreatePlan}
-        isLoading={createPlanMutation.isPending || distributeMutation.isPending}
+        isLoading={createPlanMutation.isPending}
       />
 
       {LoginGuardModal}

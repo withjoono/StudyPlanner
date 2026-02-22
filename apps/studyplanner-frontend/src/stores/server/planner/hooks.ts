@@ -1,25 +1,16 @@
 /**
- * 플래너 API Hooks (Mock)
+ * 플래너 API Hooks
  *
- * TanStack Query 기반 데이터 패칭 훅
- * 실제 API 연결 전까지는 mock 데이터 사용
+ * TanStack Query 기반 실제 백엔드 API 연결
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  mockRoutines,
-  mockPlans,
-  mockPlannerItems,
-  mockWeeklyProgress,
-  mockDashboard,
-  mockNotices,
-  mockMentors,
-  mockMaterials,
-  mockDailyMissions,
   distributePlanToMissions,
   type Material,
   type ExtendedLongTermPlan,
-} from './mock-data';
+  type DailyMission,
+} from './planner-types';
 import type { Routine, LongTermPlan } from '@/types/planner';
 import { plannerClient } from '@/lib/api/instances';
 import { useAuthStore } from '@/stores/client';
@@ -55,13 +46,16 @@ export const plannerKeys = {
 // ============================================
 
 export function useGetTodayDashboard() {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: plannerKeys.dashboard(),
     queryFn: async () => {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return mockDashboard;
+      const response = await plannerClient.get('/planner/dashboard', {
+        params: { memberId: user?.id },
+      });
+      return response.data;
     },
+    enabled: !!user?.id,
   });
 }
 
@@ -69,8 +63,8 @@ export function useGetNotices() {
   return useQuery({
     queryKey: plannerKeys.notices(),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return mockNotices;
+      const response = await plannerClient.get('/planner/notices');
+      return response.data;
     },
   });
 }
@@ -79,8 +73,8 @@ export function useGetPlannerMentors() {
   return useQuery({
     queryKey: plannerKeys.mentors(),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return mockMentors;
+      const response = await plannerClient.get('/planner/mentors');
+      return response.data;
     },
   });
 }
@@ -90,31 +84,34 @@ export function useGetPlannerMentors() {
 // ============================================
 
 export function useGetRoutines() {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: plannerKeys.routines(),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return [...mockRoutines];
+      const response = await plannerClient.get('/planner/routines', {
+        params: { memberId: user?.id },
+      });
+      return response.data as Routine[];
     },
+    enabled: !!user?.id,
   });
 }
 
 export function useCreateRoutine() {
   const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
 
   return useMutation({
     mutationFn: async (data: Omit<Routine, 'id'>) => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      const newRoutine: Routine = { ...data, id: Date.now() };
-      // Mock 데이터에도 추가
-      mockRoutines.push(newRoutine);
-      return newRoutine;
+      const response = await plannerClient.post('/planner/routines', {
+        ...data,
+        memberId: user?.id,
+      });
+      return response.data as Routine;
     },
     onSuccess: (newRoutine) => {
-      // 캐시 직접 업데이트
       queryClient.setQueryData<Routine[]>(plannerKeys.routines(), (old) => {
         if (!old) return [newRoutine];
-        // 이미 추가되어 있으면 무시
         if (old.find((r) => r.id === newRoutine.id)) return old;
         return [...old, newRoutine];
       });
@@ -127,16 +124,10 @@ export function useUpdateRoutine() {
 
   return useMutation({
     mutationFn: async (data: Routine) => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      // Mock 데이터 업데이트
-      const idx = mockRoutines.findIndex((r) => r.id === data.id);
-      if (idx !== -1) {
-        mockRoutines[idx] = data;
-      }
-      return data;
+      const response = await plannerClient.put(`/planner/routines/${data.id}`, data);
+      return response.data as Routine;
     },
     onSuccess: (updatedRoutine) => {
-      // 캐시 직접 업데이트
       queryClient.setQueryData<Routine[]>(plannerKeys.routines(), (old) => {
         if (!old) return [updatedRoutine];
         return old.map((r) => (r.id === updatedRoutine.id ? updatedRoutine : r));
@@ -150,16 +141,10 @@ export function useDeleteRoutine() {
 
   return useMutation({
     mutationFn: async (id: number) => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      // Mock 데이터에서 삭제
-      const idx = mockRoutines.findIndex((r) => r.id === id);
-      if (idx !== -1) {
-        mockRoutines.splice(idx, 1);
-      }
+      await plannerClient.delete(`/planner/routines/${id}`);
       return id;
     },
     onSuccess: (deletedId) => {
-      // 캐시 직접 업데이트
       queryClient.setQueryData<Routine[]>(plannerKeys.routines(), (old) => {
         if (!old) return [];
         return old.filter((r) => r.id !== deletedId);
@@ -173,26 +158,37 @@ export function useDeleteRoutine() {
 // ============================================
 
 export function useGetPlans() {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: plannerKeys.plans(),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return mockPlans;
+      const response = await plannerClient.get('/planner/plans', {
+        params: { memberId: user?.id },
+      });
+      return response.data as ExtendedLongTermPlan[];
     },
+    enabled: !!user?.id,
   });
 }
 
 export function useCreatePlan() {
   const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
 
   return useMutation({
     mutationFn: async (data: Omit<LongTermPlan, 'id'>) => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const newPlan: LongTermPlan = { ...data, id: Date.now() };
-      return newPlan;
+      const response = await plannerClient.post('/planner/plans', {
+        ...data,
+        memberId: user?.id,
+      });
+      return response.data as LongTermPlan;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: plannerKeys.plans() });
+    onSuccess: (newPlan) => {
+      queryClient.setQueryData(plannerKeys.plans(), (old: any) => {
+        if (!old) return [newPlan];
+        if (old.find((p: any) => p.id === newPlan.id)) return old;
+        return [...old, newPlan];
+      });
     },
   });
 }
@@ -202,11 +198,14 @@ export function useUpdatePlan() {
 
   return useMutation({
     mutationFn: async (data: LongTermPlan) => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return data;
+      const response = await plannerClient.put(`/planner/plans/${data.id}`, data);
+      return response.data as LongTermPlan;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: plannerKeys.plans() });
+    onSuccess: (updatedPlan) => {
+      queryClient.setQueryData(plannerKeys.plans(), (old: any) => {
+        if (!old) return [updatedPlan];
+        return old.map((p: any) => (p.id === updatedPlan.id ? updatedPlan : p));
+      });
     },
   });
 }
@@ -216,11 +215,14 @@ export function useDeletePlan() {
 
   return useMutation({
     mutationFn: async (id: number) => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await plannerClient.delete(`/planner/plans/${id}`);
       return id;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: plannerKeys.plans() });
+    onSuccess: (deletedId) => {
+      queryClient.setQueryData(plannerKeys.plans(), (old: any) => {
+        if (!old) return [];
+        return old.filter((p: any) => p.id !== deletedId);
+      });
     },
   });
 }
@@ -236,11 +238,16 @@ export function useUpdatePlanProgress() {
       planId: number;
       completedAmount: number;
     }) => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return { planId, completedAmount };
+      const response = await plannerClient.put(`/planner/plans/${planId}/progress`, {
+        completedAmount,
+      });
+      return response.data ?? { planId, completedAmount };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: plannerKeys.plans() });
+    onSuccess: ({ planId, completedAmount }: any) => {
+      queryClient.setQueryData(plannerKeys.plans(), (old: any) => {
+        if (!old) return [];
+        return old.map((p: any) => (p.id === planId ? { ...p, completedAmount } : p));
+      });
     },
   });
 }
@@ -250,12 +257,16 @@ export function useUpdatePlanProgress() {
 // ============================================
 
 export function useGetPlannerItems() {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: plannerKeys.items(),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return mockPlannerItems;
+      const response = await plannerClient.get('/planner/items', {
+        params: { memberId: user?.id },
+      });
+      return response.data;
     },
+    enabled: !!user?.id,
   });
 }
 
@@ -264,11 +275,14 @@ export function useUpdateAchievement() {
 
   return useMutation({
     mutationFn: async ({ itemId, progress }: { itemId: number; progress: number }) => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return { itemId, progress };
+      const response = await plannerClient.put(`/planner/items/${itemId}/progress`, { progress });
+      return response.data ?? { itemId, progress };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: plannerKeys.items() });
+    onSuccess: ({ itemId, progress }: any) => {
+      queryClient.setQueryData(plannerKeys.items(), (old: any) => {
+        if (!old) return [];
+        return old.map((i: any) => (i.id === itemId ? { ...i, progress } : i));
+      });
       queryClient.invalidateQueries({ queryKey: plannerKeys.dashboard() });
     },
   });
@@ -279,11 +293,17 @@ export function useCompleteMission() {
 
   return useMutation({
     mutationFn: async (itemId: number) => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return itemId;
+      const response = await plannerClient.put(`/planner/items/${itemId}/complete`);
+      return response.data ?? itemId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: plannerKeys.items() });
+    onSuccess: (completedId: any) => {
+      const id = typeof completedId === 'object' ? completedId.id : completedId;
+      queryClient.setQueryData(plannerKeys.items(), (old: any) => {
+        if (!old) return [];
+        return old.map((i: any) =>
+          i.id === id ? { ...i, status: 'completed', progress: 100 } : i,
+        );
+      });
       queryClient.invalidateQueries({ queryKey: plannerKeys.dashboard() });
     },
   });
@@ -294,22 +314,30 @@ export function useCompleteMission() {
 // ============================================
 
 export function useGetWeeklyStudyProgress() {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: plannerKeys.weeklyProgress(),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      return mockWeeklyProgress;
+      const response = await plannerClient.get('/planner/weekly-progress', {
+        params: { memberId: user?.id },
+      });
+      return response.data;
     },
+    enabled: !!user?.id,
   });
 }
 
 export function useGetRank(period: 'D' | 'W' | 'M') {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: plannerKeys.rank(period),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return mockDashboard.rank;
+      const response = await plannerClient.get('/planner/rank', {
+        params: { memberId: user?.id, period },
+      });
+      return response.data;
     },
+    enabled: !!user?.id,
   });
 }
 
@@ -322,8 +350,8 @@ export function useGetMaterials() {
   return useQuery({
     queryKey: plannerKeys.materials(),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return mockMaterials;
+      const response = await plannerClient.get('/planner/materials');
+      return response.data as Material[];
     },
   });
 }
@@ -333,8 +361,8 @@ export function useGetMaterial(id: number) {
   return useQuery({
     queryKey: plannerKeys.material(id),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      return mockMaterials.find((m) => m.id === id);
+      const response = await plannerClient.get(`/planner/materials/${id}`);
+      return response.data as Material;
     },
     enabled: id > 0,
   });
@@ -345,8 +373,10 @@ export function useGetMaterialsBySubject(subjectCode: string) {
   return useQuery({
     queryKey: plannerKeys.materialsBySubject(subjectCode),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      return mockMaterials.filter((m) => m.subjectCode === subjectCode);
+      const response = await plannerClient.get('/planner/materials', {
+        params: { subjectCode },
+      });
+      return response.data as Material[];
     },
     enabled: !!subjectCode,
   });
@@ -357,43 +387,46 @@ export function useSearchMaterials(keyword: string) {
   return useQuery({
     queryKey: [...plannerKeys.materials(), 'search', keyword],
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      if (!keyword) return mockMaterials;
-      const lower = keyword.toLowerCase();
-      return mockMaterials.filter(
-        (m) =>
-          m.name.toLowerCase().includes(lower) ||
-          m.publisher?.toLowerCase().includes(lower) ||
-          m.author?.toLowerCase().includes(lower),
-      );
+      const response = await plannerClient.get('/planner/materials/search', {
+        params: { keyword },
+      });
+      return response.data as Material[];
     },
+    enabled: !!keyword,
   });
 }
 
 // ============================================
-// 일간 미션 Hooks (자동 분배 결과)
+// 일간 미션 Hooks
 // ============================================
 
 /** 모든 일간 미션 조회 */
 export function useGetDailyMissions() {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: plannerKeys.dailyMissions(),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return mockDailyMissions;
+      const response = await plannerClient.get('/planner/daily-missions', {
+        params: { memberId: user?.id },
+      });
+      return response.data as DailyMission[];
     },
+    enabled: !!user?.id,
   });
 }
 
 /** 특정 날짜의 일간 미션 조회 */
 export function useGetDailyMissionsByDate(date: string) {
+  const user = useAuthStore((state) => state.user);
   return useQuery({
     queryKey: plannerKeys.dailyMissionsByDate(date),
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      return mockDailyMissions.filter((m) => m.date === date);
+      const response = await plannerClient.get('/planner/daily-missions', {
+        params: { memberId: user?.id, date },
+      });
+      return response.data as DailyMission[];
     },
-    enabled: !!date,
+    enabled: !!date && !!user?.id,
   });
 }
 
@@ -413,11 +446,13 @@ export function useDistributePlan() {
       startDate: Date;
       endDate: Date;
     }) => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
       const missions = distributePlanToMissions(plan, routines, startDate, endDate);
-      // Mock 데이터에 추가
-      mockDailyMissions.push(...missions);
-      return missions;
+      // 서버에 분배 결과 전송
+      const response = await plannerClient.post('/planner/daily-missions/distribute', {
+        planId: plan.id,
+        missions,
+      });
+      return response.data ?? missions;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: plannerKeys.dailyMissions() });
@@ -433,14 +468,10 @@ export function useCompleteDailyMission() {
 
   return useMutation({
     mutationFn: async ({ missionId, progress }: { missionId: number; progress: number }) => {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      // Mock 데이터 업데이트
-      const mission = mockDailyMissions.find((m) => m.id === missionId);
-      if (mission) {
-        mission.progress = progress;
-        mission.status = progress >= 100 ? 'completed' : 'pending';
-      }
-      return { missionId, progress };
+      const response = await plannerClient.put(`/planner/daily-missions/${missionId}/progress`, {
+        progress,
+      });
+      return response.data ?? { missionId, progress };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: plannerKeys.dailyMissions() });
@@ -474,12 +505,28 @@ export interface SubjectsResponse {
   groups: SubjectGroup[];
 }
 
-/** 사용자 ID 기반 교과/과목 목록 조회 */
-export function useGetSubjects() {
-  const user = useAuthStore((state) => state.user);
-  const userId = user?.id ? `sp_${user.id}` : undefined;
+/** 사용자 ID 기반 교육과정 판별 (백엔드 로직과 동일) */
+function getCurriculumFromUserId(userId?: string): '2015' | '2022' {
+  if (!userId) return '2022';
+  // sp_ 접두사 제거
+  let idBody = userId.startsWith('sp_') ? userId.substring(3) : userId;
+  // S(학생)/T(선생)/P(학부모) 역할 접두사 제거
+  if (/^[STP]/i.test(idBody)) {
+    idBody = idBody.substring(1);
+  }
+  const prefix = idBody.substring(0, 4).toUpperCase();
+  if (['26H3', '26H4', '26H0'].includes(prefix)) return '2015';
+  return '2022';
+}
 
-  return useQuery({
+/** 사용자 ID 기반 교과/과목 목록 조회 */
+export function useGetSubjects(): { data: SubjectsResponse | undefined; isLoading: boolean } {
+  const user = useAuthStore((state) => state.user);
+  // user.id는 이미 "sp_S26H208011" 형태의 string
+  const userId = user?.id || undefined;
+  const curriculum = getCurriculumFromUserId(userId);
+
+  const query = useQuery({
     queryKey: plannerKeys.subjects(userId),
     queryFn: async (): Promise<SubjectsResponse> => {
       const response = await plannerClient.get('/planner/subjects', {
@@ -488,14 +535,23 @@ export function useGetSubjects() {
       return response.data;
     },
     enabled: !!userId,
-    staleTime: 1000 * 60 * 30, // 30분 캐시 (과목 데이터는 자주 안 바뀜)
+    staleTime: 1000 * 60 * 30,
+    retry: 1,
   });
+
+  // API 실패 시 빈 그룹 반환 (더미 데이터 없음)
+  const data: SubjectsResponse = query.data ?? {
+    curriculum,
+    groups: [],
+  };
+
+  return { data, isLoading: query.isLoading };
 }
 
 /** 과목명 flat 리스트 (루틴 폼의 소분류 선택에 사용) */
 export function useSubjectNames(): string[] {
   const { data } = useGetSubjects();
-  if (!data?.groups) return ['국어', '영어', '수학', '과학', '사회', '기타'];
+  if (!data?.groups?.length) return ['국어', '영어', '수학', '과학', '사회', '기타'];
 
   // 교과 목록을 교과명으로 반환 (중복 제거)
   const kyokwaNames = data.groups.map((g) => g.kyokwa);
@@ -509,6 +565,7 @@ export function useSubjectNames(): string[] {
 /** 교재 선택해서 장기 계획 생성 */
 export function useCreatePlanWithMaterial() {
   const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
 
   return useMutation({
     mutationFn: async ({
@@ -524,22 +581,17 @@ export function useCreatePlanWithMaterial() {
       startDate: string;
       endDate: string;
     }) => {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // 선택된 챕터 범위의 페이지/강의 수 계산
       const selectedChapters = material.chapters.filter(
         (c) => c.chapterNumber >= startChapter && c.chapterNumber <= endChapter,
       );
 
       const startPage = selectedChapters[0]?.startPage || 1;
-      const endPage =
+      const lastEndPage =
         selectedChapters[selectedChapters.length - 1]?.endPage || material.totalPages || 100;
-      const totalPages = endPage - startPage;
+      const totalPages = lastEndPage - startPage;
 
-      // 주 단위 계산 (월요일 기준, 짜투리 버림)
       const start = new Date(startDate);
       const end = new Date(endDate);
-      // 첫 월요일 찾기
       const startDay = start.getDay();
       const firstMondayOffset = startDay === 0 ? 1 : startDay === 1 ? 0 : 8 - startDay;
       const firstMonday = new Date(start);
@@ -547,17 +599,17 @@ export function useCreatePlanWithMaterial() {
       const totalDays = Math.floor((end.getTime() - firstMonday.getTime()) / (1000 * 60 * 60 * 24));
       const nWeeks = Math.max(1, Math.floor(totalDays / 7));
       const weeklyTarget = Math.ceil(totalPages / nWeeks);
-      const dailyTarget = Math.ceil(totalPages / (nWeeks * 5)); // 참고용
+      const dailyTarget = Math.ceil(totalPages / (nWeeks * 5));
 
-      const newPlan: ExtendedLongTermPlan = {
-        id: Date.now(),
+      const response = await plannerClient.post('/planner/plans', {
+        memberId: user?.id,
         title: `${material.name} ${startChapter}~${endChapter}장`,
         subject: subjectCodeToKorean(material.subjectCode),
         type: material.category === 'lecture' ? 'lecture' : 'textbook',
         material: material.name,
         materialId: material.id,
         startPage,
-        endPage,
+        endPage: lastEndPage,
         totalAmount: totalPages,
         completedAmount: 0,
         startDate,
@@ -566,10 +618,9 @@ export function useCreatePlanWithMaterial() {
         weeklyTarget,
         nWeeks,
         isDistributed: false,
-      };
+      });
 
-      mockPlans.push(newPlan);
-      return newPlan;
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: plannerKeys.plans() });

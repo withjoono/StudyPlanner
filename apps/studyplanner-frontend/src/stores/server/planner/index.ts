@@ -1,3 +1,3 @@
 export * from './hooks';
-export * from './mock-data';
+export * from './planner-types';
 export * from './comments';

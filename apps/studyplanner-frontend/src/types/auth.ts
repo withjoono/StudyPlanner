@@ -4,7 +4,7 @@
 
 // 회원 정보
 export interface Member {
-  id: number;
+  id: string; // Hub varchar ID → SP ID (예: "sp_S26H208011")
   email: string;
   userName: string;
   phone?: string;
@@ -77,7 +77,3 @@ export interface PasswordResetConfirmRequest {
   token: string;
   newPassword: string;
 }
-
-
-
-
