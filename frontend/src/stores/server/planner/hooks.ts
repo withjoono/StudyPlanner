@@ -641,14 +641,13 @@ export function useGetSubjects(): { data: SubjectsResponse | undefined; isLoadin
   const curriculum = getCurriculumFromUserId(userId);
 
   const query = useQuery({
-    queryKey: plannerKeys.subjects(userId),
+    queryKey: plannerKeys.subjects(userId || 'default'),
     queryFn: async (): Promise<SubjectsResponse> => {
       const response = await plannerClient.get('/planner/subjects', {
-        params: { userId },
+        params: { userId: userId || '' },
       });
       return response.data;
     },
-    enabled: !!userId,
     staleTime: 1000 * 60 * 30,
     retry: 1,
   });
