@@ -35,7 +35,7 @@ export class PlannerController {
       const subjects = (await this.prisma.$queryRawUnsafe(`
         SELECT id, kyokwa, kyokwa_code, classification, classification_code,
                subject_name, subject_code, evaluation_method
-        FROM ${tableName}
+        FROM hub.${tableName}
         ORDER BY kyokwa_code, classification_code, subject_code
       `)) as any[];
 
