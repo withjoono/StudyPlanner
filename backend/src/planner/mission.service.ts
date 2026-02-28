@@ -66,6 +66,36 @@ export class MissionService {
     private readonly sharedSchedule: SharedScheduleService,
   ) {}
 
+  /** member_id로 학생 조회, 없으면 자동 생성 */
+  private async getOrCreateStudent(memberId: number | string): Promise<bigint> {
+    // 숫자형 member_id인 경우
+    if (typeof memberId === 'number' || /^\d+$/.test(String(memberId))) {
+      const id = BigInt(memberId);
+      const existing = await this.prisma.student.findFirst({ where: { id } });
+      if (existing) return existing.id;
+    }
+
+    // 문자열 userId ("sp_S26H208011") 인 경우
+    const userIdStr = String(memberId);
+    const byUserId = await this.prisma.student.findFirst({
+      where: { userId: userIdStr },
+    });
+    if (byUserId) return byUserId.id;
+
+    // 학생 자동 생성
+    const code = `SP${Date.now()}`;
+    const student = await this.prisma.student.create({
+      data: {
+        studentCode: code,
+        userId: userIdStr.startsWith('sp_') ? userIdStr : undefined,
+        year: new Date().getFullYear(),
+        schoolLevel: 'high',
+        name: '학생',
+      },
+    });
+    return student.id;
+  }
+
   private formatTime(date: Date | string | null): string {
     if (!date) return '00:00';
     if (typeof date === 'string') return date;
@@ -156,13 +186,13 @@ export class MissionService {
 
   /** 미션 생성 */
   async createMission(dto: MissionDto): Promise<MissionResponse> {
-    const studentId = dto.member_id || 1;
+    const resolvedStudentId = await this.getOrCreateStudent(dto.member_id || 1);
     const date = new Date(dto.date);
 
     const mission = await this.prisma.dailyMission.create({
       data: {
-        missionCode: this.generateMissionCode(studentId, date),
-        studentId: BigInt(studentId),
+        missionCode: this.generateMissionCode(Number(resolvedStudentId), date),
+        studentId: resolvedStudentId,
         date: date,
         startTime: this.parseTime(dto.start_time),
         endTime: this.parseTime(dto.end_time),

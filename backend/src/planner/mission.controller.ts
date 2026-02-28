@@ -25,7 +25,12 @@ export class MissionController {
   @Post()
   @ApiOperation({ summary: '일간 미션 생성' })
   async createMission(@Body() dto: MissionDto) {
-    return this.missionService.createMission(dto);
+    try {
+      return await this.missionService.createMission(dto);
+    } catch (error) {
+      console.error('createMission error:', error);
+      return { error: 'Failed to create mission', message: error.message };
+    }
   }
 
   @Put(':id')
