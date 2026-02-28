@@ -4,8 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "frontend",
+    "backend"
   ],
   "scripts": {
     "dev": "yarn workspace @gb-planner/frontend dev",

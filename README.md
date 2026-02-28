@@ -8,13 +8,10 @@
 
 ```
 gb-planner/
-├── apps/
-│   ├── frontend/          # React 프론트엔드
-│   └── backend/           # NestJS 백엔드 (플래너 전용)
-├── packages/
-│   └── shared-types/      # 공유 타입 패키지
+├── frontend/              # React 프론트엔드
+├── backend/               # NestJS 백엔드 (플래너 전용)
 ├── package.json           # 루트 워크스페이스 설정
-└── docs/                  # 문서
+└── ...설정파일들
 ```
 
 ### 외부 연동
@@ -23,7 +20,7 @@ gb-planner/
 | ------- | ------------------- | ---------------------------------------------- |
 | **Hub** | `E:\Dev\github\Hub` | 통합 백엔드/프론트엔드 (인증, 결제, 회원 관리) |
 
-자세한 아키텍처는 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)를 참고하세요.
+자세한 아키텍처는 [backend/docs/ARCHITECTURE.md](./backend/docs/ARCHITECTURE.md)를 참고하세요.
 
 ## 🚀 시작하기
 
@@ -36,12 +33,12 @@ yarn install
 ### 2. 공유 타입 빌드
 
 ```bash
-cd packages/shared-types && yarn build
+cd shared && yarn build
 ```
 
 ### 3. 환경 변수 설정
 
-`apps/studyplanner-frontend/.env.local` 파일을 생성하고 다음 내용을 추가하세요:
+`frontend/.env.local` 파일을 생성하고 다음 내용을 추가하세요:
 
 ```env
 # 프론트엔드 URL
@@ -151,7 +148,7 @@ yarn format:check           # Prettier 검사만
 
 ## 📖 문서
 
-- [아키텍처 가이드](./docs/ARCHITECTURE.md)
+- [아키텍처 가이드](./backend/docs/ARCHITECTURE.md)
 - [기여 가이드](./CONTRIBUTING.md)
 
 ## 🤝 기여하기

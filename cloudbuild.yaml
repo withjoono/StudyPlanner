@@ -6,7 +6,7 @@ steps:
       - "-t"
       - "asia-northeast3-docker.pkg.dev/studyplanner-new/backend/studyplanner-backend:latest"
       - "-f"
-      - "apps/studyplanner-backend/Dockerfile"
+      - "backend/Dockerfile"
       - "."
 
   # Push the container image to Artifact Registry

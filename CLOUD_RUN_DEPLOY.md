@@ -238,7 +238,7 @@ gcloud run services update studyplanner-backend \
 gcloud builds log [BUILD_ID]
 
 # 로컬에서 Docker 빌드 테스트
-docker build -f apps/backend/Dockerfile -t test-backend .
+docker build -f backend/Dockerfile -t test-backend .
 ```
 
 ### 2. 배포 실패
@@ -303,7 +303,7 @@ nslookup api.studyplanner.kr
 
 Backend 배포 완료 후 Frontend의 환경 변수를 업데이트하세요:
 
-**apps/frontend/.env.production:**
+**frontend/.env.production:**
 
 ```env
 VITE_API_URL=https://api.studyplanner.kr

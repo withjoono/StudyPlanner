@@ -43,7 +43,7 @@ yarn firebase:deploy
 
 이 명령은:
 
-1. Frontend를 빌드합니다 (`apps/frontend/dist`에 빌드됨)
+1. Frontend를 빌드합니다 (`frontend/dist`에 빌드됨)
 2. Firebase에 배포합니다
 
 ### 방법 2: Hosting만 배포
@@ -72,7 +72,7 @@ firebase deploy --only hosting
 
 프로덕션 환경에서 사용할 환경 변수가 있다면:
 
-1. `apps/frontend/.env.production` 파일을 생성하세요
+1. `frontend/.env.production` 파일을 생성하세요
 2. 필요한 환경 변수를 설정하세요 (예: API 엔드포인트)
 
 ```env
