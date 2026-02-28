@@ -467,8 +467,22 @@ function MissionDialog({
                       debouncedQuery.length >= 1 &&
                       searchResults &&
                       searchResults.length === 0 && (
-                        <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white p-2 text-center text-xs text-gray-400 shadow-lg">
-                          검색 결과 없음
+                        <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              update('materialName', searchQuery);
+                              update('materialId', undefined);
+                              setSelectedMaterial({ name: searchQuery });
+                              setShowResults(false);
+                            }}
+                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-blue-50"
+                          >
+                            <span className="text-blue-500">+</span>
+                            <span className="text-gray-700">
+                              "<span className="font-medium">{searchQuery}</span>" 직접 입력
+                            </span>
+                          </button>
                         </div>
                       )}
                   </div>
