@@ -10,11 +10,16 @@ export class MissionController {
   @Get()
   @ApiOperation({ summary: '일간 미션 조회 (날짜별 또는 전체)' })
   async getMissions(@Query('member_id') memberId?: number, @Query('date') date?: string) {
-    const studentId = memberId || 1;
-    if (date) {
-      return this.missionService.getMissionsByDate(studentId, date);
+    try {
+      const studentId = memberId || 1;
+      if (date) {
+        return this.missionService.getMissionsByDate(studentId, date);
+      }
+      return this.missionService.getAllMissions(studentId);
+    } catch (error) {
+      console.error('getMissions error:', error);
+      return [];
     }
-    return this.missionService.getAllMissions(studentId);
   }
 
   @Post()
