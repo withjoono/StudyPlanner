@@ -29,30 +29,34 @@ export class PlannerController {
   @ApiOperation({ summary: '사용 가능한 교과/과목 목록 (사용자 ID 기반)' })
   async getSubjects(@Query('userId') userId?: string) {
     const curriculum = this.getCurriculum(userId || '');
-    const tableName = curriculum === '2015' ? 'hub_2015_kyokwa_subject' : 'hub_2022_kyokwa_subject';
 
     try {
-      const subjects = (await this.prisma.$queryRawUnsafe(`
-        SELECT id, kyokwa, kyokwa_code, classification, classification_code,
-               subject_name, subject_code, evaluation_method
-        FROM hub.${tableName}
-        ORDER BY kyokwa_code, classification_code, subject_code
-      `)) as any[];
+      const model = curriculum === '2015'
+        ? this.prisma.sp2015KyokwaSubject
+        : this.prisma.sp2022KyokwaSubject;
+
+      const subjects = await (model as any).findMany({
+        orderBy: [
+          { kyokwaCode: 'asc' },
+          { classificationCode: 'asc' },
+          { subjectCode: 'asc' },
+        ],
+      });
 
       // 교과별 그룹핑
       const grouped: Record<string, { kyokwa: string; kyokwaCode: string; subjects: any[] }> = {};
       for (const s of subjects) {
-        const key = s.kyokwa_code || 'etc';
+        const key = s.kyokwaCode || 'etc';
         if (!grouped[key]) {
           grouped[key] = { kyokwa: s.kyokwa, kyokwaCode: key, subjects: [] };
         }
         grouped[key].subjects.push({
           id: s.id,
-          subjectName: s.subject_name,
-          subjectCode: s.subject_code,
+          subjectName: s.subjectName,
+          subjectCode: s.subjectCode,
           classification: s.classification,
-          classificationCode: s.classification_code,
-          evaluationMethod: s.evaluation_method,
+          classificationCode: s.classificationCode,
+          evaluationMethod: s.evaluationMethod,
         });
       }
 
@@ -61,7 +65,7 @@ export class PlannerController {
         groups: Object.values(grouped),
       };
     } catch (error) {
-      console.error(`Failed to query ${tableName}:`, error);
+      console.error(`Failed to query kyokwa subjects:`, error);
       return { curriculum, groups: [] };
     }
   }

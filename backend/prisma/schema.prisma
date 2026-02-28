@@ -899,3 +899,33 @@ model PlannerComment {
   @@index([studentId, isRead], name: "idx_pc_unread")
   @@map("sp_planner_comment")
 }
+
+/// 2015 교육과정 교과/과목
+model Sp2015KyokwaSubject {
+  id                 String  @id @db.VarChar(20)
+  kyokwa             String  @db.VarChar(100)
+  kyokwaCode         String  @map("kyokwa_code") @db.VarChar(20)
+  classification     String  @db.VarChar(50)
+  classificationCode Int     @map("classification_code")
+  subjectName        String  @map("subject_name") @db.VarChar(100)
+  subjectCode        Int     @map("subject_code")
+  evaluationMethod   String? @map("evaluation_method") @db.VarChar(50)
+
+  @@index([kyokwaCode], name: "idx_sp2015_kyokwa_code")
+  @@map("sp_2015_kyokwa_subject")
+}
+
+/// 2022 교육과정 교과/과목
+model Sp2022KyokwaSubject {
+  id                 String  @id @db.VarChar(20)
+  kyokwa             String  @db.VarChar(100)
+  kyokwaCode         String  @map("kyokwa_code") @db.VarChar(20)
+  classification     String  @db.VarChar(50)
+  classificationCode Int     @map("classification_code")
+  subjectName        String  @map("subject_name") @db.VarChar(100)
+  subjectCode        Int     @map("subject_code")
+  evaluationMethod   String? @map("evaluation_method") @db.VarChar(50)
+
+  @@index([kyokwaCode], name: "idx_sp2022_kyokwa_code")
+  @@map("sp_2022_kyokwa_subject")
+}
