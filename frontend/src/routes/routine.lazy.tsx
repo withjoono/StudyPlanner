@@ -4,14 +4,22 @@
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, ArrowLeft, Loader2, MessageSquare } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  ArrowLeft,
+  Loader2,
+  MessageSquare,
+  Calendar,
+} from 'lucide-react';
 import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
   useGetRoutines,
   useCreateRoutine,
   useUpdateRoutine,
   useDeleteRoutine,
-  useSubjectNames,
+  useGetSubjects,
 } from '@/stores/server/planner';
 import type { Routine, RoutineMajorCategory } from '@/types/planner';
 import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, SUBJECT_COLORS } from '@/types/planner';
@@ -559,7 +567,11 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
 
                     {dayRoutines.map((routine) => {
                       const pos = getRoutinePosition(routine);
-                      const colors = MAJOR_CATEGORY_COLORS[routine.majorCategory];
+                      const colors = MAJOR_CATEGORY_COLORS[routine.majorCategory] || {
+                        bg: 'bg-gray-500',
+                        border: 'border-gray-600',
+                        text: 'text-gray-600',
+                      };
                       return (
                         <div
                           key={routine.id}
@@ -636,7 +648,7 @@ function RoutineFormDialog({
   onSubmit,
   isLoading,
 }: RoutineFormDialogProps) {
-  const subjectNames = useSubjectNames();
+  const { data: subjectsData } = useGetSubjects();
   const defaultStartDate = formatDateStr(getWeekStart(new Date()));
   const defaultEndDate = formatDateStr(new Date(new Date().setMonth(new Date().getMonth() + 3)));
 
@@ -652,6 +664,17 @@ function RoutineFormDialog({
     endDate: routine?.endDate || defaultEndDate,
   });
 
+  // 교과 선택 상태
+  const [selectedKyokwa, setSelectedKyokwa] = useState<string>('');
+
+  // 교과/과목 그룹
+  const subjectGroups = subjectsData?.groups || [];
+  const curriculumLabel = subjectsData?.curriculum === '2015' ? '2015 교육과정' : '2022 교육과정';
+
+  // 선택된 교과의 과목 목록
+  const selectedGroup = subjectGroups.find((g) => g.kyokwa === selectedKyokwa);
+  const availableSubjects = selectedGroup?.subjects || [];
+
   // 폼이 열릴 때 초기값 설정
   useState(() => {
     if (routine) {
@@ -666,6 +689,13 @@ function RoutineFormDialog({
         startDate: routine.startDate,
         endDate: routine.endDate,
       });
+      // 기존 과목에서 교과 역추적
+      if (routine.subject) {
+        const matchGroup = subjectGroups.find((g) =>
+          g.subjects.some((s) => s.subjectName === routine.subject),
+        );
+        if (matchGroup) setSelectedKyokwa(matchGroup.kyokwa);
+      }
     }
   });
 
@@ -690,6 +720,15 @@ function RoutineFormDialog({
       majorCategory: category,
       subject: category === 'class' || category === 'self_study' ? formData.subject : '',
     });
+    if (category !== 'class' && category !== 'self_study') {
+      setSelectedKyokwa('');
+    }
+  };
+
+  // 교과 변경 시 과목 초기화
+  const handleKyokwaChange = (kyokwa: string) => {
+    setSelectedKyokwa(kyokwa);
+    setFormData({ ...formData, subject: '' });
   };
 
   const needsSubject =
@@ -705,7 +744,7 @@ function RoutineFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 제목 */}
           <div>
-            <Label htmlFor="title">루틴 이름</Label>
+            <Label htmlFor="title">주간 루틴 제목</Label>
             <Input
               id="title"
               value={formData.title}
@@ -715,26 +754,34 @@ function RoutineFormDialog({
             />
           </div>
 
-          {/* 기간 (주 단위) - 필수 */}
+          {/* 기간 */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="startDate">시작 날짜</Label>
+              <Label htmlFor="startDate" className="flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-blue-500" />
+                <span>시작</span>
+              </Label>
               <Input
                 id="startDate"
                 type="date"
                 value={formData.startDate}
                 onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                 required
+                className="mt-1 cursor-pointer border-blue-200 text-sm font-medium text-gray-700 hover:border-blue-400 focus:border-blue-500 focus:ring-blue-200"
               />
             </div>
             <div>
-              <Label htmlFor="endDate">종료 날짜</Label>
+              <Label htmlFor="endDate" className="flex items-center gap-1.5">
+                <Calendar className="h-4 w-4 text-orange-500" />
+                <span>종료</span>
+              </Label>
               <Input
                 id="endDate"
                 type="date"
                 value={formData.endDate}
                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                 required
+                className="mt-1 cursor-pointer border-orange-200 text-sm font-medium text-gray-700 hover:border-orange-400 focus:border-orange-500 focus:ring-orange-200"
               />
             </div>
           </div>
@@ -762,26 +809,59 @@ function RoutineFormDialog({
             </div>
           </div>
 
-          {/* 소분류 (과목) - 수업/자습일 때만 */}
+          {/* 교과 / 과목 선택 - 수업/자습일 때만 */}
           {needsSubject && (
-            <div>
-              <Label>소분류 (과목)</Label>
-              <div className="mt-2 grid grid-cols-3 gap-2">
-                {subjectNames.map((subject) => (
-                  <button
-                    key={subject}
-                    type="button"
-                    onClick={() => setFormData({ ...formData, subject })}
-                    className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                      formData.subject === subject
-                        ? 'bg-gray-800 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {subject}
-                  </button>
-                ))}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Label>교과 / 과목</Label>
+                <span className="rounded bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                  {curriculumLabel}
+                </span>
               </div>
+
+              {/* 교과 선택 드롭다운 */}
+              <div>
+                <select
+                  value={selectedKyokwa}
+                  onChange={(e) => handleKyokwaChange(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 shadow-sm transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">교과를 선택하세요</option>
+                  {subjectGroups.map((group) => (
+                    <option key={group.kyokwaCode} value={group.kyokwa}>
+                      {group.kyokwa}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 과목 선택 드롭다운 */}
+              {selectedKyokwa && (
+                <div>
+                  <select
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-700 shadow-sm transition-colors hover:border-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <option value="">과목을 선택하세요</option>
+                    {availableSubjects.map((subj) => (
+                      <option key={subj.id} value={subj.subjectName}>
+                        {subj.subjectName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* 선택된 과목 표시 */}
+              {formData.subject && (
+                <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2">
+                  <span className="text-xs text-blue-500">선택됨:</span>
+                  <span className="text-sm font-medium text-blue-700">
+                    {selectedKyokwa} &gt; {formData.subject}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -936,7 +1016,11 @@ function PlannerRoutinePage() {
       <div className="space-y-3">
         {routines && routines.length > 0 ? (
           routines.map((routine) => {
-            const colors = MAJOR_CATEGORY_COLORS[routine.majorCategory];
+            const colors = MAJOR_CATEGORY_COLORS[routine.majorCategory] || {
+              bg: 'bg-gray-500',
+              border: 'border-gray-600',
+              text: 'text-gray-600',
+            };
             return (
               <Card key={routine.id}>
                 <CardContent className="flex items-center justify-between p-4">
