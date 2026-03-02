@@ -201,8 +201,60 @@ function WeeklyRoutineSummaryCard({
     return Array.from(map.values()).sort((a, b) => b.totalTime - a.totalTime);
   }, [routines, weekStart, weekEnd]);
 
+  // 수업/자습/전체 과목별 시간 통계
+  const subjectStats = useMemo(() => {
+    const classSubjects: Record<string, number> = {};
+    const selfStudySubjects: Record<string, number> = {};
+    const combinedSubjects: Record<string, number> = {};
+
+    routines.forEach((routine) => {
+      // 기간 체크
+      if (routine.startDate && routine.endDate) {
+        const routineStart = new Date(routine.startDate);
+        const routineEnd = new Date(routine.endDate);
+        routineStart.setHours(0, 0, 0, 0);
+        routineEnd.setHours(23, 59, 59, 999);
+        if (weekStart > routineEnd || weekEnd < routineStart) return;
+      }
+
+      if (routine.majorCategory !== 'class' && routine.majorCategory !== 'self_study') return;
+      if (!routine.subject) return;
+
+      const [startH, startM] = routine.startTime.split(':').map(Number);
+      const [endH, endM] = routine.endTime.split(':').map(Number);
+      const duration = endH * 60 + endM - (startH * 60 + startM);
+      const activeDays = routine.days.filter(Boolean).length;
+      const weeklyMinutes = duration * activeDays;
+
+      if (routine.majorCategory === 'class') {
+        classSubjects[routine.subject] = (classSubjects[routine.subject] || 0) + weeklyMinutes;
+      } else {
+        selfStudySubjects[routine.subject] =
+          (selfStudySubjects[routine.subject] || 0) + weeklyMinutes;
+      }
+      combinedSubjects[routine.subject] = (combinedSubjects[routine.subject] || 0) + weeklyMinutes;
+    });
+
+    return { classSubjects, selfStudySubjects, combinedSubjects };
+  }, [routines, weekStart, weekEnd]);
+
+  const getSubjectPieData = (subjects: Record<string, number>): PieChartData[] => {
+    return Object.entries(subjects).map(([label, value]) => ({
+      label,
+      value,
+      color: SUBJECT_COLORS[label] || '#6b7280',
+    }));
+  };
+
   const totalMinutes = summaryBySubject.reduce((sum, s) => sum + s.totalTime, 0);
   const totalSessions = summaryBySubject.reduce((sum, s) => sum + s.count, 0);
+
+  // 수업 / 자습 총 시간
+  const classTotal = Object.values(subjectStats.classSubjects).reduce((sum, v) => sum + v, 0);
+  const selfStudyTotal = Object.values(subjectStats.selfStudySubjects).reduce(
+    (sum, v) => sum + v,
+    0,
+  );
 
   if (totalSessions === 0) {
     return null;
@@ -230,6 +282,59 @@ function WeeklyRoutineSummaryCard({
             <span className="text-blue-600">
               학습 <span className="font-semibold">{formatTime(totalMinutes)}</span>
             </span>
+          </div>
+        </div>
+
+        {/* 수업/자습 총 시간 요약 바 */}
+        <div className="mb-4 rounded-lg bg-gradient-to-r from-blue-50 to-orange-50 p-3">
+          <div className="flex items-center justify-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-blue-500" />
+              <span className="text-sm font-medium text-blue-700">
+                수업 {formatTime(classTotal)}
+              </span>
+            </div>
+            <div className="text-gray-300">|</div>
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-orange-500" />
+              <span className="text-sm font-medium text-orange-700">
+                자습 {formatTime(selfStudyTotal)}
+              </span>
+            </div>
+          </div>
+          {totalMinutes > 0 && (
+            <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-gray-200">
+              <div
+                className="bg-blue-500 transition-all"
+                style={{ width: `${(classTotal / totalMinutes) * 100}%` }}
+              />
+              <div
+                className="bg-orange-500 transition-all"
+                style={{ width: `${(selfStudyTotal / totalMinutes) * 100}%` }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* 과목별 원형 차트 */}
+        <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50 p-4">
+          <h4 className="mb-3 text-center text-sm font-semibold text-gray-600">과목별 시간 비중</h4>
+          <div className="grid grid-cols-3 gap-4">
+            <PieChart
+              data={getSubjectPieData(subjectStats.classSubjects)}
+              title="수업시간"
+              size={110}
+            />
+            <PieChart
+              data={getSubjectPieData(subjectStats.selfStudySubjects)}
+              title="자습시간"
+              size={110}
+            />
+            <PieChart
+              data={getSubjectPieData(subjectStats.combinedSubjects)}
+              title="전체 학습"
+              size={110}
+            />
           </div>
         </div>
 
@@ -350,71 +455,6 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const currentPosition = (currentMinutes / (24 * 60)) * 100;
-
-  // 통계 계산
-  const stats = useMemo(() => {
-    const activeRoutines = routines.filter((r) => isRoutineActiveInWeek(r));
-
-    // 대분류별 시간
-    const byMajorCategory: Record<RoutineMajorCategory, number> = {
-      class: 0,
-      self_study: 0,
-      exercise: 0,
-      schedule: 0,
-    };
-
-    // 수업 과목별 시간
-    const classSubjects: Record<string, number> = {};
-    // 자습 과목별 시간
-    const selfStudySubjects: Record<string, number> = {};
-    // 수업+자습 과목별 시간
-    const studySubjects: Record<string, number> = {};
-
-    activeRoutines.forEach((routine) => {
-      const duration = timeToMinutes(routine.endTime) - timeToMinutes(routine.startTime);
-      const activeDays = routine.days.filter(Boolean).length;
-      const weeklyMinutes = duration * activeDays;
-
-      byMajorCategory[routine.majorCategory] += weeklyMinutes;
-
-      if (routine.majorCategory === 'class' && routine.subject) {
-        classSubjects[routine.subject] = (classSubjects[routine.subject] || 0) + weeklyMinutes;
-        studySubjects[routine.subject] = (studySubjects[routine.subject] || 0) + weeklyMinutes;
-      }
-
-      if (routine.majorCategory === 'self_study' && routine.subject) {
-        selfStudySubjects[routine.subject] =
-          (selfStudySubjects[routine.subject] || 0) + weeklyMinutes;
-        studySubjects[routine.subject] = (studySubjects[routine.subject] || 0) + weeklyMinutes;
-      }
-    });
-
-    return { byMajorCategory, classSubjects, selfStudySubjects, studySubjects };
-  }, [routines, isRoutineActiveInWeek]);
-
-  // 원형 차트 데이터 변환
-  const getSubjectPieData = (subjects: Record<string, number>): PieChartData[] => {
-    return Object.entries(subjects).map(([label, value]) => ({
-      label,
-      value,
-      color: SUBJECT_COLORS[label] || '#6b7280',
-    }));
-  };
-
-  const majorCategoryPieData: PieChartData[] = Object.entries(stats.byMajorCategory).map(
-    ([key, value]) => ({
-      label: MAJOR_CATEGORY_LABELS[key as RoutineMajorCategory],
-      value,
-      color:
-        key === 'class'
-          ? '#3b82f6'
-          : key === 'self_study'
-            ? '#f97316'
-            : key === 'exercise'
-              ? '#22c55e'
-              : '#64748b',
-    }),
-  );
 
   return (
     <>
@@ -570,17 +610,6 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                 <span>{label}</span>
               </div>
             ))}
-          </div>
-
-          {/* 주간 통계 - 원형 차트 */}
-          <div className="mt-6 border-t pt-4">
-            <h4 className="mb-4 text-center font-semibold text-gray-700">주간 시간 통계</h4>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              <PieChart data={majorCategoryPieData} title="대분류별" />
-              <PieChart data={getSubjectPieData(stats.classSubjects)} title="수업 (과목별)" />
-              <PieChart data={getSubjectPieData(stats.selfStudySubjects)} title="자습 (과목별)" />
-              <PieChart data={getSubjectPieData(stats.studySubjects)} title="수업+자습 (과목별)" />
-            </div>
           </div>
         </CardContent>
       </Card>

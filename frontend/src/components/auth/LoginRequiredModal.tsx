@@ -2,9 +2,9 @@
  * 로그인 필요 모달
  *
  * 비로그인 상태에서 액션을 시도할 때 표시됩니다.
+ * Hub(T Skool) SSO 로그인으로 바로 리다이렉트합니다.
  */
 
-import { Link } from '@tanstack/react-router';
 import { LogIn, UserPlus } from 'lucide-react';
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { redirectToHubLogin, redirectToHubRegister } from '@/lib/auth/hub-login';
 
 interface LoginRequiredModalProps {
   open: boolean;
@@ -39,22 +40,25 @@ export function LoginRequiredModal({ open, onOpenChange }: LoginRequiredModalPro
         </DialogHeader>
 
         <div className="mt-2 flex flex-col gap-3">
-          <Link
-            to="/auth/login"
+          <Button
             className="bg-ultrasonic-500 hover:bg-ultrasonic-600 inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-base font-semibold text-white transition-colors"
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              onOpenChange(false);
+              redirectToHubLogin('/');
+            }}
           >
-            <LogIn className="h-5 w-5" />
-            로그인
-          </Link>
-          <Link
-            to="/auth/register"
+            <LogIn className="h-5 w-5" />T Skool 계정으로 로그인
+          </Button>
+          <Button
+            variant="outline"
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-base font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              onOpenChange(false);
+              redirectToHubRegister('/');
+            }}
           >
-            <UserPlus className="h-5 w-5" />
-            회원가입
-          </Link>
+            <UserPlus className="h-5 w-5" />T Skool 회원가입
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
