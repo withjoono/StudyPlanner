@@ -21,7 +21,6 @@ import {
   Calendar,
   Sparkles,
   MessageSquare,
-  Info,
 } from 'lucide-react';
 import {
   useGetPlans,
@@ -73,6 +72,7 @@ interface PlanSetupDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: {
     planName: string;
+    description: string;
     kyokwa: string;
     subject: string;
     startDate: string;
@@ -91,6 +91,7 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
   const groups = subjectsData?.groups || [];
 
   const [planName, setPlanName] = useState('');
+  const [description, setDescription] = useState('');
   const [selectedKyokwa, setSelectedKyokwa] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [activeTab, setActiveTab] = useState<PlanTab>('reference');
@@ -122,7 +123,13 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
 
   // 디바운스된 검색
   const searchCategory =
-    activeTab === 'textbook' ? 'textbook' : activeTab === 'reference' ? 'reference' : activeTab === 'lecture' ? 'lecture' : undefined;
+    activeTab === 'textbook'
+      ? 'textbook'
+      : activeTab === 'reference'
+        ? 'reference'
+        : activeTab === 'lecture'
+          ? 'lecture'
+          : undefined;
   const { data: searchResults } = useSearchMaterials(debouncedQuery, searchCategory);
 
   // 디바운스 처리
@@ -221,11 +228,16 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
       return;
     }
 
-    const name = activeTab === 'other' ? otherName.trim() : planName.trim();
+    if (!planName.trim()) {
+      toast.error('제목을 입력해주세요.');
+      return;
+    }
+
     const isLecture = activeTab === 'lecture' || amountUnit === 'lecture';
 
     onSubmit({
-      planName: name,
+      planName: planName.trim(),
+      description: description.trim(),
       kyokwa: selectedKyokwa,
       subject: selectedSubject,
       startDate,
@@ -242,6 +254,7 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       setPlanName('');
+      setDescription('');
       setSelectedKyokwa('');
       setSelectedSubject('');
       setSearchQuery('');
@@ -283,7 +296,71 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* ===== 교과/과목 선택 ===== */}
+          {/* ===== 1. 제목 ===== */}
+          <div>
+            <Label htmlFor="planTitle" className="text-sm font-semibold text-gray-700">
+              제목
+            </Label>
+            <Input
+              id="planTitle"
+              placeholder="계획 제목을 입력하세요"
+              value={planName}
+              onChange={(e) => setPlanName(e.target.value)}
+              className="mt-1.5"
+              required
+            />
+          </div>
+
+          {/* ===== 2. 내용 ===== */}
+          <div>
+            <Label htmlFor="planDescription" className="text-sm font-semibold text-gray-700">
+              내용
+            </Label>
+            <textarea
+              id="planDescription"
+              placeholder="계획에 대한 설명을 입력하세요"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="mt-1.5 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* ===== 3. 기간 ===== */}
+          <div>
+            <Label className="text-sm font-semibold text-gray-700">기간</Label>
+            <div className="mt-1.5 grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="startDate" className="text-xs text-gray-500">
+                  시작일
+                </Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="mt-1"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="endDate" className="text-xs text-gray-500">
+                  종료일
+                </Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate}
+                  className="mt-1"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ===== 4. 교과/과목 선택 ===== */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="kyokwa" className="text-sm font-semibold text-gray-700">
@@ -333,7 +410,7 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
             </div>
           </div>
 
-          {/* ===== 4개 탭 ===== */}
+          {/* ===== 5. 교과서/참고서/인강/기타 탭 ===== */}
           <div>
             <div className="flex border-b border-gray-200">
               {tabItems.map((tab) => (
@@ -354,17 +431,20 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
             </div>
 
             {/* 탭 내용 */}
-            <div className="min-h-[120px] pt-4">
-              {/* ===== 교과서/참고서/인강 탭: 검색 자동완성 ===== */}
+            <div className="min-h-[80px] pt-4">
+              {/* ===== 교과서/참고서/인강 탭: 입력 자동검색 ===== */}
               {activeTab !== 'other' && (
                 <div className="space-y-3">
-                  {/* 교재 검색 */}
                   <div className="relative">
                     <Label className="text-sm font-semibold text-gray-700">
-                      {activeTab === 'textbook' ? '교과서' : activeTab === 'reference' ? '참고서' : '인강'} 검색
+                      {activeTab === 'textbook'
+                        ? '교과서'
+                        : activeTab === 'reference'
+                          ? '참고서'
+                          : '인강'}
                     </Label>
                     <Input
-                      placeholder={`${activeTab === 'textbook' ? '교과서' : activeTab === 'reference' ? '참고서' : '인강'}명을 입력하세요`}
+                      placeholder={`${activeTab === 'textbook' ? '교과서' : activeTab === 'reference' ? '참고서' : '인강'}명을 입력하면 자동 검색됩니다`}
                       value={searchQuery}
                       onChange={(e) => handleSearchChange(e.target.value)}
                       onFocus={() => searchQuery.length >= 1 && setShowResults(true)}
@@ -391,11 +471,14 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
                         ))}
                       </div>
                     )}
-                    {showResults && debouncedQuery.length >= 1 && searchResults && searchResults.length === 0 && (
-                      <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white p-3 text-center text-sm text-gray-400 shadow-lg">
-                        검색 결과가 없습니다
-                      </div>
-                    )}
+                    {showResults &&
+                      debouncedQuery.length >= 1 &&
+                      searchResults &&
+                      searchResults.length === 0 && (
+                        <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white p-3 text-center text-sm text-gray-400 shadow-lg">
+                          검색 결과가 없습니다
+                        </div>
+                      )}
                   </div>
 
                   {/* 선택된 교재 표시 */}
@@ -403,7 +486,9 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-semibold text-blue-800">{selectedMaterial.name}</p>
+                          <p className="text-sm font-semibold text-blue-800">
+                            {selectedMaterial.name}
+                          </p>
                           <p className="text-xs text-blue-600">
                             {selectedMaterial.publisher && `${selectedMaterial.publisher} · `}
                             {selectedMaterial.totalPages && `총 ${selectedMaterial.totalPages}p`}
@@ -414,7 +499,6 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
                           onClick={() => {
                             setSelectedMaterial(null);
                             setSearchQuery('');
-                            setPlanName('');
                             setStartPage('');
                             setEndPage('');
                           }}
@@ -425,18 +509,6 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
                       </div>
                     </div>
                   )}
-
-                  {/* 계획명 (선택 후 수정 가능) */}
-                  <div>
-                    <Label className="text-sm font-semibold text-gray-700">계획명</Label>
-                    <Input
-                      placeholder="계획명을 입력하세요"
-                      value={planName}
-                      onChange={(e) => setPlanName(e.target.value)}
-                      className="mt-1.5"
-                      required
-                    />
-                  </div>
                 </div>
               )}
 
@@ -444,7 +516,9 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
               {activeTab === 'other' && (
                 <div className="space-y-3">
                   <div>
-                    <Label className="text-sm font-semibold text-gray-700">교재/강의명 (직접 입력)</Label>
+                    <Label className="text-sm font-semibold text-gray-700">
+                      교재/강의명 (직접 입력)
+                    </Label>
                     <Input
                       placeholder="예: 수학의 정석 기본편"
                       value={otherName}
@@ -485,7 +559,7 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
             </div>
           </div>
 
-          {/* ===== 범위 입력: 시작/끝 + 총분량 ===== */}
+          {/* ===== 6. 범위 입력: 시작/끝 + 총분량 ===== */}
           <div>
             <Label className="text-sm font-semibold text-gray-700">범위</Label>
             <div className="mt-1.5 flex items-center gap-2">
@@ -518,52 +592,20 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
               </div>
               <span className="text-gray-400">=</span>
               <div className="w-20 flex-shrink-0 rounded-lg bg-blue-50 px-3 py-2 text-center">
-                <p className="text-lg font-bold text-blue-600">{totalAmount > 0 ? totalAmount : '-'}</p>
+                <p className="text-lg font-bold text-blue-600">
+                  {totalAmount > 0 ? totalAmount : '-'}
+                </p>
                 <p className="text-[10px] text-blue-400">총분량</p>
               </div>
             </div>
           </div>
 
-          {/* ===== 기간 ===== */}
-          <div>
-            <Label className="text-sm font-semibold text-gray-700">계획 기간</Label>
-            <div className="mt-1.5 grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="startDate" className="text-xs text-gray-500">
-                  시작일
-                </Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="mt-1"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="endDate" className="text-xs text-gray-500">
-                  종료일
-                </Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate}
-                  className="mt-1"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 자동 계산된 일정 */}
+          {/* ===== 7. 자동 주간 할당 ===== */}
           {totalAmount > 0 && (
             <div className="rounded-lg border border-dashed border-gray-300 bg-white p-4">
               <div className="mb-2 flex items-center gap-2">
                 <Sparkles className="text-ultrasonic-500 h-4 w-4" />
-                <span className="text-sm font-medium text-gray-700">자동 계산된 학습 일정</span>
+                <span className="text-sm font-medium text-gray-700">자동 주간 할당</span>
               </div>
               <div className="grid grid-cols-3 gap-3 text-sm">
                 <div className="rounded-lg bg-gray-50 p-2 text-center">
@@ -596,21 +638,7 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
             </div>
           )}
 
-          {/* 주간 루틴 안내 */}
-          <div className="flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 p-3">
-            <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-500" />
-            <p className="text-sm font-medium text-blue-700">
-              요일과 시간 설정은{' '}
-              <Link
-                to="/routine"
-                className="font-bold underline underline-offset-2 hover:text-blue-900"
-              >
-                주간루틴 설정
-              </Link>
-              에서 입력하세요
-            </p>
-          </div>
-
+          {/* ===== 8. 취소 / 계획 생성 버튼 ===== */}
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               취소
@@ -1156,6 +1184,7 @@ function PlannerPlansPage() {
 
   const handleCreatePlan = async (data: {
     planName: string;
+    description: string;
     kyokwa: string;
     subject: string;
     startDate: string;

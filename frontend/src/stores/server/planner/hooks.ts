@@ -644,7 +644,7 @@ export function useGetSubjects(): { data: SubjectsResponse | undefined; isLoadin
     queryKey: plannerKeys.subjects(userId || 'default'),
     queryFn: async (): Promise<SubjectsResponse> => {
       const response = await plannerClient.get('/planner/subjects', {
-        params: { userId: userId || '' },
+        params: { user_id: userId || '' },
       });
       return response.data;
     },
