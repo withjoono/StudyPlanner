@@ -636,18 +636,21 @@ function getCurriculumFromUserId(userId?: string): '2015' | '2022' {
 /** 사용자 ID 기반 교과/과목 목록 조회 */
 export function useGetSubjects(): { data: SubjectsResponse | undefined; isLoading: boolean } {
   const user = useAuthStore((state) => state.user);
-  // user.id는 이미 "sp_S26H208011" 형태의 string
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  // user.id는 "sp_S26H208011" 형태일 수도 있고, Hub UUID 형태일 수도 있음
   const userId = user?.id || undefined;
   const curriculum = getCurriculumFromUserId(userId);
 
   const query = useQuery({
-    queryKey: plannerKeys.subjects(userId || 'default'),
+    queryKey: plannerKeys.subjects(userId ?? 'default'),
     queryFn: async (): Promise<SubjectsResponse> => {
       const response = await plannerClient.get('/planner/subjects', {
-        params: { user_id: userId || '' },
+        params: userId ? { user_id: userId } : {},
       });
       return response.data;
     },
+    // 인증 상태이거나 user.id가 있으면 호출 (백엔드는 user_id 없이도 기본 2022 반환)
+    enabled: isAuthenticated || !!userId,
     staleTime: 1000 * 60 * 30,
     retry: 1,
   });
