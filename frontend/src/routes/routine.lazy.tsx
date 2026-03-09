@@ -26,7 +26,6 @@ import {
 } from '@/stores/server/planner';
 import type { Routine, RoutineMajorCategory, LongTermPlan } from '@/types/planner';
 import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, SUBJECT_COLORS } from '@/types/planner';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -653,6 +652,7 @@ function RoutineFormDialog({
   isLoading,
 }: RoutineFormDialogProps) {
   const { data: subjectsData } = useGetSubjects();
+  const { data: plans } = useGetPlans();
   const defaultStartDate = formatDateStr(getWeekStart(new Date()));
   const defaultEndDate = formatDateStr(new Date(new Date().setMonth(new Date().getMonth() + 3)));
 
@@ -678,6 +678,37 @@ function RoutineFormDialog({
   // 선택된 교과의 과목 목록
   const selectedGroup = subjectGroups.find((g) => g.kyokwa === selectedKyokwa);
   const availableSubjects = selectedGroup?.subjects || [];
+
+  // 진행 중인 장기계획 (새 루틴 생성 시만)
+  const activePlans = useMemo(() => {
+    if (routine || !plans) return [];
+    const now = new Date();
+    return plans.filter((p) => {
+      if (!p.startDate || !p.endDate) return false;
+      const end = new Date(p.endDate);
+      end.setHours(23, 59, 59, 999);
+      return end >= now;
+    });
+  }, [plans, routine]);
+
+  // 미션 선택 시 폼 자동 채우기
+  const handleSelectMission = (plan: LongTermPlan) => {
+    const subject = plan.subject || '';
+    // 교과 역추적
+    const matchGroup = subjectGroups.find((g) =>
+      g.subjects.some((s: any) => s.subjectName === subject),
+    );
+    if (matchGroup) setSelectedKyokwa(matchGroup.kyokwa);
+
+    setFormData({
+      ...formData,
+      title: plan.title,
+      majorCategory: 'self_study',
+      subject,
+      startDate: plan.startDate || defaultStartDate,
+      endDate: plan.endDate || defaultEndDate,
+    });
+  };
 
   // 폼이 열릴 때 초기값 설정
   useState(() => {
@@ -744,6 +775,60 @@ function RoutineFormDialog({
         <DialogHeader>
           <DialogTitle>{routine ? '루틴 수정' : '새 루틴 추가'}</DialogTitle>
         </DialogHeader>
+
+        {/* 주간 미션 리스트 — 새 루틴 생성 시만 */}
+        {!routine && activePlans.length > 0 && (
+          <div className="rounded-lg border border-indigo-100 bg-indigo-50/50 p-3">
+            <div className="mb-2 flex items-center gap-1.5">
+              <Target className="h-4 w-4 text-indigo-500" />
+              <span className="text-sm font-semibold text-indigo-700">주간 미션에서 선택</span>
+            </div>
+            <div className="max-h-36 space-y-1.5 overflow-y-auto">
+              {activePlans.map((plan) => {
+                const color = SUBJECT_COLORS[plan.subject || ''] || '#6b7280';
+                const isSelected =
+                  formData.title === plan.title && formData.subject === plan.subject;
+                const unitLabel = plan.type === 'lecture' ? '강' : 'p';
+                const weeklyTarget = plan.weeklyTarget || 0;
+                return (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => handleSelectMission(plan)}
+                    className={`flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors ${
+                      isSelected
+                        ? 'border border-indigo-300 bg-indigo-100 shadow-sm'
+                        : 'border border-transparent bg-white hover:bg-indigo-50'
+                    }`}
+                  >
+                    <div
+                      className="h-6 w-1 flex-shrink-0 rounded-full"
+                      style={{ backgroundColor: color }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-gray-800">{plan.title}</p>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                        <span
+                          className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+                          style={{ backgroundColor: color }}
+                        >
+                          {plan.subject || '미지정'}
+                        </span>
+                        {weeklyTarget > 0 && (
+                          <span>
+                            주 {weeklyTarget}
+                            {unitLabel}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {isSelected && <span className="text-xs font-semibold text-indigo-600">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* 제목 */}
