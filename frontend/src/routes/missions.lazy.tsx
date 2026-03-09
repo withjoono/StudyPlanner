@@ -390,7 +390,7 @@ function MissionDialog({
               >
                 <option value="">{form.kyokwa ? '과목 선택' : '교과 먼저 선택'}</option>
                 {availableSubjects.map((s: any) => (
-                  <option key={s.subjectCode || s.subjectName} value={s.subjectName}>
+                  <option key={s.id || s.subjectName} value={s.subjectName}>
                     {s.subjectName}
                   </option>
                 ))}

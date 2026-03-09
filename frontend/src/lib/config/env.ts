@@ -31,20 +31,27 @@ const getEnvVar = (key: string, defaultValue?: string): string => {
   return value;
 };
 
-// 개발 환경에서는 Vite 프록시 사용 (CORS 해결)
-const isDev = import.meta.env.DEV;
+/**
+ * API URL을 결정합니다.
+ * 1. VITE_ 환경변수가 설정되어 있으면 항상 그 값을 사용
+ * 2. 환경변수가 없으면: 개발=프록시 경로, 프로덕션=localhost 폴백
+ *
+ * 이렇게 하면 빌드 시 import.meta.env.DEV 값이 잘못 설정되어도
+ * 환경변수가 존재하면 올바른 URL을 사용합니다.
+ */
+const getApiUrl = (envKey: string, devProxy: string, fallback: string): string => {
+  const envValue = import.meta.env[envKey];
+  if (envValue) return envValue;
+  return import.meta.env.DEV ? devProxy : fallback;
+};
 
 export const env: EnvConfig = {
   // 프론트엔드 URL
   frontUrl: getEnvVar('VITE_FRONT_URL', 'http://localhost:3004'),
 
-  // 백엔드 API URL (개발: 프록시, 프로덕션: 직접 연결)
-  apiUrlPlanner: isDev
-    ? '/api'
-    : getEnvVar('VITE_API_URL_PLANNER', 'http://localhost:4004'),
-  apiUrlMain: isDev
-    ? '/api-main'
-    : getEnvVar('VITE_API_URL_MAIN', 'http://localhost:4000'),
+  // 백엔드 API URL (환경변수 우선, 없으면 개발: 프록시 / 프로덕션: localhost 폴백)
+  apiUrlPlanner: getApiUrl('VITE_API_URL_PLANNER', '/api', 'http://localhost:4004'),
+  apiUrlMain: getApiUrl('VITE_API_URL_MAIN', '/api-main', 'http://localhost:4000'),
 
   // 소셜 로그인
   naverLoginClientId: getEnvVar('VITE_NAVER_LOGIN_CLIENT_ID'),
@@ -66,7 +73,3 @@ if (env.isDevelopment) {
 }
 
 export default env;
-
-
-
-

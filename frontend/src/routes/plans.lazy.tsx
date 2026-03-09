@@ -402,7 +402,7 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
                   {selectedKyokwa ? '과목을 선택하세요' : '교과를 먼저 선택'}
                 </option>
                 {availableSubjects.map((s: any) => (
-                  <option key={s.subjectCode || s.subjectName} value={s.subjectName}>
+                  <option key={s.id || s.subjectName} value={s.subjectName}>
                     {s.subjectName}
                   </option>
                 ))}
