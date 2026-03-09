@@ -12,6 +12,8 @@ import {
   Loader2,
   MessageSquare,
   Calendar,
+  BookOpen,
+  Target,
 } from 'lucide-react';
 import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
@@ -20,9 +22,11 @@ import {
   useUpdateRoutine,
   useDeleteRoutine,
   useGetSubjects,
+  useGetPlans,
 } from '@/stores/server/planner';
-import type { Routine, RoutineMajorCategory } from '@/types/planner';
+import type { Routine, RoutineMajorCategory, LongTermPlan } from '@/types/planner';
 import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, SUBJECT_COLORS } from '@/types/planner';
+import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -927,6 +931,208 @@ function RoutineFormDialog({
 }
 
 // ============================================
+// 금주 미션 섹션 (장기계획 주간 할당)
+// ============================================
+
+function WeeklyMissionSection() {
+  const { data: plans } = useGetPlans();
+  const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
+
+  const weekEnd = useMemo(() => {
+    const end = new Date(weekStart);
+    end.setDate(weekStart.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return end;
+  }, [weekStart]);
+
+  const navigate = (direction: 'prev' | 'next') => {
+    const newStart = new Date(weekStart);
+    newStart.setDate(newStart.getDate() + (direction === 'next' ? 7 : -7));
+    setWeekStart(newStart);
+  };
+
+  const formatDate = (date: Date) => `${date.getMonth() + 1}월 ${date.getDate()}일`;
+
+  // 이번 주 범위표시
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isCurrentWeek = weekStart <= today && today <= weekEnd;
+
+  // 해당 주에 진행 중인 장기계획 필터링 + 과목별 그룹화
+  const missionGroups = useMemo(() => {
+    if (!plans || plans.length === 0) return [];
+
+    const activePlans = plans.filter((plan) => {
+      if (!plan.startDate || !plan.endDate) return false;
+      const planStart = new Date(plan.startDate);
+      const planEnd = new Date(plan.endDate);
+      planStart.setHours(0, 0, 0, 0);
+      planEnd.setHours(23, 59, 59, 999);
+      return weekStart <= planEnd && weekEnd >= planStart;
+    });
+
+    // 과목별 그룹화
+    const groupMap = new Map<
+      string,
+      {
+        subject: string;
+        plans: (LongTermPlan & {
+          weekNumber: number;
+          totalWeeks: number;
+          weeklyAmount: number;
+          cumulativeTarget: number;
+        })[];
+        totalWeeklyAmount: number;
+      }
+    >();
+
+    activePlans.forEach((plan) => {
+      const subject = plan.subject || '기타';
+      const planStart = new Date(plan.startDate!);
+      planStart.setHours(0, 0, 0, 0);
+
+      // 몇 주차인지 계산
+      const daysSinceStart = Math.floor(
+        (weekStart.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      const weekNumber = Math.max(1, Math.floor(daysSinceStart / 7) + 1);
+
+      // 총 주 수 계산
+      const planEnd = new Date(plan.endDate!);
+      const totalDays =
+        Math.floor((planEnd.getTime() - planStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const totalWeeks = Math.max(1, Math.ceil(totalDays / 7));
+
+      // 주간 할당량
+      const weeklyAmount = plan.weeklyTarget || Math.ceil((plan.totalAmount || 0) / totalWeeks);
+
+      // 누적 목표
+      const cumulativeTarget = Math.min(weeklyAmount * weekNumber, plan.totalAmount || 0);
+
+      const existing = groupMap.get(subject) || { subject, plans: [], totalWeeklyAmount: 0 };
+      existing.plans.push({ ...plan, weekNumber, totalWeeks, weeklyAmount, cumulativeTarget });
+      existing.totalWeeklyAmount += weeklyAmount;
+      groupMap.set(subject, existing);
+    });
+
+    return Array.from(groupMap.values()).sort((a, b) => b.totalWeeklyAmount - a.totalWeeklyAmount);
+  }, [plans, weekStart, weekEnd]);
+
+  const unitLabel = (plan: LongTermPlan) => (plan.type === 'lecture' ? '강' : 'p');
+
+  return (
+    <Card className="mb-6">
+      <CardContent className="p-4">
+        {/* 헤더 + 주 네비게이션 */}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-indigo-500" />
+            <h3 className="font-semibold text-gray-800">주간 미션</h3>
+            {isCurrentWeek && (
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-600">
+                금주
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate('prev')} className="rounded-full p-1 hover:bg-gray-100">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-sm font-medium text-gray-600">
+              {formatDate(weekStart)} ~ {formatDate(weekEnd)}
+            </span>
+            <button onClick={() => navigate('next')} className="rounded-full p-1 hover:bg-gray-100">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {missionGroups.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 py-8 text-center">
+            <BookOpen className="mx-auto mb-2 h-8 w-8 text-gray-300" />
+            <p className="text-sm text-gray-400">이 주에 해당하는 장기계획이 없습니다</p>
+            <p className="mt-1 text-xs text-gray-300">장기계획 페이지에서 계획을 추가하세요</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {missionGroups.map((group) => {
+              const color = SUBJECT_COLORS[group.subject] || '#6b7280';
+              return (
+                <div
+                  key={group.subject}
+                  className="rounded-lg border border-gray-100 bg-gray-50 p-3"
+                >
+                  {/* 과목 헤더 */}
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="rounded px-2 py-0.5 text-xs font-semibold text-white"
+                        style={{ backgroundColor: color }}
+                      >
+                        {group.subject}
+                      </span>
+                      <span className="text-xs font-medium text-gray-500">
+                        주간 총 {group.totalWeeklyAmount}
+                        {group.plans[0] && unitLabel(group.plans[0])}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 각 계획 */}
+                  <div className="space-y-2">
+                    {group.plans.map((plan) => {
+                      const progress =
+                        plan.totalAmount > 0
+                          ? Math.round((plan.completedAmount / plan.totalAmount) * 100)
+                          : 0;
+                      return (
+                        <div key={plan.id} className="rounded-md bg-white p-2.5 shadow-sm">
+                          <div className="flex items-center justify-between">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-gray-800">
+                                {plan.title}
+                              </p>
+                              <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-400">
+                                <span>
+                                  {plan.weekNumber}/{plan.totalWeeks}주차
+                                </span>
+                                <span>·</span>
+                                <span className="font-medium text-indigo-600">
+                                  이번 주 {plan.weeklyAmount}
+                                  {unitLabel(plan)}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="ml-3 text-right">
+                              <p className="text-xs text-gray-400">전체 진행률</p>
+                              <p className="text-sm font-bold" style={{ color }}>
+                                {progress}%
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{ width: `${progress}%`, backgroundColor: color }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================
 // 메인 페이지 컴포넌트
 // ============================================
 
@@ -1008,6 +1214,9 @@ function PlannerRoutinePage() {
           루틴 추가
         </Button>
       </div>
+
+      {/* 금주 미션 */}
+      <WeeklyMissionSection />
 
       {/* 주간 캘린더 */}
       <WeeklyCalendar routines={routines || []} />
