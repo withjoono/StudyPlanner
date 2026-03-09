@@ -209,8 +209,8 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
         return;
       }
     } else {
-      if (!selectedMaterial) {
-        toast.error('교재를 검색하여 선택해주세요.');
+      if (!selectedMaterial && !searchQuery.trim()) {
+        toast.error('교재를 검색하여 선택하거나 이름을 직접 입력해주세요.');
         return;
       }
     }
@@ -451,34 +451,43 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
                       className="mt-1.5"
                     />
                     {/* 검색 결과 드롭다운 */}
-                    {showResults && searchResults && searchResults.length > 0 && (
+                    {showResults && debouncedQuery.length >= 1 && (
                       <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                        {searchResults.map((m: any) => (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => handleSelectMaterial(m)}
-                            className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate font-medium text-gray-800">{m.name}</p>
-                              <div className="flex items-center gap-2 text-xs text-gray-500">
-                                {m.publisher && <span>{m.publisher}</span>}
-                                {m.totalPages && <span>{m.totalPages}p</span>}
+                        {searchResults &&
+                          searchResults.length > 0 &&
+                          searchResults.map((m: any) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => handleSelectMaterial(m)}
+                              className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate font-medium text-gray-800">{m.name}</p>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  {m.publisher && <span>{m.publisher}</span>}
+                                  {m.totalPages && <span>{m.totalPages}p</span>}
+                                </div>
                               </div>
-                            </div>
-                          </button>
-                        ))}
+                            </button>
+                          ))}
+                        {/* 직접 입력 옵션 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedMaterial({ name: searchQuery.trim(), isManual: true });
+                            setPlanName(searchQuery.trim());
+                            setShowResults(false);
+                          }}
+                          className="flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2.5 text-left text-sm hover:bg-green-50"
+                        >
+                          <span className="text-green-500">+</span>
+                          <span className="text-gray-700">
+                            "<span className="font-medium">{searchQuery.trim()}</span>" 직접 입력
+                          </span>
+                        </button>
                       </div>
                     )}
-                    {showResults &&
-                      debouncedQuery.length >= 1 &&
-                      searchResults &&
-                      searchResults.length === 0 && (
-                        <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white p-3 text-center text-sm text-gray-400 shadow-lg">
-                          검색 결과가 없습니다
-                        </div>
-                      )}
                   </div>
 
                   {/* 선택된 교재 표시 */}
@@ -490,8 +499,15 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
                             {selectedMaterial.name}
                           </p>
                           <p className="text-xs text-blue-600">
-                            {selectedMaterial.publisher && `${selectedMaterial.publisher} · `}
-                            {selectedMaterial.totalPages && `총 ${selectedMaterial.totalPages}p`}
+                            {selectedMaterial.isManual ? (
+                              '직접 입력'
+                            ) : (
+                              <>
+                                {selectedMaterial.publisher && `${selectedMaterial.publisher} · `}
+                                {selectedMaterial.totalPages &&
+                                  `총 ${selectedMaterial.totalPages}p`}
+                              </>
+                            )}
                           </p>
                         </div>
                         <button
