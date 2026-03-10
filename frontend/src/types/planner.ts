@@ -324,3 +324,61 @@ export interface AvailableStudyTime {
   bySubject: Record<string, number>; // 과목별 배정 시간
   freeSlots: TimeRange[]; // 빈 시간대 목록
 }
+
+// ─────────────────────────────────────────────────────
+// 성장형 플래너 (Growth)
+// ─────────────────────────────────────────────────────
+
+/** 일일 회고 */
+export interface DailyReflection {
+  id: number;
+  date: string;
+  mood: 'great' | 'good' | 'okay' | 'bad' | 'terrible';
+  bestThing?: string;
+  worstThing?: string;
+  improvement?: string;
+  dailyGoal?: string;
+  understanding?: number;
+}
+
+/** 성장 통계 */
+export interface GrowthStats {
+  streak: number;
+  longestStreak: number;
+  thisWeek: {
+    totalMissions: number;
+    completedMissions: number;
+    achievementRate: number;
+    studyMinutes: number;
+  };
+  lastWeek: {
+    totalMissions: number;
+    completedMissions: number;
+    achievementRate: number;
+    studyMinutes: number;
+  };
+  subjectTrend: {
+    subject: string;
+    thisWeek: number;
+    lastWeek: number;
+    change: number;
+  }[];
+  moodTrend: {
+    date: string;
+    mood: string;
+    understanding: number;
+  }[];
+  weeklyAchievements: number[];
+}
+
+/** AI 코칭 */
+export interface AICoaching {
+  achievementRate: number;
+  totalMissions: number;
+  completedMissions: number;
+  insights: string[];
+  suggestions: string[];
+  strongestSubject: { subject: string; rate: number } | null;
+  weakestSubject: { subject: string; rate: number } | null;
+  moodAverage: number;
+}

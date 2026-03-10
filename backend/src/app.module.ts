@@ -14,6 +14,7 @@ import { TeacherModule } from './teacher/teacher.module';
 import { StudentModule } from './student/student.module';
 import { SharedScheduleModule } from './shared-schedule/shared-schedule.module';
 import { MaterialModule } from './material/material.module';
+import { GrowthModule } from './growth/growth.module';
 
 @Module({
   imports: [
@@ -48,6 +49,9 @@ import { MaterialModule } from './material/material.module';
 
     // Material DB (교재/인강 검색)
     MaterialModule,
+
+    // Growth (성장형 플래너)
+    GrowthModule,
   ],
 })
 export class AppModule {}

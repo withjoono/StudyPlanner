@@ -123,6 +123,7 @@ function RootLayout() {
               <NavLink to="/plans">장기계획</NavLink>
               <NavLink to="/routine">주간루틴</NavLink>
               <NavLink to="/missions">금일계획</NavLink>
+              <NavLink to="/growth">성장</NavLink>
               <NavLink to="/learning">분석</NavLink>
             </div>
 
@@ -215,6 +216,7 @@ function RootLayout() {
                   { to: '/plans', label: '장기계획' },
                   { to: '/routine', label: '주간루틴' },
                   { to: '/missions', label: '금일계획' },
+                  { to: '/growth', label: '성장' },
                   { to: '/learning', label: '분석' },
                 ].map((item) => (
                   <Link
@@ -262,8 +264,8 @@ function RootLayout() {
           <div className="flex items-center justify-around py-2">
             <MobileNavLink to="/" label="홈" />
             <MobileNavLink to="/plans" label="장기계획" />
-            <MobileNavLink to="/routine" label="주간루틴" />
             <MobileNavLink to="/missions" label="금일계획" />
+            <MobileNavLink to="/growth" label="성장" />
             <MobileNavLink to="/learning" label="분석" />
           </div>
         </nav>

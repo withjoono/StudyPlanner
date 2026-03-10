@@ -201,6 +201,7 @@ model Student {
   teacherLinks      TeacherStudent[]
   messages          Message[]
   plannerComments   PlannerComment[]
+  dailyReflections  DailyReflection[]
 
   @@index([studentCode], name: "idx_student_code")
   @@index([year], name: "idx_student_year")
@@ -898,6 +899,33 @@ model PlannerComment {
   @@index([planId], name: "idx_pc_plan")
   @@index([studentId, isRead], name: "idx_pc_unread")
   @@map("sp_planner_comment")
+}
+
+// ================================================================
+// 일일 회고 (Daily Reflection) — 성장형 플래너
+// ================================================================
+
+/// 일일 회고
+model DailyReflection {
+  id            BigInt   @id @default(autoincrement())
+  studentId     BigInt   @map("student_id")
+  date          DateTime @db.Date
+  mood          String   @db.VarChar(20)    // great | good | okay | bad | terrible
+  bestThing     String?  @map("best_thing") @db.Text
+  worstThing    String?  @map("worst_thing") @db.Text
+  improvement   String?  @db.Text
+  dailyGoal     String?  @map("daily_goal") @db.VarChar(200)
+  understanding Int?     @default(3)        // 1~5 오늘의 자가 이해도
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date], name: "uk_daily_reflection")
+  @@index([studentId], name: "idx_reflection_student")
+  @@index([date], name: "idx_reflection_date")
+  @@map("sp_daily_reflection")
 }
 
 /// 2015 교육과정 교과/과목

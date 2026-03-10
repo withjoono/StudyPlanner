@@ -758,3 +758,115 @@ function subjectCodeToKorean(code: string): string {
   };
   return map[code] || '기타';
 }
+
+// ============================================
+// 성장 (Growth) Hooks
+// ============================================
+
+export const growthKeys = {
+  all: ['growth'] as const,
+  reflection: (date: string) => [...growthKeys.all, 'reflection', date] as const,
+  reflections: (start: string, end: string) =>
+    [...growthKeys.all, 'reflections', start, end] as const,
+  stats: () => [...growthKeys.all, 'stats'] as const,
+  coaching: () => [...growthKeys.all, 'coaching'] as const,
+};
+
+/** 특정 날짜의 회고 조회 */
+export function useGetReflection(date: string) {
+  const user = useAuthStore((state) => state.user);
+  return useQuery({
+    queryKey: growthKeys.reflection(date),
+    queryFn: async () => {
+      const response = await plannerClient.get('/growth/reflections', {
+        params: { member_id: user?.id, date },
+      });
+      return response.data as import('@/types/planner').DailyReflection | null;
+    },
+    enabled: !!user?.id && !!date,
+  });
+}
+
+/** 기간별 회고 조회 */
+export function useGetReflections(startDate: string, endDate: string) {
+  const user = useAuthStore((state) => state.user);
+  return useQuery({
+    queryKey: growthKeys.reflections(startDate, endDate),
+    queryFn: async () => {
+      const response = await plannerClient.get('/growth/reflections', {
+        params: { member_id: user?.id, start_date: startDate, end_date: endDate },
+      });
+      return response.data as import('@/types/planner').DailyReflection[];
+    },
+    enabled: !!user?.id && !!startDate && !!endDate,
+  });
+}
+
+/** 회고 생성/수정 (upsert) */
+export function useUpsertReflection() {
+  const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
+
+  return useMutation({
+    mutationFn: async (data: {
+      date: string;
+      mood: string;
+      bestThing?: string;
+      worstThing?: string;
+      improvement?: string;
+      dailyGoal?: string;
+      understanding?: number;
+    }) => {
+      const response = await plannerClient.post('/growth/reflections', {
+        member_id: user?.id,
+        date: data.date,
+        mood: data.mood,
+        best_thing: data.bestThing,
+        worst_thing: data.worstThing,
+        improvement: data.improvement,
+        daily_goal: data.dailyGoal,
+        understanding: data.understanding,
+      });
+      return response.data;
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: growthKeys.reflection(variables.date),
+      });
+      queryClient.invalidateQueries({
+        queryKey: growthKeys.stats(),
+      });
+    },
+  });
+}
+
+/** 성장 통계 */
+export function useGetGrowthStats() {
+  const user = useAuthStore((state) => state.user);
+  return useQuery({
+    queryKey: growthKeys.stats(),
+    queryFn: async () => {
+      const response = await plannerClient.get('/growth/stats', {
+        params: { member_id: user?.id },
+      });
+      return response.data as import('@/types/planner').GrowthStats;
+    },
+    enabled: !!user?.id,
+  });
+}
+
+/** AI 코칭 */
+export function useGetAICoaching() {
+  const user = useAuthStore((state) => state.user);
+  return useQuery({
+    queryKey: growthKeys.coaching(),
+    queryFn: async () => {
+      const response = await plannerClient.get('/growth/ai-coaching', {
+        params: { member_id: user?.id },
+      });
+      return response.data as import('@/types/planner').AICoaching;
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5, // 5분
+  });
+}

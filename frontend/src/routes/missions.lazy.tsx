@@ -40,6 +40,46 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { useUpsertReflection } from '@/stores/server/planner/hooks';
+
+// 컨페티 애니메이션 (pure CSS/JS)
+function triggerConfetti() {
+  const container = document.createElement('div');
+  container.style.cssText =
+    'position:fixed;inset:0;z-index:9999;pointer-events:none;overflow:hidden;';
+  document.body.appendChild(container);
+
+  const colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6b9d', '#c084fc', '#fb923c'];
+  for (let i = 0; i < 30; i++) {
+    const particle = document.createElement('div');
+    const size = Math.random() * 10 + 6;
+    const left = Math.random() * 100;
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const delay = Math.random() * 0.5;
+    const duration = Math.random() * 1.5 + 1.5;
+    particle.style.cssText = `
+      position:absolute;top:-20px;left:${left}%;width:${size}px;height:${size}px;
+      background:${color};border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
+      animation:confetti-fall ${duration}s ease-in ${delay}s forwards;
+    `;
+    container.appendChild(particle);
+  }
+
+  // CSS 애니메이션 주입
+  if (!document.getElementById('confetti-style')) {
+    const style = document.createElement('style');
+    style.id = 'confetti-style';
+    style.textContent = `
+      @keyframes confetti-fall {
+        0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  setTimeout(() => container.remove(), 3500);
+}
 
 export const Route = createLazyFileRoute('/missions')({
   component: MyMissionsPage,
@@ -615,6 +655,7 @@ interface ResultFormData {
   endPage: string;
   progress: string;
   memo: string;
+  understanding: number;
 }
 
 function ResultDialog({
@@ -633,6 +674,7 @@ function ResultDialog({
     endPage: '',
     progress: '0',
     memo: '',
+    understanding: 3,
   });
 
   useMemo(() => {
@@ -642,6 +684,7 @@ function ResultDialog({
         endPage: mission.resultEndPage?.toString() || '',
         progress: mission.progress?.toString() || '0',
         memo: mission.resultMemo || '',
+        understanding: 3,
       });
     }
   }, [mission, open]);
@@ -754,6 +797,32 @@ function ResultDialog({
               placeholder="오늘 학습 메모..."
               className="mt-1 h-8 text-sm"
             />
+          </div>
+
+          {/* 이해도 평가 */}
+          <div>
+            <Label className="text-xs font-semibold text-gray-600">오늘 이해도 자가 평가</Label>
+            <div className="mt-1.5 flex items-center gap-2">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, understanding: v }))}
+                    className={`flex h-8 w-8 items-center justify-center rounded-full text-sm transition-all ${
+                      v <= form.understanding
+                        ? 'bg-amber-400 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-300 hover:bg-gray-200'
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-gray-400">
+                {['', '매우 낮음', '낮음', '보통', '높음', '매우 높음'][form.understanding]}
+              </span>
+            </div>
           </div>
 
           {/* 액션 */}
@@ -932,6 +1001,8 @@ function MyMissionsPage() {
   };
 
   // 결과 저장
+  const upsertReflection = useUpsertReflection();
+
   const handleSaveResult = (missionId: number, data: ResultFormData) => {
     const resultStart = Number(data.startPage) || undefined;
     const resultEnd = Number(data.endPage) || undefined;
@@ -953,7 +1024,22 @@ function MyMissionsPage() {
         },
       },
       {
-        onSuccess: () => toast.success('결과가 저장되었습니다!'),
+        onSuccess: () => {
+          if (progressNum >= 100) {
+            triggerConfetti();
+            toast.success('마션 완료! 🎉 또 한 걸음 성장했어요!');
+          } else {
+            toast.success('결과가 저장되었습니다!');
+          }
+          // 이해도 회고에 저장
+          if (data.understanding) {
+            upsertReflection.mutate({
+              date: dateStr,
+              mood: 'okay', // 기본값, 성장 페이지에서 수정 가능
+              understanding: data.understanding,
+            });
+          }
+        },
         onError: () => toast.error('결과 저장에 실패했습니다.'),
       },
     );
