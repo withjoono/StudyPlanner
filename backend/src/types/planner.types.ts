@@ -147,6 +147,10 @@ export interface PlannerPlan {
   person?: string;
   total?: number;
   done: number;
+  // Frontend-compatible aliases
+  totalAmount?: number;
+  completedAmount?: number;
+  weeklyTarget?: number;
   isItem?: boolean;
   isItemDone?: boolean;
   createdAt?: Date;
@@ -159,6 +163,12 @@ export interface CreatePlannerPlanDto {
   step?: string;
   startDay?: string;
   endDay?: string;
+  // Frontend-compatible aliases
+  startDate?: string;
+  endDate?: string;
+  totalAmount?: number;
+  completedAmount?: number;
+  weeklyTarget?: number;
   startTime?: string;
   endTime?: string;
   type?: 'textbook' | 'lecture';
@@ -244,7 +254,14 @@ export const DAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
 export const DAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
 export const SUBJECTS = [
-  '국어', '수학', '영어', '사회', '과학', '한국사', '제2외국어', '기타',
+  '국어',
+  '수학',
+  '영어',
+  '사회',
+  '과학',
+  '한국사',
+  '제2외국어',
+  '기타',
 ] as const;
 
 export const CATEGORY_LABELS = {

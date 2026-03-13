@@ -250,20 +250,31 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
     });
   };
 
-  // 다이얼로그 닫힐 때 상태 초기화
+  // 다이얼로그 열릴 때 / 닫힐 때 상태 초기화
+  const resetForm = () => {
+    setPlanName('');
+    setDescription('');
+    setSelectedKyokwa('');
+    setSelectedSubject('');
+    setSearchQuery('');
+    setDebouncedQuery('');
+    setSelectedMaterial(null);
+    setStartPage('');
+    setEndPage('');
+    setOtherName('');
+    setAmountUnit('page');
+    setActiveTab('reference');
+    setShowResults(false);
+    const today = new Date();
+    setStartDate(today.toISOString().split('T')[0]);
+    const future = new Date();
+    future.setMonth(future.getMonth() + 2);
+    setEndDate(future.toISOString().split('T')[0]);
+  };
+
   const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      setPlanName('');
-      setDescription('');
-      setSelectedKyokwa('');
-      setSelectedSubject('');
-      setSearchQuery('');
-      setDebouncedQuery('');
-      setSelectedMaterial(null);
-      setStartPage('');
-      setEndPage('');
-      setOtherName('');
-      setActiveTab('reference');
+    if (isOpen) {
+      resetForm();
     }
     onOpenChange(isOpen);
   };

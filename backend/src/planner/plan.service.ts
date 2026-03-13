@@ -16,16 +16,35 @@ export class PlanService {
   ) {}
 
   private mapToPlan(plan: any): PlannerPlan {
+    const total = plan.totalPages || 0;
+    const done = plan.donePages || 0;
+    const startDate = plan.startDate ? plan.startDate.toISOString().split('T')[0] : '';
+    const endDate = plan.endDate ? plan.endDate.toISOString().split('T')[0] : '';
+
+    // 주간 목표 계산
+    let weeklyTarget = 0;
+    if (startDate && endDate && total > 0) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const nWeeks = Math.max(1, Math.ceil(totalDays / 7));
+      weeklyTarget = Math.ceil(total / nWeeks);
+    }
+
     return {
       id: Number(plan.id),
       title: plan.title || '',
       subject: plan.subject || '',
       type: plan.materialType === MaterialType.lecture ? 'lecture' : 'textbook',
       material: plan.materialName || '',
-      total: plan.totalPages || 0,
-      done: plan.donePages || 0,
-      startDate: plan.startDate ? plan.startDate.toISOString().split('T')[0] : '',
-      endDate: plan.endDate ? plan.endDate.toISOString().split('T')[0] : '',
+      total,
+      done,
+      // Frontend-compatible fields
+      totalAmount: total,
+      completedAmount: done,
+      weeklyTarget,
+      startDate,
+      endDate,
       createdAt: plan.createdAt,
       updatedAt: plan.updatedAt,
     };
@@ -47,6 +66,12 @@ export class PlanService {
   }
 
   async createPlan(dto: CreatePlannerPlanDto, studentId: number = 1): Promise<PlannerPlan> {
+    // Support both frontend (startDate/endDate/totalAmount) and legacy (startDay/endDay/amount) field names
+    const startDateStr = dto.startDate || dto.startDay;
+    const endDateStr = dto.endDate || dto.endDay;
+    const totalAmount = dto.totalAmount ?? dto.amount;
+    const doneAmount = dto.completedAmount ?? dto.finished ?? 0;
+
     const plan = await this.prisma.longTermPlan.create({
       data: {
         studentId: BigInt(studentId),
@@ -55,10 +80,10 @@ export class PlanService {
         category: Category.study,
         materialType: dto.type === 'lecture' ? MaterialType.lecture : MaterialType.textbook,
         materialName: dto.material,
-        totalPages: dto.amount,
-        donePages: dto.finished || 0,
-        startDate: dto.startDay ? new Date(dto.startDay) : null,
-        endDate: dto.endDay ? new Date(dto.endDay) : null,
+        totalPages: totalAmount,
+        donePages: doneAmount,
+        startDate: startDateStr ? new Date(startDateStr) : null,
+        endDate: endDateStr ? new Date(endDateStr) : null,
       },
     });
 
