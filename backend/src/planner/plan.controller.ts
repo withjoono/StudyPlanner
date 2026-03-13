@@ -46,8 +46,8 @@ export class PlanController {
 
   @Get()
   @ApiOperation({ summary: '장기 계획 목록 조회' })
-  async getPlans(@Query('memberId') memberId?: string) {
-    const studentId = await this.resolveStudentId(memberId);
+  async getPlans(@Query('memberId') memberId?: string, @Query('member_id') memberIdSnake?: string) {
+    const studentId = await this.resolveStudentId(memberId || memberIdSnake);
     return this.planService.getPlans(studentId);
   }
 
@@ -59,8 +59,29 @@ export class PlanController {
 
   @Post()
   @ApiOperation({ summary: '장기 계획 생성' })
-  async createPlan(@Body() dto: CreatePlannerPlanDto & { memberId?: string }) {
-    const studentId = await this.resolveStudentId(dto.memberId);
+  async createPlan(@Body() body: any) {
+    // Frontend humps interceptor converts camelCase → snake_case
+    // Accept both naming conventions
+    const memberId = body.memberId || body.member_id;
+    const studentId = await this.resolveStudentId(memberId);
+
+    const dto: CreatePlannerPlanDto = {
+      title: body.title,
+      subject: body.subject,
+      type: body.type,
+      material: body.material,
+      // Accept both camelCase and snake_case
+      startDate: body.startDate || body.start_date,
+      endDate: body.endDate || body.end_date,
+      startDay: body.startDay || body.start_day,
+      endDay: body.endDay || body.end_day,
+      totalAmount: body.totalAmount ?? body.total_amount,
+      completedAmount: body.completedAmount ?? body.completed_amount,
+      weeklyTarget: body.weeklyTarget ?? body.weekly_target,
+      amount: body.amount,
+      finished: body.finished,
+    };
+
     return this.planService.createPlan(dto, studentId);
   }
 
