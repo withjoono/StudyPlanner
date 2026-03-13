@@ -1,17 +1,54 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PlanService } from './plan.service';
+import { PrismaService } from '../prisma/prisma.service';
 import type { CreatePlannerPlanDto, UpdatePlannerPlanDto } from '../types/planner.types';
 
 @ApiTags('plans')
 @Controller('planner/plans')
 export class PlanController {
-  constructor(private readonly planService: PlanService) {}
+  constructor(
+    private readonly planService: PlanService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /** memberId → studentId 변환 (숫자 ID 또는 문자열 userId) */
+  private async resolveStudentId(memberId?: number | string): Promise<number> {
+    if (!memberId) return 1;
+
+    // 숫자형 member_id
+    if (typeof memberId === 'number' || /^\d+$/.test(String(memberId))) {
+      const id = BigInt(memberId);
+      const existing = await this.prisma.student.findFirst({ where: { id } });
+      if (existing) return Number(existing.id);
+    }
+
+    // 문자열 userId ("sp_S26H208011")
+    const userIdStr = String(memberId);
+    const byUserId = await this.prisma.student.findFirst({
+      where: { userId: userIdStr },
+    });
+    if (byUserId) return Number(byUserId.id);
+
+    // 학생 자동 생성
+    const code = `SP${Date.now()}`;
+    const student = await this.prisma.student.create({
+      data: {
+        studentCode: code,
+        userId: userIdStr.startsWith('sp_') ? userIdStr : undefined,
+        year: new Date().getFullYear(),
+        schoolLevel: 'high',
+        name: '학생',
+      },
+    });
+    return Number(student.id);
+  }
 
   @Get()
   @ApiOperation({ summary: '장기 계획 목록 조회' })
-  async getPlans() {
-    return this.planService.getPlans();
+  async getPlans(@Query('memberId') memberId?: string) {
+    const studentId = await this.resolveStudentId(memberId);
+    return this.planService.getPlans(studentId);
   }
 
   @Get(':id')
@@ -22,8 +59,9 @@ export class PlanController {
 
   @Post()
   @ApiOperation({ summary: '장기 계획 생성' })
-  async createPlan(@Body() dto: CreatePlannerPlanDto) {
-    return this.planService.createPlan(dto);
+  async createPlan(@Body() dto: CreatePlannerPlanDto & { memberId?: string }) {
+    const studentId = await this.resolveStudentId(dto.memberId);
+    return this.planService.createPlan(dto, studentId);
   }
 
   @Put(':id')

@@ -3,15 +3,15 @@ import { Toaster, toast } from 'sonner';
 import { useAuthStore } from '@/stores/client/use-auth-store';
 
 import { useSsoExchange } from '@/stores/server/auth';
-import { useEffect, useState } from 'react';
-import { Bell, X, GraduationCap, LayoutGrid, Users, LogOut } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Bell, X, GraduationCap, LayoutGrid, Users, LogOut, ChevronDown } from 'lucide-react';
 import { WonCircle } from '@/components/icons';
 import PromoPage from '@/components/PromoPage';
 
 // Hub URL
 const HUB_URL =
   import.meta.env.VITE_HUB_URL ||
-  (import.meta.env.PROD ? 'https://geobukschool.kr' : 'http://localhost:5173');
+  (import.meta.env.PROD ? 'https://tskool.kr' : 'http://localhost:5173');
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -24,6 +24,8 @@ function RootLayout() {
   const ssoExchangeMutation = useSsoExchange();
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
   const [isSSOLoading, setIsSSOLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return !!params.get('sso_code');
@@ -32,6 +34,19 @@ function RootLayout() {
   // 비로그인 + 홈 경로일 때 프로모 페이지 표시
   const isHomePath = router.location.pathname === '/';
   const showPromo = !isAuthenticated && isHomePath && !isSSOLoading;
+
+  // 드롭다운 외부 클릭 감지
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target as Node)) {
+        setUserDropdownOpen(false);
+      }
+    };
+    if (userDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userDropdownOpen]);
 
   // SSO 코드 처리
   useEffect(() => {
@@ -169,16 +184,47 @@ function RootLayout() {
 
               {/* 사용자 정보 / 로그인 버튼 */}
               {isAuthenticated && user ? (
-                <button
-                  onClick={() => {
-                    clearAuth();
-                    window.location.href = HUB_URL;
-                  }}
-                  className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                >
-                  <LogOut className="h-4 w-4" />
-                  로그아웃
-                </button>
+                <div className="relative" ref={userDropdownRef}>
+                  <button
+                    onClick={() => setUserDropdownOpen((v) => !v)}
+                    className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    <span>{user.userName} 님</span>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  {userDropdownOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                      <a
+                        href={`${HUB_URL}/users/profile`}
+                        className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        마이페이지
+                      </a>
+                      <a
+                        href={`${HUB_URL}/users/payment`}
+                        className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        결제내역
+                      </a>
+                      <div className="my-1 border-t border-gray-100" />
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          clearAuth();
+                          window.location.href = HUB_URL;
+                        }}
+                        className="flex w-full items-center px-4 py-2 text-sm text-red-500 hover:bg-red-50"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        로그아웃
+                      </button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <a
                   href={`${HUB_URL}/login?redirect=${encodeURIComponent(window.location.href)}`}
@@ -228,6 +274,35 @@ function RootLayout() {
                     {item.label}
                   </Link>
                 ))}
+                {isAuthenticated && user && (
+                  <>
+                    <div className="my-1 border-t border-gray-100" />
+                    <a
+                      href={`${HUB_URL}/users/profile`}
+                      className="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      마이페이지
+                    </a>
+                    <a
+                      href={`${HUB_URL}/users/payment`}
+                      className="block rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      결제내역
+                    </a>
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        clearAuth();
+                        window.location.href = HUB_URL;
+                      }}
+                      className="block w-full rounded-md px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50"
+                    >
+                      로그아웃
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
