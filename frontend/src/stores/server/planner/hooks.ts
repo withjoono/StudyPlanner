@@ -85,15 +85,15 @@ export function useGetPlannerMentors() {
 
 export function useGetRoutines() {
   const user = useAuthStore((state) => state.user);
+  const memberId = user?.id || 1;
   return useQuery({
     queryKey: plannerKeys.routines(),
     queryFn: async () => {
       const response = await plannerClient.get('/planner/routines', {
-        params: { memberId: user?.id },
+        params: { memberId },
       });
       return response.data as Routine[];
     },
-    enabled: !!user?.id,
   });
 }
 
@@ -159,15 +159,15 @@ export function useDeleteRoutine() {
 
 export function useGetPlans() {
   const user = useAuthStore((state) => state.user);
+  const memberId = user?.id || 1;
   return useQuery({
     queryKey: plannerKeys.plans(),
     queryFn: async () => {
       const response = await plannerClient.get('/planner/plans', {
-        params: { memberId: user?.id },
+        params: { memberId },
       });
       return response.data as ExtendedLongTermPlan[];
     },
-    enabled: !!user?.id,
   });
 }
 

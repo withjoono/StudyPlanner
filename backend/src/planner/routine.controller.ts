@@ -43,8 +43,11 @@ export class RoutineController {
 
   @Get()
   @ApiOperation({ summary: '루틴 목록 조회' })
-  async getRoutines(@Query('memberId') memberId?: string) {
-    const studentId = await this.resolveStudentId(memberId);
+  async getRoutines(
+    @Query('memberId') memberId?: string,
+    @Query('member_id') memberIdSnake?: string,
+  ) {
+    const studentId = await this.resolveStudentId(memberId || memberIdSnake);
     return this.routineService.getRoutines(studentId);
   }
 
@@ -56,15 +59,16 @@ export class RoutineController {
 
   @Post()
   @ApiOperation({ summary: '루틴 생성' })
-  async createRoutine(@Body() dto: CreateRoutineDto & { memberId?: string }) {
-    const studentId = await this.resolveStudentId(dto.memberId);
-    return this.routineService.createRoutine(dto, studentId);
+  async createRoutine(@Body() body: any) {
+    const memberId = body.memberId || body.member_id;
+    const studentId = await this.resolveStudentId(memberId);
+    return this.routineService.createRoutine(body, studentId);
   }
 
   @Put(':id')
   @ApiOperation({ summary: '루틴 수정' })
-  async updateRoutine(@Param('id') id: number, @Body() dto: UpdateRoutineDto) {
-    return this.routineService.updateRoutine(id, dto);
+  async updateRoutine(@Param('id') id: number, @Body() body: any) {
+    return this.routineService.updateRoutine(id, body);
   }
 
   @Delete(':id')

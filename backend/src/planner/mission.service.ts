@@ -99,17 +99,17 @@ export class MissionService {
   private formatTime(date: Date | string | null): string {
     if (!date) return '00:00';
     if (typeof date === 'string') return date;
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
+    // UTC 기반으로 시간을 추출 (Prisma @db.Time은 1970-01-01T{HH:MM}Z 형식)
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
   }
 
   private parseTime(time?: string): Date | undefined {
     if (!time) return undefined;
     const [hours, minutes] = time.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-    return date;
+    // UTC 기반으로 Date 생성 — 서버 타임존과 무관하게 동작
+    return new Date(Date.UTC(1970, 0, 1, hours, minutes, 0, 0));
   }
 
   private generateMissionCode(studentId: number, date: Date): string {

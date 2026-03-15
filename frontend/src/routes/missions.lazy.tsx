@@ -31,9 +31,11 @@ import {
   useDeleteMission,
   useGetSubjects,
   useSearchMaterials,
+  useGetRoutines,
 } from '@/stores/server/planner';
 import type { DailyMission } from '@/stores/server/planner/planner-types';
 import { SUBJECT_COLORS } from '@/types/planner';
+import type { Routine } from '@/types/planner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -850,6 +852,7 @@ function ResultDialog({
 // ============================================
 function MyMissionsPage() {
   const { data: missions, isLoading } = useGetDailyMissions();
+  const { data: routines } = useGetRoutines();
   const createMutation = useCreateMission();
   const updateMutation = useUpdateMission();
   const deleteMutation = useDeleteMission();
@@ -872,6 +875,19 @@ function MyMissionsPage() {
   const dateStr = selectedDate.toISOString().split('T')[0];
   const isToday = dateStr === new Date().toISOString().split('T')[0];
 
+  // 선택한 날짜의 요일에 활성화된 루틴 필터링
+  const dayRoutines = useMemo(() => {
+    if (!routines) return [];
+    const dayIndex = selectedDate.getDay(); // 0=일 ~ 6=토
+    return (routines as Routine[])
+      .filter((r) => {
+        if (!r.days || !r.days[dayIndex]) return false;
+        if (!r.repeat) return false;
+        return true;
+      })
+      .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
+  }, [routines, selectedDate]);
+
   const dayMissions = useMemo(() => {
     if (!missions) return [];
     return missions.filter((m: DailyMission) => {
@@ -879,6 +895,22 @@ function MyMissionsPage() {
       return mDate === dateStr;
     });
   }, [missions, dateStr]);
+
+  // 루틴 + 미션 통합 타임라인 (시간순 정렬)
+  type TimelineItem = { type: 'routine'; data: Routine } | { type: 'mission'; data: DailyMission };
+
+  const timelineItems = useMemo<TimelineItem[]>(() => {
+    const items: TimelineItem[] = [
+      ...dayRoutines.map((r) => ({ type: 'routine' as const, data: r })),
+      ...dayMissions.map((m) => ({ type: 'mission' as const, data: m })),
+    ];
+    items.sort((a, b) => {
+      const aTime = a.type === 'routine' ? a.data.startTime : a.data.startTime || '99:99';
+      const bTime = b.type === 'routine' ? b.data.startTime : b.data.startTime || '99:99';
+      return aTime.localeCompare(bTime);
+    });
+    return items;
+  }, [dayRoutines, dayMissions]);
 
   // 날짜 이동
   const navigateDate = (dir: 'prev' | 'next') => {
@@ -1162,16 +1194,91 @@ function MyMissionsPage() {
         </CardContent>
       </Card>
 
-      {/* ===== 미션 타임라인 ===== */}
-      {dayMissions.length === 0 ? (
+      {/* ===== 통합 타임라인 (루틴 + 미션) ===== */}
+      {timelineItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16">
           <BookOpen className="mb-3 h-10 w-10 text-gray-300" />
-          <p className="mb-1 text-sm font-medium text-gray-500">아직 미션이 없습니다</p>
-          <p className="mb-4 text-xs text-gray-400">아래 + 버튼으로 미션을 추가하세요</p>
+          <p className="mb-1 text-sm font-medium text-gray-500">오늘의 일정이 없습니다</p>
+          <p className="mb-4 text-xs text-gray-400">
+            주간루틴을 설정하거나, + 버튼으로 미션을 추가하세요
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
-          {dayMissions.map((mission: DailyMission) => {
+          {timelineItems.map((item) => {
+            // ======= 루틴 카드 =======
+            if (item.type === 'routine') {
+              const routine = item.data;
+              const rColor =
+                routine.majorCategory === 'class'
+                  ? '#3b82f6'
+                  : routine.majorCategory === 'self_study'
+                    ? '#10b981'
+                    : routine.majorCategory === 'exercise'
+                      ? '#f59e0b'
+                      : '#8b5cf6';
+              const categoryLabel =
+                routine.majorCategory === 'class'
+                  ? '수업'
+                  : routine.majorCategory === 'self_study'
+                    ? '자습'
+                    : routine.majorCategory === 'exercise'
+                      ? '운동'
+                      : '일정';
+
+              return (
+                <div
+                  key={`routine-${routine.id}`}
+                  className="rounded-xl border bg-gradient-to-r transition-all"
+                  style={{
+                    borderLeftWidth: '4px',
+                    borderLeftColor: rColor,
+                    backgroundImage: `linear-gradient(to right, ${rColor}08, ${rColor}03)`,
+                  }}
+                >
+                  <div className="flex items-stretch">
+                    {/* 시간 */}
+                    <div
+                      className="flex flex-col items-center justify-center px-3 py-3"
+                      style={{ minWidth: '64px' }}
+                    >
+                      <span className="text-sm font-bold" style={{ color: rColor }}>
+                        {routine.startTime || '00:00'}
+                      </span>
+                      <span className="text-[10px] text-gray-400">~</span>
+                      <span className="text-xs" style={{ color: rColor + 'cc' }}>
+                        {routine.endTime || '00:00'}
+                      </span>
+                    </div>
+
+                    <div className="w-px" style={{ backgroundColor: rColor + '20' }} />
+
+                    {/* 내용 */}
+                    <div className="flex-1 px-3 py-3">
+                      <div className="mb-1 flex items-center gap-2">
+                        <span
+                          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
+                          style={{ backgroundColor: rColor }}
+                        >
+                          <Clock className="h-2.5 w-2.5" />
+                          {categoryLabel}
+                        </span>
+                        <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500">
+                          루틴
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-gray-800">{routine.title}</p>
+                      {routine.subject && (
+                        <p className="mt-0.5 text-[11px] text-gray-500">{routine.subject}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // ======= 미션 카드 =======
+            const mission = item.data;
             const color = SUBJECT_COLORS[mission.subject] || '#6b7280';
             const isCompleted =
               mission.status === 'completed' || (mission.progress && mission.progress >= 100);
@@ -1187,7 +1294,7 @@ function MyMissionsPage() {
 
             return (
               <div
-                key={mission.id}
+                key={`mission-${mission.id}`}
                 className="rounded-xl border bg-white transition-all hover:shadow-md"
                 style={{ borderLeftWidth: '4px', borderLeftColor: color }}
               >
@@ -1216,6 +1323,9 @@ function MyMissionsPage() {
                         style={{ backgroundColor: color }}
                       >
                         {mission.subject || '미지정'}
+                      </span>
+                      <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-medium text-orange-600">
+                        미션
                       </span>
                       {isCompleted && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
                     </div>
@@ -1246,7 +1356,6 @@ function MyMissionsPage() {
                 {/* 하단: 결과 영역 */}
                 <div className="border-t border-gray-100 px-3 py-2">
                   {hasResult ? (
-                    // 결과가 있으면 인라인 표시
                     <div className="flex items-center gap-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
@@ -1280,7 +1389,6 @@ function MyMissionsPage() {
                       </button>
                     </div>
                   ) : (
-                    // 결과 없으면 입력 버튼
                     <button
                       onClick={(e) => handleOpenResult(mission, e)}
                       className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-purple-300 bg-purple-50/50 py-1.5 text-xs font-semibold text-purple-500 transition-colors hover:bg-purple-100"

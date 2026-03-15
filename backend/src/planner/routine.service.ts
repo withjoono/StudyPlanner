@@ -16,11 +16,14 @@ export class RoutineService {
     private readonly sharedSchedule: SharedScheduleService,
   ) {}
 
-  private mapToRoutine(routine: any): Routine {
+  private mapToRoutine(
+    routine: any,
+  ): Routine & { majorCategory?: string; startDate?: string; endDate?: string } {
     return {
       id: Number(routine.id),
       title: routine.title || '',
       category: this.mapCategoryToRoutineCategory(routine.category),
+      majorCategory: this.mapCategoryToMajorCategory(routine.category, routine.subCategory),
       subject: routine.subject || undefined,
       startTime: routine.startTime ? this.formatTime(routine.startTime) : '00:00',
       endTime: routine.endTime ? this.formatTime(routine.endTime) : '00:00',
@@ -34,6 +37,8 @@ export class RoutineService {
         routine.daySat,
       ],
       repeat: routine.isActive,
+      startDate: routine.startDate ? this.formatDate(routine.startDate) : undefined,
+      endDate: routine.endDate ? this.formatDate(routine.endDate) : undefined,
     };
   }
 
@@ -60,19 +65,91 @@ export class RoutineService {
     return categoryMap[category] || undefined;
   }
 
+  /** majorCategory(프론트) → Category + subCategory 매핑 */
+  private mapMajorCategoryToCategory(majorCategory?: string): {
+    category: Category;
+    subCategory: string;
+  } {
+    switch (majorCategory) {
+      case 'class':
+        return { category: Category.study, subCategory: 'class' };
+      case 'self_study':
+        return { category: Category.study, subCategory: 'self_study' };
+      case 'exercise':
+        return { category: Category.exercise, subCategory: 'exercise' };
+      case 'schedule':
+        return { category: Category.other, subCategory: 'schedule' };
+      default:
+        return { category: Category.other, subCategory: majorCategory || 'other' };
+    }
+  }
+
+  /** Category + subCategory → majorCategory(프론트) 역매핑 */
+  private mapCategoryToMajorCategory(
+    category: Category | null,
+    subCategory?: string | null,
+  ): string {
+    // subCategory가 있으면 직접 매핑
+    if (subCategory) {
+      if (['class', 'self_study', 'exercise', 'schedule'].includes(subCategory)) return subCategory;
+    }
+    // subCategory가 없으면 category에서 유추
+    switch (category) {
+      case 'study':
+        return 'self_study';
+      case 'exercise':
+        return 'exercise';
+      case 'rest':
+        return 'schedule';
+      default:
+        return 'schedule';
+    }
+  }
+
   private formatTime(date: Date | string): string {
     if (typeof date === 'string') return date;
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
+    // UTC 기반으로 시간을 추출 (Prisma @db.Time은 1970-01-01T{HH:MM}Z 형식)
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
   }
 
   private parseTime(time?: string): Date | undefined {
     if (!time) return undefined;
     const [hours, minutes] = time.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-    return date;
+    // UTC 기반으로 Date 생성 — 서버 타임존과 무관하게 동작
+    return new Date(Date.UTC(1970, 0, 1, hours, minutes, 0, 0));
+  }
+
+  private formatDate(date: Date | string): string {
+    if (typeof date === 'string') return date.split('T')[0];
+    return date.toISOString().split('T')[0];
+  }
+
+  private parseDate(dateStr?: string): Date | undefined {
+    if (!dateStr) return undefined;
+    return new Date(dateStr + 'T00:00:00Z');
+  }
+
+  /**
+   * 프론트엔드 Axios 인터셉터(humps)가 camelCase → snake_case로 변환하므로
+   * 양쪽 형식을 모두 처리할 수 있도록 정규화
+   */
+  private normalizeRoutineDto(dto: any): any {
+    return {
+      title: dto.title,
+      category: dto.category,
+      majorCategory: dto.majorCategory ?? dto.major_category,
+      subject: dto.subject,
+      startTime: dto.startTime ?? dto.start_time,
+      endTime: dto.endTime ?? dto.end_time,
+      repeat: dto.repeat,
+      days: dto.days,
+      startDate: dto.startDate ?? dto.start_date,
+      endDate: dto.endDate ?? dto.end_date,
+      color: dto.color,
+      memberId: dto.memberId ?? dto.member_id,
+    };
   }
 
   async getRoutines(studentId?: number): Promise<Routine[]> {
@@ -90,14 +167,27 @@ export class RoutineService {
     return routine ? this.mapToRoutine(routine) : undefined;
   }
 
-  async createRoutine(dto: CreateRoutineDto, studentId: number = 1): Promise<Routine> {
+  async createRoutine(rawDto: any, studentId: number = 1): Promise<Routine> {
+    const dto = this.normalizeRoutineDto(rawDto);
     const days = dto.days || [false, false, false, false, false, false, false];
+
+    // majorCategory가 있으면 category/subCategory로 변환, 없으면 기존 category 사용
+    let category: Category | undefined;
+    let subCategory: string | undefined;
+    if (dto.majorCategory) {
+      const mapped = this.mapMajorCategoryToCategory(dto.majorCategory);
+      category = mapped.category;
+      subCategory = mapped.subCategory;
+    } else {
+      category = this.mapRoutineCategoryToCategory(dto.category);
+    }
 
     const routine = await this.prisma.weeklyRoutine.create({
       data: {
         studentId: BigInt(studentId),
         title: dto.title,
-        category: this.mapRoutineCategoryToCategory(dto.category),
+        category,
+        subCategory,
         subject: dto.subject,
         startTime: this.parseTime(dto.startTime),
         endTime: this.parseTime(dto.endTime),
@@ -109,6 +199,8 @@ export class RoutineService {
         dayFri: days[5] ?? false,
         daySat: days[6] ?? false,
         isActive: dto.repeat ?? true,
+        startDate: this.parseDate(dto.startDate),
+        endDate: this.parseDate(dto.endDate),
       },
     });
 
@@ -118,7 +210,8 @@ export class RoutineService {
     return this.mapToRoutine(routine);
   }
 
-  async updateRoutine(id: number, dto: UpdateRoutineDto): Promise<Routine | undefined> {
+  async updateRoutine(id: number, rawDto: any): Promise<Routine | undefined> {
+    const dto = this.normalizeRoutineDto(rawDto);
     const existing = await this.prisma.weeklyRoutine.findUnique({
       where: { id: BigInt(id) },
     });
@@ -128,12 +221,22 @@ export class RoutineService {
     const updateData: any = {};
 
     if (dto.title !== undefined) updateData.title = dto.title;
-    if (dto.category !== undefined)
+
+    // majorCategory가 있으면 category/subCategory로 변환
+    if (dto.majorCategory !== undefined) {
+      const mapped = this.mapMajorCategoryToCategory(dto.majorCategory);
+      updateData.category = mapped.category;
+      updateData.subCategory = mapped.subCategory;
+    } else if (dto.category !== undefined) {
       updateData.category = this.mapRoutineCategoryToCategory(dto.category);
+    }
+
     if (dto.subject !== undefined) updateData.subject = dto.subject;
     if (dto.startTime !== undefined) updateData.startTime = this.parseTime(dto.startTime);
     if (dto.endTime !== undefined) updateData.endTime = this.parseTime(dto.endTime);
     if (dto.repeat !== undefined) updateData.isActive = dto.repeat;
+    if (dto.startDate !== undefined) updateData.startDate = this.parseDate(dto.startDate);
+    if (dto.endDate !== undefined) updateData.endDate = this.parseDate(dto.endDate);
 
     if (dto.days) {
       updateData.daySun = dto.days[0] ?? existing.daySun;
