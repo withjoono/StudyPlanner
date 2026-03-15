@@ -25,7 +25,12 @@ import {
   useGetPlans,
 } from '@/stores/server/planner';
 import type { Routine, RoutineMajorCategory, LongTermPlan } from '@/types/planner';
-import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, SUBJECT_COLORS } from '@/types/planner';
+import {
+  MAJOR_CATEGORY_LABELS,
+  MAJOR_CATEGORY_COLORS,
+  SUBJECT_COLORS,
+  getSubjectColor,
+} from '@/types/planner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -253,7 +258,7 @@ function WeeklyRoutineSummaryCard({
     return Object.entries(subjects).map(([label, value]) => ({
       label,
       value,
-      color: SUBJECT_COLORS[label] || '#6b7280',
+      color: getSubjectColor(label),
     }));
   };
 
@@ -352,7 +357,7 @@ function WeeklyRoutineSummaryCard({
         {/* 과목별 루틴 목록 */}
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {summaryBySubject.map((summary) => {
-            const color = SUBJECT_COLORS[summary.subject] || '#6b7280';
+            const color = getSubjectColor(summary.subject);
             const categoryLabel = summary.category === 'class' ? '수업' : '자습';
 
             return (
@@ -785,7 +790,7 @@ function RoutineFormDialog({
             </div>
             <div className="max-h-36 space-y-1.5 overflow-y-auto">
               {activePlans.map((plan) => {
-                const color = SUBJECT_COLORS[plan.subject || ''] || '#6b7280';
+                const color = getSubjectColor(plan.subject || '기타');
                 const isSelected =
                   formData.title === plan.title && formData.subject === plan.subject;
                 const unitLabel = plan.type === 'lecture' ? '강' : 'p';
@@ -1141,7 +1146,7 @@ function WeeklyMissionSection() {
         ) : (
           <div className="space-y-3">
             {missionGroups.map((group) => {
-              const color = SUBJECT_COLORS[group.subject] || '#6b7280';
+              const color = getSubjectColor(group.subject);
               return (
                 <div
                   key={group.subject}

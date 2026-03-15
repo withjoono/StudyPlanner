@@ -34,7 +34,7 @@ import {
   useGetRoutines,
 } from '@/stores/server/planner';
 import type { DailyMission } from '@/stores/server/planner/planner-types';
-import { SUBJECT_COLORS } from '@/types/planner';
+import { getSubjectColor } from '@/types/planner';
 import type { Routine } from '@/types/planner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -314,7 +314,7 @@ function MissionDialog({
 
   const planTotal = (Number(form.endPage) || 0) - (Number(form.startPage) || 0);
   const unitLabel = form.materialTab === 'lecture' ? '강' : '페이지';
-  const color = form.subject ? SUBJECT_COLORS[form.subject] || '#6b7280' : '#3b82f6';
+  const color = form.subject ? getSubjectColor(form.subject) : '#3b82f6';
 
   const handleSave = () => {
     onSave(form, mission?.id);
@@ -697,7 +697,7 @@ function ResultDialog({
 
   const resultTotal = (Number(form.endPage) || 0) - (Number(form.startPage) || 0);
   const progressNum = Number(form.progress) || 0;
-  const color = mission?.subject ? SUBJECT_COLORS[mission.subject] || '#6b7280' : '#8b5cf6';
+  const color = mission?.subject ? getSubjectColor(mission.subject) : '#8b5cf6';
 
   const handleSave = () => {
     if (mission) {
@@ -950,7 +950,7 @@ function MyMissionsPage() {
   const plannedSlices = Object.entries(subjectStats).map(([label, value]) => ({
     label,
     value,
-    color: SUBJECT_COLORS[label] || '#6b7280',
+    color: getSubjectColor(label),
   }));
 
   const executedSlices = dayMissions
@@ -962,7 +962,7 @@ function MyMissionsPage() {
       const endH = parseInt(m.endTime?.split(':')[0] || '0', 10);
       const hours = Math.max(1, endH - startH);
       if (existing) existing.value += hours;
-      else acc.push({ label: subj, value: hours, color: SUBJECT_COLORS[subj] || '#6b7280' });
+      else acc.push({ label: subj, value: hours, color: getSubjectColor(subj) });
       return acc;
     }, []);
 
@@ -1279,7 +1279,7 @@ function MyMissionsPage() {
 
             // ======= 미션 카드 =======
             const mission = item.data;
-            const color = SUBJECT_COLORS[mission.subject] || '#6b7280';
+            const color = getSubjectColor(mission.subject);
             const isCompleted =
               mission.status === 'completed' || (mission.progress && mission.progress >= 100);
             const planStart = mission.startPage ?? '';

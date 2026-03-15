@@ -8,17 +8,81 @@
 
 /** 과목 색상 매핑 */
 export const SUBJECT_COLORS: Record<string, string> = {
+  // 주요 교과
   국어: '#ef4444', // red
   수학: '#eab308', // yellow
   영어: '#f97316', // orange
   사회: '#3b82f6', // blue
   과학: '#14b8a6', // teal
-  사탐: '#3b82f6', // blue
-  과탐: '#14b8a6', // teal
   한국사: '#a855f7', // purple
-  제2외국어: '#6366f1', // indigo
-  기타: '#6b7280', // gray
+
+  // 사탐/과탐 통합
+  사탐: '#2563eb', // blue-600
+  과탐: '#0d9488', // teal-600
+
+  // 국어 세부
+  공통국어1: '#dc2626', // red-600
+  공통국어2: '#b91c1c', // red-700
+  문학: '#e11d48', // rose-600
+  독서: '#f43f5e', // rose-500
+  화법과작문: '#fb7185', // rose-400
+  언어와매체: '#be123c', // rose-700
+
+  // 수학 세부
+  수학1: '#ca8a04', // yellow-600
+  수학2: '#a16207', // yellow-700
+  확률과통계: '#d97706', // amber-600
+  미적분: '#b45309', // amber-700
+  기하: '#92400e', // amber-800
+
+  // 영어 세부
+  영어1: '#ea580c', // orange-600
+  영어2: '#c2410c', // orange-700
+
+  // 사회 세부
+  생활과윤리: '#1d4ed8', // blue-700
+  윤리와사상: '#1e40af', // blue-800
+  한국지리: '#2563eb', // blue-600
+  세계지리: '#3730a3', // indigo-800
+  동아시아사: '#4f46e5', // indigo-600
+  세계사: '#6366f1', // indigo-500
+  정치와법: '#7c3aed', // violet-600
+  경제: '#6d28d9', // violet-700
+  사회문화: '#4338ca', // indigo-700
+
+  // 과학 세부
+  통합과학: '#0f766e', // teal-700
+  물리학1: '#0891b2', // cyan-600
+  물리학2: '#0e7490', // cyan-700
+  화학1: '#059669', // emerald-600
+  화학2: '#047857', // emerald-700
+  생명과학1: '#16a34a', // green-600
+  생명과학2: '#15803d', // green-700
+  지구과학1: '#0284c7', // sky-600
+  지구과학2: '#0369a1', // sky-700
+
+  // 예체능 & 기타
+  음악: '#c026d3', // fuchsia-600
+  미술: '#db2777', // pink-600
+  체육: '#65a30d', // lime-600
+  기술가정: '#78716c', // stone-500
+  정보: '#06b6d4', // cyan-500
+  제2외국어: '#6366f1', // indigo-500
+  한문: '#9333ea', // purple-600
+  기타: '#6b7280', // gray-500
 };
+
+/** 과목 이름에 대한 고유 색상 반환 (매핑에 없으면 해시 기반 HSL 생성) */
+export function getSubjectColor(subject: string): string {
+  if (SUBJECT_COLORS[subject]) return SUBJECT_COLORS[subject];
+  // 문자열 해시 → 고유 Hue 생성
+  let hash = 0;
+  for (let i = 0; i < subject.length; i++) {
+    hash = subject.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = ((hash % 360) + 360) % 360;
+  return `hsl(${hue}, 65%, 50%)`;
+}
 
 /** 루틴 카테고리 색상 */
 export const ROUTINE_CATEGORY_COLORS: Record<RoutineCategory, string> = {
