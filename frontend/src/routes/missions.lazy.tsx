@@ -1397,6 +1397,137 @@ function MyMissionsPage() {
         </CardContent>
       </Card>
 
+      {/* ===== 미션 리스트 (상호작용 포인트) ===== */}
+      {timelineItems.length > 0 && (
+        <Card className="mb-4">
+          <CardContent className="p-0">
+            <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-2.5">
+              <BookOpen className="h-4 w-4 text-orange-500" />
+              <span className="text-sm font-semibold text-gray-700">미션 목록</span>
+              <span className="ml-auto text-[10px] text-gray-400">탭하여 수정</span>
+            </div>
+
+            <div className="divide-y divide-gray-50">
+              {timelineItems.map((item) => {
+                if (item.type === 'routine') {
+                  const routine = item.data;
+                  const rColor =
+                    routine.majorCategory === 'class'
+                      ? '#3b82f6'
+                      : routine.majorCategory === 'self_study'
+                        ? '#10b981'
+                        : routine.majorCategory === 'exercise'
+                          ? '#f59e0b'
+                          : '#8b5cf6';
+                  return (
+                    <div
+                      key={`list-routine-${routine.id}`}
+                      className="flex items-center gap-2.5 px-4 py-2.5"
+                    >
+                      <div
+                        className="flex h-8 w-14 flex-shrink-0 flex-col items-center justify-center rounded-md"
+                        style={{ backgroundColor: `${rColor}12` }}
+                      >
+                        <span className="text-[10px] font-bold" style={{ color: rColor }}>
+                          {routine.startTime}
+                        </span>
+                        <span className="text-[8px] text-gray-400">{routine.endTime}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
+                          <span
+                            className="rounded px-1 py-px text-[9px] font-bold text-white"
+                            style={{ backgroundColor: rColor }}
+                          >
+                            {routine.majorCategory === 'class'
+                              ? '수업'
+                              : routine.majorCategory === 'self_study'
+                                ? '자습'
+                                : routine.majorCategory === 'exercise'
+                                  ? '운동'
+                                  : '일정'}
+                          </span>
+                          <span className="text-[9px] text-gray-400">루틴</span>
+                        </div>
+                        <p className="mt-0.5 truncate text-xs font-medium text-gray-700">
+                          {routine.title}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                const mission = item.data;
+                const color = getSubjectColor(mission.subject);
+                const isCompleted =
+                  mission.status === 'completed' || (mission.progress && mission.progress >= 100);
+                const completionRate = isCompleted ? 100 : mission.progress || 0;
+
+                return (
+                  <div
+                    key={`list-mission-${mission.id}`}
+                    className="flex items-center gap-2.5 px-4 py-2.5"
+                  >
+                    <button
+                      onClick={() => handleEditMission(mission)}
+                      className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                    >
+                      <div className="flex h-8 w-14 flex-shrink-0 flex-col items-center justify-center rounded-md bg-gray-50">
+                        <span className="text-[10px] font-bold text-gray-600">
+                          {mission.startTime}
+                        </span>
+                        <span className="text-[8px] text-gray-400">{mission.endTime}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
+                          <span
+                            className="rounded px-1 py-px text-[9px] font-bold text-white"
+                            style={{ backgroundColor: color }}
+                          >
+                            {mission.subject || '미지정'}
+                          </span>
+                          {isCompleted && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+                          {completionRate > 0 && !isCompleted && (
+                            <span className="text-[9px] font-bold text-purple-500">
+                              {completionRate}%
+                            </span>
+                          )}
+                        </div>
+                        <p
+                          className={`mt-0.5 truncate text-xs font-medium ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+                        >
+                          {mission.content || mission.title || '(내용 없음)'}
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* 수정 / 결과 버튼 */}
+                    <div className="flex flex-shrink-0 items-center gap-1.5">
+                      <button
+                        onClick={() => handleEditMission(mission)}
+                        className="rounded-md border border-gray-200 px-2 py-1 text-[10px] font-medium text-gray-500 transition-colors hover:bg-gray-50"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={(e) => handleOpenResult(mission, e)}
+                        className={`rounded-md border px-2 py-1 text-[10px] font-semibold transition-colors ${
+                          isCompleted
+                            ? 'border-green-200 bg-green-50 text-green-600'
+                            : 'border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100'
+                        }`}
+                      >
+                        {isCompleted ? '✓ 완료' : '📝 결과'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ===== 오늘 성과 ===== */}
       {dayMissions.length > 0 && (
         <Card className="mb-4">
@@ -1410,7 +1541,7 @@ function MyMissionsPage() {
             </div>
 
             {/* 진행률 바 */}
-            <div className="mb-4 rounded-lg bg-gray-50 p-3">
+            <div className="mb-3 rounded-lg bg-gray-50 p-3">
               <div className="mb-1.5 flex items-center justify-between text-[11px]">
                 <span className="text-gray-500">
                   완료 {completedMissions} / 전체 {totalMissions}
@@ -1432,8 +1563,76 @@ function MyMissionsPage() {
               </div>
             </div>
 
+            {/* 미션별 빠른 결과 입력 */}
+            <div className="mb-4 space-y-1">
+              {dayMissions.map((mission: DailyMission) => {
+                const color = getSubjectColor(mission.subject);
+                const isCompleted =
+                  mission.status === 'completed' || (mission.progress && mission.progress >= 100);
+                const completionRate = isCompleted ? 100 : mission.progress || 0;
+
+                return (
+                  <button
+                    key={`perf-${mission.id}`}
+                    onClick={(e) => handleOpenResult(mission, e)}
+                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors ${
+                      isCompleted
+                        ? 'bg-green-50 hover:bg-green-100'
+                        : 'bg-gray-50 hover:bg-gray-100'
+                    }`}
+                  >
+                    {/* 상태 아이콘 */}
+                    <div
+                      className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full ${
+                        isCompleted ? 'bg-green-500' : 'border-2 border-gray-300'
+                      }`}
+                    >
+                      {isCompleted && <CheckCircle2 className="h-3.5 w-3.5 text-white" />}
+                    </div>
+
+                    {/* 과목 + 제목 */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1">
+                        <span
+                          className="inline-block h-1.5 w-1.5 rounded-full"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="text-[10px] font-medium text-gray-500">
+                          {mission.subject || '미지정'}
+                        </span>
+                      </div>
+                      <p
+                        className={`truncate text-xs ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+                      >
+                        {mission.content || mission.title || '(내용 없음)'}
+                      </p>
+                    </div>
+
+                    {/* 진행률 */}
+                    <div className="flex flex-shrink-0 items-center gap-1.5">
+                      {completionRate > 0 ? (
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                            isCompleted
+                              ? 'bg-green-100 text-green-600'
+                              : 'bg-purple-100 text-purple-600'
+                          }`}
+                        >
+                          {completionRate}%
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium text-gray-400">
+                          미입력
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
             {/* 도넛 차트 */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-3">
               <DonutChart slices={plannedSlices} title="📋 계획 시간" totalLabel="총 계획" />
               <DonutChart slices={executedSlices} title="✅ 실행 시간" totalLabel="총 실행" />
             </div>
