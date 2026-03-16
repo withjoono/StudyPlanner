@@ -24,7 +24,7 @@ import {
 
 const HUB_URL =
   import.meta.env.VITE_HUB_URL ||
-  (import.meta.env.PROD ? 'https://geobukschool.kr' : 'http://localhost:5173');
+  (import.meta.env.PROD ? 'https://www.tskool.kr' : 'http://localhost:5173');
 
 const loginUrl = `${HUB_URL}/login?redirect=${encodeURIComponent(window.location.href)}`;
 

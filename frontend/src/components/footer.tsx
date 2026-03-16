@@ -20,7 +20,7 @@ export const Footer = () => {
             </div>
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-1 text-sm font-medium">
               <a
-                href="https://www.geobukschool.kr/explain/service"
+                href="https://www.tskool.kr/explain/service"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="transition-colors hover:text-blue-600"
@@ -28,7 +28,7 @@ export const Footer = () => {
                 이용약관
               </a>
               <a
-                href="https://www.geobukschool.kr/explain/refund"
+                href="https://www.tskool.kr/explain/refund"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="transition-colors hover:text-blue-600"
@@ -36,7 +36,7 @@ export const Footer = () => {
                 환불규정
               </a>
               <a
-                href="https://www.geobukschool.kr/explain/privacy"
+                href="https://www.tskool.kr/explain/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-bold text-blue-600 hover:underline"

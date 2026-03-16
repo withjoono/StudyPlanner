@@ -8,7 +8,7 @@ import { env } from '@/lib/config/env';
 // Hub Frontend URL (환경 변수 또는 기본값)
 const HUB_URL =
   import.meta.env.VITE_HUB_URL ||
-  (import.meta.env.PROD ? 'https://geobukschool.kr' : 'http://localhost:3000');
+  (import.meta.env.PROD ? 'https://www.tskool.kr' : 'http://localhost:3000');
 
 /**
  * Hub 로그인 URL 생성
