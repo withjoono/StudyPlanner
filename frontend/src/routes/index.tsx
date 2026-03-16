@@ -1,12 +1,10 @@
 /**
- * 플래너 대시보드 — 프로모 디자인 스타일 적용
+ * 플래너 대시보드 — 프로모 디자인 스타일 (풀와이드 반응형)
  *
- * PromoPage의 디자인 언어를 그대로 차용:
- * - 인디고 그라데이션 히어로
- * - 글래스모피즘 카드
- * - 그라데이션 통계 카드 (blue/emerald/amber)
- * - rounded-2xl + shadow-xl
- * - 컬러 코딩된 타임라인
+ * PromoPage와 동일한 레이아웃:
+ * - max-w-screen-xl (1280px) 컨테이너
+ * - lg: 2-column 히어로 / 3-column 콘텐츠 그리드
+ * - 모바일은 1-column
  */
 
 import { createFileRoute, Link } from '@tanstack/react-router';
@@ -60,13 +58,12 @@ function Dashboard() {
 
   const isLoading = dashLoading || missionsLoading;
 
-  // 오늘 날짜
   const today = new Date();
   const dateStr = today.toISOString().split('T')[0];
   const DAYS_KR = ['일', '월', '화', '수', '목', '금', '토'];
   const dayOfWeek = today.getDay();
 
-  // 오늘의 미션만 필터
+  // 오늘의 미션
   const todayMissions = useMemo(() => {
     if (!allMissions) return [];
     return allMissions
@@ -111,7 +108,7 @@ function Dashboard() {
         )
       : 0;
 
-  // 통합 타임라인 (루틴 + 미션) 시간순 정렬, 상위 5개
+  // 통합 타임라인 (루틴 + 미션, 시간순)
   const previewItems = useMemo(() => {
     const items: Array<{
       type: 'routine' | 'mission';
@@ -132,7 +129,6 @@ function Dashboard() {
         progress: 0,
       });
     });
-
     todayMissions.forEach((m: DailyMission) => {
       const prog = m.progress || 0;
       items.push({
@@ -146,218 +142,292 @@ function Dashboard() {
     });
 
     items.sort((a, b) => a.time.localeCompare(b.time));
-    return items.slice(0, 5);
+    return items;
   }, [todayRoutines, todayMissions]);
 
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
+  if (isLoading) return <DashboardSkeleton />;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* ═══════ 히어로 헤더 (프로모 스타일 그라데이션) ═══════ */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-800 px-4 pb-28 pt-8 text-white">
+      {/* ═══════ 히어로 헤더 — 프로모 2-column 스타일 ═══════ */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-800 px-4 pb-32 pt-10 text-white md:pb-36 md:pt-16">
         {/* 배경 장식 */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
           <div className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-indigo-400/10 blur-3xl" />
+          <div className="absolute left-1/2 top-1/3 h-48 w-48 -translate-x-1/2 rounded-full bg-blue-300/10 blur-2xl" />
         </div>
 
-        <div className="relative mx-auto max-w-lg">
-          {/* 인사 */}
-          <div className="mb-6">
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-sm">
-              <Sparkles className="h-3 w-3 text-yellow-300" />
-              {today.getMonth() + 1}월 {today.getDate()}일 ({DAYS_KR[dayOfWeek]})
-            </div>
-            <h1 className="text-2xl font-extrabold tracking-tight">
-              {user?.userName ? `${user.userName}님, 안녕하세요!` : '안녕하세요!'}
-            </h1>
-            <p className="mt-1 text-sm text-blue-200">오늘도 멋진 학습을 시작해볼까요?</p>
-          </div>
-
-          {/* 통계 3칸 (프로모 스타일 그라데이션 카드) */}
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              {
-                label: '오늘 미션',
-                value: totalMissions > 0 ? `${completedMissions}/${totalMissions}` : '-',
-                gradient: 'from-blue-400 to-blue-500',
-              },
-              {
-                label: '성취도',
-                value: totalMissions > 0 ? `${avgProgress}%` : '-',
-                gradient: 'from-emerald-400 to-emerald-500',
-              },
-              {
-                label: '순위',
-                value: dashboard?.rank ? `${dashboard.rank.myRank}위` : '-',
-                gradient: 'from-amber-400 to-amber-500',
-              },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className={`rounded-xl bg-gradient-to-br ${stat.gradient} p-3 text-center shadow-lg`}
-              >
-                <div className="text-xl font-extrabold text-white">{stat.value}</div>
-                <div className="text-[10px] font-medium text-white/80">{stat.label}</div>
+        <div className="relative mx-auto max-w-screen-xl">
+          <div className="grid items-center gap-8 lg:grid-cols-2">
+            {/* 왼쪽: 인사 */}
+            <div className="text-center lg:text-left">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-sm">
+                <Sparkles className="h-4 w-4 text-yellow-300" />
+                {today.getMonth() + 1}월 {today.getDate()}일 ({DAYS_KR[dayOfWeek]})
               </div>
-            ))}
+              <h1 className="mb-3 text-3xl font-extrabold leading-tight tracking-tight md:text-4xl lg:text-5xl">
+                {user?.userName ? (
+                  <>
+                    {user.userName}님,
+                    <br />
+                    <span className="bg-gradient-to-r from-yellow-300 to-amber-300 bg-clip-text text-transparent">
+                      안녕하세요!
+                    </span>
+                  </>
+                ) : (
+                  '안녕하세요!'
+                )}
+              </h1>
+              <p className="mx-auto max-w-md text-lg text-blue-100 lg:mx-0">
+                오늘도 멋진 학습을 시작해볼까요?
+              </p>
+            </div>
+
+            {/* 오른쪽: 미니 대시보드 카드 (프로모 Mock 스타일) */}
+            <div className="flex justify-center lg:justify-end">
+              <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/10 p-6 shadow-2xl backdrop-blur-md">
+                {/* 상단바 */}
+                <div className="mb-4 flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-400">
+                    <GraduationCap className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <span className="text-sm font-bold text-white/90">My Dashboard</span>
+                  <div className="ml-auto flex gap-1">
+                    <div className="h-2 w-2 rounded-full bg-red-400" />
+                    <div className="h-2 w-2 rounded-full bg-yellow-400" />
+                    <div className="h-2 w-2 rounded-full bg-green-400" />
+                  </div>
+                </div>
+                {/* 통계 3칸 */}
+                <div className="mb-4 grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      label: '오늘 미션',
+                      value: totalMissions > 0 ? `${completedMissions}/${totalMissions}` : '-',
+                      gradient: 'from-blue-400 to-blue-500',
+                    },
+                    {
+                      label: '성취도',
+                      value: totalMissions > 0 ? `${avgProgress}%` : '-',
+                      gradient: 'from-emerald-400 to-emerald-500',
+                    },
+                    {
+                      label: '순위',
+                      value: dashboard?.rank ? `${dashboard.rank.myRank}위` : '-',
+                      gradient: 'from-amber-400 to-amber-500',
+                    },
+                  ].map((stat) => (
+                    <div
+                      key={stat.label}
+                      className={`rounded-xl bg-gradient-to-br ${stat.gradient} p-3 text-center shadow-lg`}
+                    >
+                      <div className="text-lg font-extrabold text-white lg:text-xl">
+                        {stat.value}
+                      </div>
+                      <div className="text-[10px] font-medium text-white/80">{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* 미니 타임라인 미리보기 (최대 3개) */}
+                <div className="space-y-2">
+                  {previewItems.slice(0, 3).map((item, idx) => {
+                    const color = getColor(item.subject);
+                    return (
+                      <div
+                        key={`hero-${idx}`}
+                        className="flex items-center gap-3 rounded-lg bg-white/10 px-3 py-2"
+                      >
+                        <span className="w-10 text-xs font-medium text-white/60">{item.time}</span>
+                        <div
+                          className="h-6 w-1 flex-shrink-0 rounded-full"
+                          style={{ backgroundColor: color }}
+                        />
+                        <p className="min-w-0 flex-1 truncate text-xs font-medium text-white/90">
+                          {item.subject ? `${item.subject} - ` : ''}
+                          {item.title}
+                        </p>
+                        {item.done ? (
+                          <CheckCircle className="h-4 w-4 flex-shrink-0 text-green-400" />
+                        ) : item.progress > 0 ? (
+                          <span className="flex-shrink-0 text-[10px] font-bold text-yellow-300">
+                            {item.progress}%
+                          </span>
+                        ) : (
+                          <div className="h-3 w-3 flex-shrink-0 rounded-full border border-white/30" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ═══════ 메인 콘텐츠 (오버랩 카드) ═══════ */}
-      <div className="relative mx-auto -mt-20 max-w-lg px-4 pb-24">
-        {/* ── 오늘의 일정 카드 ── */}
-        <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-xl shadow-gray-200/50">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100">
-                <CalendarDays className="h-4 w-4 text-indigo-600" />
-              </div>
-              <span className="text-sm font-bold text-gray-900">오늘의 일정</span>
-            </div>
-            <Link
-              to="/missions"
-              className="flex items-center gap-0.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
-            >
-              전체보기
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-
-          {previewItems.length > 0 ? (
-            <div className="relative ml-3 border-l-2 border-gray-100 pl-4">
-              {previewItems.map((item, idx) => {
-                const color = getColor(item.subject);
-                return (
-                  <div key={`${item.type}-${idx}`} className="relative mb-4 last:mb-0">
-                    {/* 타임라인 도트 */}
-                    <div
-                      className="absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-white"
-                      style={{ backgroundColor: item.done ? '#9ca3af' : color }}
-                    />
-                    <div className="flex items-center gap-2">
-                      <span className="w-10 text-[10px] text-gray-400">{item.time}</span>
-                      {item.subject && (
-                        <span
-                          className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                          style={{ backgroundColor: color }}
-                        >
-                          {item.subject}
-                        </span>
-                      )}
-                      {item.type === 'routine' && (
-                        <span className="rounded bg-gray-100 px-1 py-0.5 text-[9px] text-gray-400">
-                          루틴
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-0.5 flex items-center justify-between">
-                      <p
-                        className={`text-sm font-medium ${item.done ? 'text-gray-400 line-through' : 'text-gray-800'}`}
-                      >
-                        {item.title}
-                      </p>
-                      {item.done ? (
-                        <CheckCircle className="h-4 w-4 flex-shrink-0 text-green-400" />
-                      ) : item.progress > 0 ? (
-                        <span className="flex-shrink-0 text-[10px] font-bold text-yellow-500">
-                          {item.progress}%
-                        </span>
-                      ) : (
-                        <div className="h-3 w-3 flex-shrink-0 rounded-full border border-gray-200" />
-                      )}
-                    </div>
+      {/* ═══════ 메인 콘텐츠 — 3-column 그리드 (오버랩) ═══════ */}
+      <div className="relative mx-auto -mt-20 max-w-screen-xl px-4 pb-24">
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* ── 왼쪽: 오늘의 일정 (2칸) ── */}
+          <div className="lg:col-span-2">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xl shadow-gray-200/50 md:p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100">
+                    <CalendarDays className="h-4 w-4 text-indigo-600" />
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="py-6 text-center">
-              <BookOpen className="mx-auto mb-2 h-8 w-8 text-gray-200" />
-              <p className="text-sm text-gray-400">오늘의 일정이 없습니다</p>
-              <Link
-                to="/missions"
-                className="mt-3 inline-flex items-center gap-1 rounded-2xl bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-              >
-                미션 추가하기
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          )}
-        </div>
+                  <span className="text-sm font-bold text-gray-900">오늘의 일정</span>
+                  {previewItems.length > 0 && (
+                    <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-600">
+                      {completedMissions}/{totalMissions} 완료
+                    </span>
+                  )}
+                </div>
+                <Link
+                  to="/missions"
+                  className="flex items-center gap-0.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                >
+                  전체보기
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
 
-        {/* ── 집중 타이머 위젯 (프로모 스타일) ── */}
-        <Link
-          to="/timer"
-          className="group mb-4 flex items-center gap-4 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-xl shadow-gray-200/50 transition-all hover:-translate-y-0.5 hover:shadow-2xl"
-        >
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-lg shadow-rose-200">
-            <Timer className="h-6 w-6" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-gray-900">집중 타이머</p>
-            <p className="text-xs text-gray-500">포모도로로 몰입 학습을 시작하세요</p>
-          </div>
-          <ChevronRight className="h-5 w-5 text-gray-300 transition-transform group-hover:translate-x-1" />
-        </Link>
-
-        {/* ── 최근 코멘트 ── */}
-        <RecentCommentsCard userId={user?.id} />
-
-        {/* ── 빠른 이동 (프로모 역할 카드 스타일) ── */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xl shadow-gray-200/50">
-          <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gray-100">
-              <GraduationCap className="h-4 w-4 text-gray-600" />
+              {previewItems.length > 0 ? (
+                <div className="relative ml-3 border-l-2 border-gray-100 pl-4">
+                  {previewItems.map((item, idx) => {
+                    const color = getColor(item.subject);
+                    return (
+                      <div key={`${item.type}-${idx}`} className="relative mb-4 last:mb-0">
+                        <div
+                          className="absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-white"
+                          style={{ backgroundColor: item.done ? '#9ca3af' : color }}
+                        />
+                        <div className="flex items-center gap-2">
+                          <span className="w-10 text-[10px] text-gray-400">{item.time}</span>
+                          {item.subject && (
+                            <span
+                              className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                              style={{ backgroundColor: color }}
+                            >
+                              {item.subject}
+                            </span>
+                          )}
+                          {item.type === 'routine' && (
+                            <span className="rounded bg-gray-100 px-1 py-0.5 text-[9px] text-gray-400">
+                              루틴
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-0.5 flex items-center justify-between">
+                          <p
+                            className={`text-sm font-medium ${item.done ? 'text-gray-400 line-through' : 'text-gray-800'}`}
+                          >
+                            {item.title}
+                          </p>
+                          {item.done ? (
+                            <CheckCircle className="h-4 w-4 flex-shrink-0 text-green-400" />
+                          ) : item.progress > 0 ? (
+                            <span className="flex-shrink-0 text-[10px] font-bold text-yellow-500">
+                              {item.progress}%
+                            </span>
+                          ) : (
+                            <div className="h-3 w-3 flex-shrink-0 rounded-full border border-gray-200" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-8 text-center">
+                  <BookOpen className="mx-auto mb-2 h-10 w-10 text-gray-200" />
+                  <p className="mb-1 text-sm text-gray-400">오늘의 일정이 없습니다</p>
+                  <Link
+                    to="/missions"
+                    className="mt-3 inline-flex items-center gap-1 rounded-2xl bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    미션 추가하기
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              )}
             </div>
-            <span className="text-sm font-bold text-gray-900">빠른 이동</span>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            <NavCard
-              to="/missions"
-              icon={<CalendarDays className="h-5 w-5" />}
-              label="금일계획"
-              gradient="from-blue-400 to-blue-600"
-              shadowColor="shadow-blue-200"
-            />
-            <NavCard
-              to="/plans"
-              icon={<Target className="h-5 w-5" />}
-              label="장기계획"
-              gradient="from-violet-400 to-violet-600"
-              shadowColor="shadow-violet-200"
-            />
-            <NavCard
-              to="/routine"
-              icon={<Clock className="h-5 w-5" />}
-              label="주간루틴"
-              gradient="from-teal-400 to-teal-600"
-              shadowColor="shadow-teal-200"
-            />
-            <NavCard
+
+          {/* ── 오른쪽: 사이드바 ── */}
+          <div className="space-y-4">
+            {/* 집중 타이머 */}
+            <Link
               to="/timer"
-              icon={<Timer className="h-5 w-5" />}
-              label="타이머"
-              gradient="from-rose-400 to-rose-600"
-              shadowColor="shadow-rose-200"
-            />
-            <NavCard
-              to="/learning"
-              icon={<BarChart3 className="h-5 w-5" />}
-              label="학습분석"
-              gradient="from-emerald-400 to-emerald-600"
-              shadowColor="shadow-emerald-200"
-            />
-            <NavCard
-              to="/growth"
-              icon={<Heart className="h-5 w-5" />}
-              label="성장기록"
-              gradient="from-amber-400 to-amber-600"
-              shadowColor="shadow-amber-200"
-            />
+              className="group flex items-center gap-4 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-xl shadow-gray-200/50 transition-all hover:-translate-y-0.5 hover:shadow-2xl"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 text-white shadow-lg shadow-rose-200">
+                <Timer className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-gray-900">집중 타이머</p>
+                <p className="text-xs text-gray-500">포모도로로 몰입 학습을 시작하세요</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-300 transition-transform group-hover:translate-x-1" />
+            </Link>
+
+            {/* 최근 코멘트 */}
+            <RecentCommentsCard userId={user?.id} />
+
+            {/* 빠른 이동 */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xl shadow-gray-200/50">
+              <div className="mb-4 flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gray-100">
+                  <GraduationCap className="h-4 w-4 text-gray-600" />
+                </div>
+                <span className="text-sm font-bold text-gray-900">빠른 이동</span>
+              </div>
+              <div className="grid grid-cols-3 gap-3 lg:grid-cols-2">
+                <NavCard
+                  to="/missions"
+                  icon={<CalendarDays className="h-5 w-5" />}
+                  label="금일계획"
+                  gradient="from-blue-400 to-blue-600"
+                  shadowColor="shadow-blue-200"
+                />
+                <NavCard
+                  to="/plans"
+                  icon={<Target className="h-5 w-5" />}
+                  label="장기계획"
+                  gradient="from-violet-400 to-violet-600"
+                  shadowColor="shadow-violet-200"
+                />
+                <NavCard
+                  to="/routine"
+                  icon={<Clock className="h-5 w-5" />}
+                  label="주간루틴"
+                  gradient="from-teal-400 to-teal-600"
+                  shadowColor="shadow-teal-200"
+                />
+                <NavCard
+                  to="/timer"
+                  icon={<Timer className="h-5 w-5" />}
+                  label="타이머"
+                  gradient="from-rose-400 to-rose-600"
+                  shadowColor="shadow-rose-200"
+                />
+                <NavCard
+                  to="/learning"
+                  icon={<BarChart3 className="h-5 w-5" />}
+                  label="학습분석"
+                  gradient="from-emerald-400 to-emerald-600"
+                  shadowColor="shadow-emerald-200"
+                />
+                <NavCard
+                  to="/growth"
+                  icon={<Heart className="h-5 w-5" />}
+                  label="성장기록"
+                  gradient="from-amber-400 to-amber-600"
+                  shadowColor="shadow-amber-200"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -403,29 +473,26 @@ function RecentCommentsCard({ userId }: { userId?: number | string }) {
     2,
   );
 
-  const roleStyles: Record<string, { bg: string; text: string; avatar: string; dot: string }> = {
+  const roleStyles: Record<string, { bg: string; text: string; avatar: string }> = {
     teacher: {
       bg: 'bg-indigo-50',
       text: 'text-indigo-700',
       avatar: 'bg-gradient-to-br from-indigo-400 to-indigo-600',
-      dot: 'bg-indigo-500',
     },
     parent: {
       bg: 'bg-amber-50',
       text: 'text-amber-700',
       avatar: 'bg-gradient-to-br from-amber-400 to-amber-600',
-      dot: 'bg-amber-500',
     },
     student: {
       bg: 'bg-emerald-50',
       text: 'text-emerald-700',
       avatar: 'bg-gradient-to-br from-emerald-400 to-emerald-600',
-      dot: 'bg-emerald-500',
     },
   };
 
-  const timeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
+  const timeAgo = (ds: string) => {
+    const diff = Date.now() - new Date(ds).getTime();
     const minutes = Math.floor(diff / 60000);
     if (minutes < 1) return '방금';
     if (minutes < 60) return `${minutes}분 전`;
@@ -437,7 +504,7 @@ function RecentCommentsCard({ userId }: { userId?: number | string }) {
   if (isLoading || !comments || comments.length === 0) return null;
 
   return (
-    <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-xl shadow-gray-200/50">
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xl shadow-gray-200/50">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100">
@@ -486,24 +553,30 @@ function RecentCommentsCard({ userId }: { userId?: number | string }) {
 function DashboardSkeleton() {
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 히어로 스켈레톤 */}
-      <div className="bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-800 px-4 pb-28 pt-8">
-        <div className="mx-auto max-w-lg">
-          <Skeleton className="mb-2 h-6 w-32 bg-white/20" />
-          <Skeleton className="mb-1 h-8 w-56 bg-white/20" />
-          <Skeleton className="mb-6 h-4 w-40 bg-white/20" />
-          <div className="grid grid-cols-3 gap-2">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-16 rounded-xl bg-white/20" />
-            ))}
+      <div className="bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-800 px-4 pb-36 pt-10 md:pt-16">
+        <div className="mx-auto max-w-screen-xl">
+          <div className="grid items-center gap-8 lg:grid-cols-2">
+            <div>
+              <Skeleton className="mb-4 h-8 w-40 bg-white/20" />
+              <Skeleton className="mb-2 h-12 w-72 bg-white/20" />
+              <Skeleton className="h-6 w-56 bg-white/20" />
+            </div>
+            <div className="flex justify-center lg:justify-end">
+              <Skeleton className="h-48 w-full max-w-md rounded-2xl bg-white/10" />
+            </div>
           </div>
         </div>
       </div>
-      {/* 카드 스켈레톤 */}
-      <div className="relative mx-auto -mt-20 max-w-lg px-4 pb-24">
-        <Skeleton className="mb-4 h-56 rounded-2xl" />
-        <Skeleton className="mb-4 h-20 rounded-2xl" />
-        <Skeleton className="h-44 rounded-2xl" />
+      <div className="relative mx-auto -mt-20 max-w-screen-xl px-4 pb-24">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <Skeleton className="h-64 rounded-2xl" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-20 rounded-2xl" />
+            <Skeleton className="h-44 rounded-2xl" />
+          </div>
+        </div>
       </div>
     </div>
   );
