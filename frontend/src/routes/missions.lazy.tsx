@@ -1280,7 +1280,7 @@ function MyMissionsPage() {
                   return (
                     <div
                       key={`routine-${routine.id}`}
-                      className="absolute overflow-hidden rounded-md border"
+                      className="absolute z-[5] overflow-hidden rounded-md border"
                       style={{
                         top: `${block.top}px`,
                         height: `${block.height - 2}px`,
@@ -1328,7 +1328,7 @@ function MyMissionsPage() {
                 return (
                   <div
                     key={`mission-${mission.id}`}
-                    className="absolute cursor-pointer overflow-hidden rounded-md border transition-shadow hover:shadow-md"
+                    className="absolute z-[5] cursor-pointer overflow-hidden rounded-md border transition-shadow hover:shadow-md active:scale-[0.98]"
                     style={{
                       top: `${block.top}px`,
                       height: `${block.height - 2}px`,
@@ -1466,13 +1466,14 @@ function MyMissionsPage() {
                 return (
                   <div
                     key={`list-mission-${mission.id}`}
-                    className="flex items-center gap-2.5 px-4 py-2.5"
+                    className="flex items-center gap-2 px-3 py-2.5"
                   >
+                    {/* 왼쪽: 시간 + 내용 (탭하면 수정 다이얼로그) */}
                     <button
                       onClick={() => handleEditMission(mission)}
-                      className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left transition-colors active:bg-gray-100"
                     >
-                      <div className="flex h-8 w-14 flex-shrink-0 flex-col items-center justify-center rounded-md bg-gray-50">
+                      <div className="flex h-9 w-14 flex-shrink-0 flex-col items-center justify-center rounded-md bg-gray-50">
                         <span className="text-[10px] font-bold text-gray-600">
                           {mission.startTime}
                         </span>
@@ -1501,20 +1502,21 @@ function MyMissionsPage() {
                       </div>
                     </button>
 
-                    {/* 수정 / 결과 버튼 */}
+                    {/* 오른쪽: 수정 / 결과 버튼 */}
                     <div className="flex flex-shrink-0 items-center gap-1.5">
                       <button
                         onClick={() => handleEditMission(mission)}
-                        className="rounded-md border border-gray-200 px-2 py-1 text-[10px] font-medium text-gray-500 transition-colors hover:bg-gray-50"
+                        className="flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50 active:bg-gray-100"
                       >
                         <Pencil className="h-3 w-3" />
+                        수정
                       </button>
                       <button
                         onClick={(e) => handleOpenResult(mission, e)}
-                        className={`rounded-md border px-2 py-1 text-[10px] font-semibold transition-colors ${
+                        className={`flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold shadow-sm transition-colors ${
                           isCompleted
                             ? 'border-green-200 bg-green-50 text-green-600'
-                            : 'border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100'
+                            : 'border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 active:bg-purple-200'
                         }`}
                       >
                         {isCompleted ? '✓ 완료' : '📝 결과'}
