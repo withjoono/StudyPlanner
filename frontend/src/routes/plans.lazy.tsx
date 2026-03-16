@@ -938,37 +938,51 @@ function MonthlyCalendar({ plans }: { plans: LongTermPlan[] }) {
                     return (
                       <div key={bar.plan.id} className="grid grid-cols-7 gap-1">
                         <div
-                          className={`group relative flex cursor-default items-center gap-1 overflow-hidden px-1.5 py-0.5 text-[10px] font-medium text-white transition-opacity hover:opacity-90 ${
+                          className={`group relative flex cursor-default items-center gap-1 overflow-hidden border-y border-r px-1.5 py-[3px] text-[10px] font-medium text-gray-700 transition-all hover:shadow-sm ${
                             isStart && isEnd
-                              ? 'rounded-md'
+                              ? 'rounded-md border-l-0'
                               : isStart
-                                ? 'rounded-l-md'
+                                ? 'rounded-l-md border-l-0'
                                 : isEnd
                                   ? 'rounded-r-md'
                                   : ''
                           }`}
                           style={{
                             gridColumn,
-                            backgroundColor: bar.color,
+                            backgroundColor: `${bar.color}18`,
+                            borderColor: `${bar.color}30`,
+                            borderLeftWidth: isStart ? '3px' : undefined,
+                            borderLeftColor: isStart ? bar.color : undefined,
+                            borderLeftStyle: isStart ? 'solid' : undefined,
                           }}
                         >
+                          <span
+                            className="mr-0.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                            style={{ backgroundColor: bar.color }}
+                          />
                           <span className="truncate">{bar.plan.title}</span>
                           {bar.progress > 0 && (
-                            <span className="ml-auto flex-shrink-0 text-[9px] opacity-80">
+                            <span
+                              className="ml-auto flex-shrink-0 rounded px-0.5 text-[9px] font-semibold"
+                              style={{ color: bar.color }}
+                            >
                               {bar.progress}%
                             </span>
                           )}
 
                           {/* 호버 툴팁 */}
                           <div className="pointer-events-none absolute left-0 top-full z-20 mt-1 hidden w-max max-w-[220px] rounded-lg border bg-white p-2.5 text-gray-800 shadow-xl group-hover:block">
-                            <p className="text-xs font-bold">{bar.plan.title}</p>
-                            <div className="mt-1 space-y-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className="inline-block h-2.5 w-2.5 rounded"
+                                style={{ backgroundColor: bar.color }}
+                              />
+                              <p className="text-xs font-bold">{bar.plan.title}</p>
+                            </div>
+                            <div className="mt-1.5 space-y-0.5">
                               <p className="text-[10px] text-gray-500">
                                 과목:{' '}
-                                <span
-                                  className="inline-block rounded px-1 py-px text-[9px] font-medium text-white"
-                                  style={{ backgroundColor: bar.color }}
-                                >
+                                <span className="font-medium text-gray-700">
                                   {bar.plan.subject || '기타'}
                                 </span>
                               </p>
