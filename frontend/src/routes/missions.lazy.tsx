@@ -848,6 +848,109 @@ function ResultDialog({
 }
 
 // ============================================
+// 루틴 상세 시트
+// ============================================
+function RoutineDetailSheet({
+  routine,
+  open,
+  onOpenChange,
+  onConvertToMission,
+}: {
+  routine: Routine | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConvertToMission: (routine: Routine) => void;
+}) {
+  if (!routine) return null;
+
+  const rColor =
+    routine.majorCategory === 'class'
+      ? '#3b82f6'
+      : routine.majorCategory === 'self_study'
+        ? '#10b981'
+        : routine.majorCategory === 'exercise'
+          ? '#f59e0b'
+          : '#8b5cf6';
+  const categoryLabel =
+    routine.majorCategory === 'class'
+      ? '수업'
+      : routine.majorCategory === 'self_study'
+        ? '자습'
+        : routine.majorCategory === 'exercise'
+          ? '운동'
+          : '일정';
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="p-0 sm:max-w-[380px]">
+        {/* 헤더 */}
+        <div className="rounded-t-lg px-5 py-4" style={{ backgroundColor: `${rColor}15` }}>
+          <DialogHeader>
+            <DialogTitle
+              className="flex items-center gap-2 text-base font-bold"
+              style={{ color: rColor }}
+            >
+              <Clock className="h-4.5 w-4.5" />
+              {categoryLabel}: {routine.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 flex items-center gap-3 text-sm text-gray-600">
+            <span className="flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              {routine.startTime || '00:00'} ~ {routine.endTime || '00:00'}
+            </span>
+            {routine.subject && (
+              <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-medium">
+                {routine.subject}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 액션 */}
+        <div className="space-y-2 px-5 pb-5 pt-3">
+          <button
+            onClick={() => {
+              onConvertToMission(routine);
+              onOpenChange(false);
+            }}
+            className="flex w-full items-center gap-3 rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 text-left transition-colors hover:bg-purple-100 active:bg-purple-200"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 text-white">
+              <ClipboardCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-purple-700">미션으로 변환하여 결과 입력</p>
+              <p className="text-[11px] text-purple-500">
+                오늘의 미션으로 복사하고 학습 결과를 기록합니다
+              </p>
+            </div>
+          </button>
+
+          <Link
+            to="/routine"
+            onClick={() => onOpenChange(false)}
+            className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-left transition-colors hover:bg-gray-100"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-400 text-white">
+              <Pencil className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-700">주간루틴에서 수정</p>
+              <p className="text-[11px] text-gray-500">루틴 설정 페이지로 이동합니다</p>
+            </div>
+          </Link>
+
+          <Button variant="outline" className="mt-2 w-full" onClick={() => onOpenChange(false)}>
+            닫기
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================
 // 메인 페이지
 // ============================================
 function MyMissionsPage() {
@@ -871,6 +974,11 @@ function MyMissionsPage() {
   const [editTarget, setEditTarget] = useState<DailyMission | null>(null);
   const [resultTarget, setResultTarget] = useState<DailyMission | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+
+  // 루틴 상세 시트 상태
+  const [routineSheetOpen, setRoutineSheetOpen] = useState(false);
+  const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
+  const [pendingResultOpen, setPendingResultOpen] = useState(false);
 
   const dateStr = selectedDate.toISOString().split('T')[0];
   const isToday = dateStr === new Date().toISOString().split('T')[0];
@@ -985,6 +1093,41 @@ function MyMissionsPage() {
     e.stopPropagation(); // 카드 클릭(수정) 방지
     setResultTarget(mission);
     setResultDialogOpen(true);
+  };
+
+  // 루틴 클릭
+  const handleRoutineClick = (routine: Routine) => {
+    setSelectedRoutine(routine);
+    setRoutineSheetOpen(true);
+  };
+
+  // 루틴 → 미션 변환
+  const handleConvertRoutineToMission = (routine: Routine) => {
+    setPendingResultOpen(true);
+    createMutation.mutate(
+      {
+        date: dateStr,
+        startTime: routine.startTime || '09:00',
+        endTime: routine.endTime || '10:00',
+        subject: routine.subject || undefined,
+        content: routine.title || undefined,
+      },
+      {
+        onSuccess: (created: any) => {
+          toast.success('미션으로 변환되었습니다!');
+          // 생성된 미션으로 ResultDialog 자동 오픈
+          if (created && created.id) {
+            setResultTarget(created);
+            setResultDialogOpen(true);
+          }
+          setPendingResultOpen(false);
+        },
+        onError: () => {
+          toast.error('미션 생성에 실패했습니다.');
+          setPendingResultOpen(false);
+        },
+      },
+    );
   };
 
   // 미션 저장
@@ -1291,11 +1434,7 @@ function MyMissionsPage() {
                         borderLeftWidth: '3px',
                         borderLeftColor: rColor,
                       }}
-                      onClick={() =>
-                        toast.info(
-                          `${categoryLabel}: ${routine.title}${routine.subject ? ` (${routine.subject})` : ''} · ${routine.startTime}~${routine.endTime}`,
-                        )
-                      }
+                      onClick={() => handleRoutineClick(routine)}
                     >
                       <div className="flex h-full items-start gap-1.5 px-2 py-1">
                         <div className="min-w-0 flex-1">
@@ -1428,11 +1567,7 @@ function MyMissionsPage() {
                     <button
                       key={`list-routine-${routine.id}`}
                       className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-colors active:bg-gray-100"
-                      onClick={() =>
-                        toast.info(
-                          `${routine.majorCategory === 'class' ? '수업' : routine.majorCategory === 'self_study' ? '자습' : routine.majorCategory === 'exercise' ? '운동' : '일정'}: ${routine.title}${routine.subject ? ` (${routine.subject})` : ''} · ${routine.startTime}~${routine.endTime}`,
-                        )
-                      }
+                      onClick={() => handleRoutineClick(routine)}
                     >
                       <div
                         className="flex h-9 w-14 flex-shrink-0 flex-col items-center justify-center rounded-md"
@@ -1677,6 +1812,14 @@ function MyMissionsPage() {
         open={resultDialogOpen}
         onOpenChange={setResultDialogOpen}
         onSave={handleSaveResult}
+      />
+
+      {/* 루틴 상세 시트 */}
+      <RoutineDetailSheet
+        routine={selectedRoutine}
+        open={routineSheetOpen}
+        onOpenChange={setRoutineSheetOpen}
+        onConvertToMission={handleConvertRoutineToMission}
       />
     </div>
   );
