@@ -31,9 +31,10 @@ function RootLayout() {
     return !!params.get('sso_code');
   });
 
-  // 비로그인 + 홈 경로일 때 프로모 페이지 표시
+  // 비로그인 + 홈 경로일 때 프로모 페이지 표시, ?promo=1 이면 항상 표시
   const isHomePath = router.location.pathname === '/';
-  const showPromo = !isAuthenticated && isHomePath && !isSSOLoading;
+  const forcePromo = new URLSearchParams(window.location.search).get('promo') === '1';
+  const showPromo = ((!isAuthenticated && isHomePath) || forcePromo) && !isSSOLoading;
 
   // 드롭다운 외부 클릭 감지
   useEffect(() => {
