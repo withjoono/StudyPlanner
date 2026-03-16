@@ -1280,7 +1280,7 @@ function MyMissionsPage() {
                   return (
                     <div
                       key={`routine-${routine.id}`}
-                      className="absolute z-[5] overflow-hidden rounded-md border"
+                      className="absolute z-[5] cursor-pointer overflow-hidden rounded-md border transition-shadow hover:shadow-md active:scale-[0.98]"
                       style={{
                         top: `${block.top}px`,
                         height: `${block.height - 2}px`,
@@ -1291,6 +1291,11 @@ function MyMissionsPage() {
                         borderLeftWidth: '3px',
                         borderLeftColor: rColor,
                       }}
+                      onClick={() =>
+                        toast.info(
+                          `${categoryLabel}: ${routine.title}${routine.subject ? ` (${routine.subject})` : ''} · ${routine.startTime}~${routine.endTime}`,
+                        )
+                      }
                     >
                       <div className="flex h-full items-start gap-1.5 px-2 py-1">
                         <div className="min-w-0 flex-1">
@@ -1420,12 +1425,17 @@ function MyMissionsPage() {
                           ? '#f59e0b'
                           : '#8b5cf6';
                   return (
-                    <div
+                    <button
                       key={`list-routine-${routine.id}`}
-                      className="flex items-center gap-2.5 px-4 py-2.5"
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-colors active:bg-gray-100"
+                      onClick={() =>
+                        toast.info(
+                          `${routine.majorCategory === 'class' ? '수업' : routine.majorCategory === 'self_study' ? '자습' : routine.majorCategory === 'exercise' ? '운동' : '일정'}: ${routine.title}${routine.subject ? ` (${routine.subject})` : ''} · ${routine.startTime}~${routine.endTime}`,
+                        )
+                      }
                     >
                       <div
-                        className="flex h-8 w-14 flex-shrink-0 flex-col items-center justify-center rounded-md"
+                        className="flex h-9 w-14 flex-shrink-0 flex-col items-center justify-center rounded-md"
                         style={{ backgroundColor: `${rColor}12` }}
                       >
                         <span className="text-[10px] font-bold" style={{ color: rColor }}>
@@ -1453,7 +1463,8 @@ function MyMissionsPage() {
                           {routine.title}
                         </p>
                       </div>
-                    </div>
+                      <span className="flex-shrink-0 text-[9px] text-gray-400">루틴 ›</span>
+                    </button>
                   );
                 }
 
