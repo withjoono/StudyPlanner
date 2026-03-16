@@ -33,7 +33,7 @@ import {
 } from '@/stores/server/planner';
 import { useGetTutorBoardEvents } from '@/stores/server/planner/tutorboard';
 import type { ExtendedLongTermPlan } from '@/stores/server/planner/planner-types';
-import type { LongTermPlan } from '@/types/planner';
+import { getSubjectColor, type LongTermPlan } from '@/types/planner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -686,197 +686,10 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
 }
 
 // ============================================
-// 월간 미션 요약 카드 컴포넌트 (캘린더 상단)
-// ============================================
-
-interface MonthlyMissionSummary {
-  subject: string;
-  count: number;
-  totalAmount: number;
-  completedAmount: number;
-  titles: string[];
-  type: 'page' | 'lecture';
-}
-
-function MonthlyMissionSummaryCard({
-  plans,
-  currentMonth,
-}: {
-  plans: LongTermPlan[];
-  currentMonth: Date;
-}) {
-  // 해당 월에 진행 중인 계획을 과목별로 그룹화
-  const summaryBySubject = useMemo(() => {
-    const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-    const monthEnd = new Date(
-      currentMonth.getFullYear(),
-      currentMonth.getMonth() + 1,
-      0,
-      23,
-      59,
-      59,
-      999,
-    );
-    const map = new Map<
-      string,
-      MonthlyMissionSummary & { weeklyTarget: number; weeksInMonth: number }
-    >();
-
-    plans.forEach((plan) => {
-      if (!plan.startDate || !plan.endDate) return;
-
-      const planStart = new Date(plan.startDate);
-      const planEnd = new Date(plan.endDate);
-      planStart.setHours(0, 0, 0, 0);
-      planEnd.setHours(23, 59, 59, 999);
-
-      // 해당 월과 겹치는지 확인
-      if (monthStart > planEnd || monthEnd < planStart) return;
-
-      // 이 달에 걸치는 유효 기간 계산
-      const effectiveStart = planStart > monthStart ? planStart : monthStart;
-      const effectiveEnd = planEnd < monthEnd ? planEnd : monthEnd;
-      const daysInMonth =
-        Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const weeksInMonth = Math.max(1, Math.floor(daysInMonth / 7));
-
-      const subject = plan.subject || '기타';
-      const weeklyTarget = plan.weeklyTarget || 0;
-      const monthlyTarget = weeklyTarget * weeksInMonth;
-      const existing = map.get(subject) || {
-        subject,
-        count: 0,
-        totalAmount: 0,
-        completedAmount: 0,
-        titles: [],
-        type:
-          (plan as ExtendedLongTermPlan).type === 'lecture'
-            ? ('lecture' as const)
-            : ('page' as const),
-        weeklyTarget: 0,
-        weeksInMonth: 0,
-      };
-
-      existing.count += 1;
-      existing.totalAmount += monthlyTarget || plan.totalAmount || 0;
-      existing.completedAmount += plan.completedAmount || 0;
-      existing.weeklyTarget += weeklyTarget;
-      existing.weeksInMonth = Math.max(existing.weeksInMonth, weeksInMonth);
-      if (existing.titles.length < 2) {
-        existing.titles.push(plan.title);
-      }
-
-      map.set(subject, existing);
-    });
-
-    return Array.from(map.values()).sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [plans, currentMonth]);
-
-  const totalPlans = summaryBySubject.reduce((sum, s) => sum + s.count, 0);
-  const totalAmount = summaryBySubject.reduce((sum, s) => sum + s.totalAmount, 0);
-  const completedAmount = summaryBySubject.reduce((sum, s) => sum + s.completedAmount, 0);
-  const overallProgress = totalAmount > 0 ? Math.round((completedAmount / totalAmount) * 100) : 0;
-
-  if (totalPlans === 0) {
-    return null;
-  }
-
-  return (
-    <Card className="mb-4">
-      <CardContent className="p-4">
-        {/* 헤더 */}
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-800">월간 학습 계획 요약</h3>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-gray-500">
-              총 <span className="font-semibold text-gray-700">{totalPlans}</span>개 계획
-            </span>
-            <span className="text-blue-600">
-              진행률 <span className="font-semibold">{overallProgress}%</span>
-            </span>
-          </div>
-        </div>
-
-        {/* 과목별 미션 목록 */}
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {summaryBySubject.map((summary) => {
-            const colors = SUBJECT_COLORS[summary.subject] || {
-              bg: 'bg-gray-500',
-              text: 'text-gray-600',
-            };
-            const progress =
-              summary.totalAmount > 0
-                ? Math.round((summary.completedAmount / summary.totalAmount) * 100)
-                : 0;
-
-            return (
-              <div
-                key={summary.subject}
-                className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 p-3"
-              >
-                {/* 과목 색상 바 */}
-                <div
-                  className={`mt-0.5 h-full w-1 flex-shrink-0 rounded-full ${colors.bg}`}
-                  style={{ minHeight: '40px' }}
-                />
-
-                <div className="min-w-0 flex-1">
-                  {/* 과목명 + 진행률 */}
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`rounded px-2 py-0.5 text-xs font-medium text-white ${colors.bg}`}
-                    >
-                      {summary.subject}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {summary.weeklyTarget > 0 && (
-                        <span className="mr-1 text-blue-500">
-                          주간 {summary.weeklyTarget}
-                          {summary.type === 'lecture' ? '강' : 'p'} ×{summary.weeksInMonth}주 =
-                        </span>
-                      )}
-                      {summary.totalAmount}
-                      {summary.type === 'lecture' ? '강' : 'p'}
-                    </span>
-                  </div>
-
-                  {/* 계획 제목들 */}
-                  <div className="mt-1.5 space-y-0.5">
-                    {summary.titles.map((title, idx) => (
-                      <p key={idx} className="truncate text-xs text-gray-600">
-                        • {title}
-                      </p>
-                    ))}
-                    {summary.count > 2 && (
-                      <p className="text-xs text-gray-400">외 {summary.count - 2}개</p>
-                    )}
-                  </div>
-
-                  {/* 진행 바 */}
-                  <div className="mt-2">
-                    <Progress value={progress} className="h-1" />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ============================================
 // 월간 캘린더 컴포넌트
 // ============================================
 
-function MonthlyCalendar({
-  plans,
-  onMonthChange,
-}: {
-  plans: LongTermPlan[];
-  onMonthChange?: (month: Date) => void;
-}) {
+function MonthlyCalendar({ plans }: { plans: LongTermPlan[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -903,13 +716,7 @@ function MonthlyCalendar({
     const newDate = new Date(currentDate);
     newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
     setCurrentDate(newDate);
-    onMonthChange?.(newDate);
   };
-
-  // 초기 마운트 시 현재 월 알림
-  useMemo(() => {
-    onMonthChange?.(currentDate);
-  }, []);
 
   const { weeks } = useMemo(() => {
     const year = currentDate.getFullYear();
@@ -943,17 +750,74 @@ function MonthlyCalendar({
     return { weeks };
   }, [currentDate]);
 
-  const getPlansForDate = (date: Date) => {
-    const dateTime = date.getTime();
-    return plans.filter((plan) => {
-      if (!plan.startDate || !plan.endDate) return false;
-      const startDate = new Date(plan.startDate);
-      const endDate = new Date(plan.endDate);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      return dateTime >= startDate.getTime() && dateTime <= endDate.getTime();
-    });
-  };
+  // Gantt 바: 이번 달 캘린더 그리드에 겹치는 장기계획 바 계산
+  const ganttBars = useMemo(() => {
+    if (!weeks.length) return [];
+    const firstCellDate = new Date(weeks[0][0]);
+    firstCellDate.setHours(0, 0, 0, 0);
+    const lastCellDate = new Date(weeks[weeks.length - 1][6]);
+    lastCellDate.setHours(23, 59, 59, 999);
+    const totalCells = weeks.length * 7;
+
+    return plans
+      .filter((plan) => {
+        if (!plan.startDate || !plan.endDate) return false;
+        const ps = new Date(plan.startDate);
+        const pe = new Date(plan.endDate);
+        ps.setHours(0, 0, 0, 0);
+        pe.setHours(23, 59, 59, 999);
+        return ps <= lastCellDate && pe >= firstCellDate;
+      })
+      .map((plan) => {
+        const ps = new Date(plan.startDate!);
+        const pe = new Date(plan.endDate!);
+        ps.setHours(0, 0, 0, 0);
+        pe.setHours(0, 0, 0, 0);
+
+        const visibleStart = ps >= firstCellDate ? ps : firstCellDate;
+        const visibleEnd = pe <= lastCellDate ? pe : lastCellDate;
+
+        const startIdx = Math.round(
+          (visibleStart.getTime() - firstCellDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        const endIdx = Math.round(
+          (visibleEnd.getTime() - firstCellDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
+
+        const clampedStart = Math.max(0, Math.min(startIdx, totalCells - 1));
+        const clampedEnd = Math.max(clampedStart, Math.min(endIdx, totalCells - 1));
+
+        const progress =
+          plan.totalAmount > 0 ? Math.round((plan.completedAmount / plan.totalAmount) * 100) : 0;
+
+        // 여러 주에 걸치는 바를 주(row) 별로 분할
+        const segments: {
+          row: number;
+          colStart: number;
+          colEnd: number;
+        }[] = [];
+
+        const startRow = Math.floor(clampedStart / 7);
+        const endRow = Math.floor(clampedEnd / 7);
+
+        for (let row = startRow; row <= endRow; row++) {
+          const rowStart = row * 7;
+          const rowEnd = row * 7 + 6;
+          const segColStart = Math.max(clampedStart, rowStart) - rowStart;
+          const segColEnd = Math.min(clampedEnd, rowEnd) - rowStart;
+          segments.push({ row, colStart: segColStart, colEnd: segColEnd });
+        }
+
+        return {
+          plan,
+          segments,
+          progress,
+          color: getSubjectColor(plan.subject || '기타'),
+          startsBeforeGrid: ps < firstCellDate,
+          endsAfterGrid: pe > lastCellDate,
+        };
+      });
+  }, [plans, weeks]);
 
   return (
     <Card className="mb-6">
@@ -993,84 +857,145 @@ function MonthlyCalendar({
           ))}
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
-          {weeks.flat().map((date, idx) => {
-            const isToday = date.getTime() === today.getTime();
-            const isCurrentMonth = date.getMonth() === currentDate.getMonth();
-            const dayIdx = idx % 7;
-            const datePlans = getPlansForDate(date);
+        {/* 날짜 그리드 + Gantt 바 통합 */}
+        {weeks.map((week, weekIdx) => (
+          <div key={weekIdx} className="mb-1">
+            {/* 날짜 행 */}
+            <div className="grid grid-cols-7 gap-1">
+              {week.map((date, dayIdx) => {
+                const isToday = date.getTime() === today.getTime();
+                const isCurrentMonth = date.getMonth() === currentDate.getMonth();
 
-            return (
-              <div
-                key={idx}
-                className={`relative flex min-h-[48px] flex-col items-center rounded p-1 ${
-                  isToday
-                    ? 'bg-ultrasonic-500 text-white'
-                    : !isCurrentMonth
-                      ? 'bg-gray-50'
-                      : 'bg-white'
-                }`}
-              >
-                <span
-                  className={`text-sm ${
-                    isToday
-                      ? 'font-bold text-white'
-                      : !isCurrentMonth
-                        ? 'text-gray-300'
-                        : dayIdx === 0
-                          ? 'text-red-500'
-                          : dayIdx === 6
-                            ? 'text-blue-500'
-                            : 'text-gray-700'
-                  }`}
-                >
-                  {date.getDate()}
-                </span>
-                {datePlans.length > 0 && isCurrentMonth && (
-                  <div className="mt-0.5 flex flex-wrap justify-center gap-0.5">
-                    {datePlans.slice(0, 3).map((plan) => {
-                      const colors = SUBJECT_COLORS[plan.subject ?? ''] || { bg: 'bg-gray-400' };
-                      return (
-                        <div
-                          key={plan.id}
-                          className={`h-1.5 w-1.5 rounded-full ${colors.bg}`}
-                          title={plan.title}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* 튜터보드 이벤트 (과제/시험) */}
-                {isCurrentMonth &&
-                  getTbEventsForDate(date).map((event) => (
-                    <div
-                      key={`${event.type}-${event.id}`}
-                      className={`group relative mt-0.5 w-full cursor-help truncate rounded border px-0.5 py-px text-[10px] font-medium ${
-                        event.type === 'test'
-                          ? 'border-red-200 bg-red-50 text-red-700'
-                          : 'border-orange-200 bg-orange-50 text-orange-700'
+                return (
+                  <div
+                    key={dayIdx}
+                    className={`relative flex min-h-[36px] flex-col items-center rounded p-1 ${
+                      isToday
+                        ? 'bg-ultrasonic-500 text-white'
+                        : !isCurrentMonth
+                          ? 'bg-gray-50'
+                          : 'bg-white'
+                    }`}
+                  >
+                    <span
+                      className={`text-sm ${
+                        isToday
+                          ? 'font-bold text-white'
+                          : !isCurrentMonth
+                            ? 'text-gray-300'
+                            : dayIdx === 0
+                              ? 'text-red-500'
+                              : dayIdx === 6
+                                ? 'text-blue-500'
+                                : 'text-gray-700'
                       }`}
                     >
-                      <div className="flex items-center gap-1">
-                        <span
-                          className={`inline-block h-1 w-1 rounded-full ${event.type === 'test' ? 'bg-red-500' : 'bg-orange-500'}`}
-                        ></span>
-                        <span className="truncate">{event.title}</span>
-                      </div>
+                      {date.getDate()}
+                    </span>
 
-                      {/* 툴팁 */}
-                      <div className="pointer-events-none absolute left-0 top-full z-10 hidden w-max max-w-[200px] rounded-lg border bg-white p-2 text-gray-800 shadow-lg group-hover:block">
-                        <p className="text-xs font-bold">{event.title}</p>
-                        <p className="text-[10px] text-gray-500">{event.lessonTitle}</p>
-                        <p className="text-[10px] text-gray-400">{event.className}</p>
+                    {/* 튜터보드 이벤트 (과제/시험) */}
+                    {isCurrentMonth &&
+                      getTbEventsForDate(date).map((event) => (
+                        <div
+                          key={`${event.type}-${event.id}`}
+                          className={`group relative mt-0.5 w-full cursor-help truncate rounded border px-0.5 py-px text-[10px] font-medium ${
+                            event.type === 'test'
+                              ? 'border-red-200 bg-red-50 text-red-700'
+                              : 'border-orange-200 bg-orange-50 text-orange-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1">
+                            <span
+                              className={`inline-block h-1 w-1 rounded-full ${event.type === 'test' ? 'bg-red-500' : 'bg-orange-500'}`}
+                            ></span>
+                            <span className="truncate">{event.title}</span>
+                          </div>
+                          <div className="pointer-events-none absolute left-0 top-full z-10 hidden w-max max-w-[200px] rounded-lg border bg-white p-2 text-gray-800 shadow-lg group-hover:block">
+                            <p className="text-xs font-bold">{event.title}</p>
+                            <p className="text-[10px] text-gray-500">{event.lessonTitle}</p>
+                            <p className="text-[10px] text-gray-400">{event.className}</p>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Gantt 바: 이 주(row)에 해당하는 세그먼트 */}
+            {ganttBars.some((b) => b.segments.some((s) => s.row === weekIdx)) && (
+              <div className="mt-0.5 space-y-0.5">
+                {ganttBars
+                  .filter((b) => b.segments.some((s) => s.row === weekIdx))
+                  .map((bar) => {
+                    const seg = bar.segments.find((s) => s.row === weekIdx)!;
+                    // CSS grid: col-start / col-end (1-indexed)
+                    const gridColumn = `${seg.colStart + 1} / ${seg.colEnd + 2}`;
+                    const isStart = bar.segments[0] === seg && !bar.startsBeforeGrid;
+                    const isEnd =
+                      bar.segments[bar.segments.length - 1] === seg && !bar.endsAfterGrid;
+
+                    return (
+                      <div key={bar.plan.id} className="grid grid-cols-7 gap-1">
+                        <div
+                          className={`group relative flex cursor-default items-center gap-1 overflow-hidden px-1.5 py-0.5 text-[10px] font-medium text-white transition-opacity hover:opacity-90 ${
+                            isStart && isEnd
+                              ? 'rounded-md'
+                              : isStart
+                                ? 'rounded-l-md'
+                                : isEnd
+                                  ? 'rounded-r-md'
+                                  : ''
+                          }`}
+                          style={{
+                            gridColumn,
+                            backgroundColor: bar.color,
+                          }}
+                        >
+                          <span className="truncate">{bar.plan.title}</span>
+                          {bar.progress > 0 && (
+                            <span className="ml-auto flex-shrink-0 text-[9px] opacity-80">
+                              {bar.progress}%
+                            </span>
+                          )}
+
+                          {/* 호버 툴팁 */}
+                          <div className="pointer-events-none absolute left-0 top-full z-20 mt-1 hidden w-max max-w-[220px] rounded-lg border bg-white p-2.5 text-gray-800 shadow-xl group-hover:block">
+                            <p className="text-xs font-bold">{bar.plan.title}</p>
+                            <div className="mt-1 space-y-0.5">
+                              <p className="text-[10px] text-gray-500">
+                                과목:{' '}
+                                <span
+                                  className="inline-block rounded px-1 py-px text-[9px] font-medium text-white"
+                                  style={{ backgroundColor: bar.color }}
+                                >
+                                  {bar.plan.subject || '기타'}
+                                </span>
+                              </p>
+                              <p className="text-[10px] text-gray-500">
+                                기간:{' '}
+                                {bar.plan.startDate
+                                  ? new Date(bar.plan.startDate).toLocaleDateString('ko-KR')
+                                  : '-'}{' '}
+                                ~{' '}
+                                {bar.plan.endDate
+                                  ? new Date(bar.plan.endDate).toLocaleDateString('ko-KR')
+                                  : '-'}
+                              </p>
+                              <p className="text-[10px] text-gray-500">
+                                진행: {bar.plan.completedAmount ?? 0} / {bar.plan.totalAmount ?? 0}{' '}
+                                ({bar.progress}%)
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
-            );
-          })}
-        </div>
+            )}
+          </div>
+        ))}
       </CardContent>
     </Card>
   );
@@ -1205,9 +1130,6 @@ function PlannerPlansPage() {
   // 코멘트 다이얼로그 상태
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentTarget, setCommentTarget] = useState<LongTermPlan | null>(null);
-
-  // 현재 월 상태 (월간 미션 요약용)
-  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const handleCreatePlan = async (data: {
     planName: string;
@@ -1368,11 +1290,8 @@ function PlannerPlansPage() {
         </Card>
       </div>
 
-      {/* 월간 미션 요약 */}
-      <MonthlyMissionSummaryCard plans={plans || []} currentMonth={currentMonth} />
-
       {/* 월간 캘린더 */}
-      <MonthlyCalendar plans={plans || []} onMonthChange={setCurrentMonth} />
+      <MonthlyCalendar plans={plans || []} />
 
       {/* 계획 목록 */}
       <Card className="mb-4">
