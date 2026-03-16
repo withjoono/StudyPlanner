@@ -1088,6 +1088,30 @@ function MyMissionsPage() {
     });
   };
 
+  // 타임블록 캘린더 상수
+  const CALENDAR_START_HOUR = 6;
+  const CALENDAR_END_HOUR = 24;
+  const HOUR_HEIGHT = 48; // px per hour
+  const TOTAL_HOURS = CALENDAR_END_HOUR - CALENDAR_START_HOUR;
+
+  // 타임라인 아이템을 시간 기반 위치로 변환
+  const timeBlocks = useMemo(() => {
+    return timelineItems.map((item) => {
+      const data = item.data;
+      const [startH, startM] = (data.startTime || '09:00').split(':').map(Number);
+      const [endH, endM] = (data.endTime || '10:00').split(':').map(Number);
+
+      const startMinutes = startH * 60 + startM;
+      const endMinutes = endH * 60 + endM;
+      const calendarStartMinutes = CALENDAR_START_HOUR * 60;
+
+      const top = Math.max(0, ((startMinutes - calendarStartMinutes) / 60) * HOUR_HEIGHT);
+      const height = Math.max(HOUR_HEIGHT * 0.4, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT);
+
+      return { ...item, top, height };
+    });
+  }, [timelineItems, HOUR_HEIGHT]);
+
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -1101,8 +1125,8 @@ function MyMissionsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-4 pb-24">
-      {/* 헤더 */}
-      <div className="mb-4 flex items-center justify-between">
+      {/* ===== 헤더 ===== */}
+      <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/" className="rounded-lg p-2 transition-colors hover:bg-gray-100">
             <ArrowLeft className="h-5 w-5" />
@@ -1117,9 +1141,9 @@ function MyMissionsPage() {
         </div>
       </div>
 
-      {/* 날짜 네비 */}
+      {/* ===== 날짜 네비 + 목표 통합 ===== */}
       <Card className="mb-3">
-        <CardContent className="p-2">
+        <CardContent className="p-2.5">
           <div className="flex items-center justify-between">
             <button
               onClick={() => navigateDate('prev')}
@@ -1129,8 +1153,8 @@ function MyMissionsPage() {
             </button>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-gray-800">
-                {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월{' '}
-                {selectedDate.getDate()}일 ({DAYS_KR[selectedDate.getDay()]})
+                {selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일 (
+                {DAYS_KR[selectedDate.getDay()]})
               </h2>
               {isToday && (
                 <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-semibold text-white">
@@ -1155,262 +1179,263 @@ function MyMissionsPage() {
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* 오늘의 목표 */}
-      <Card className="mb-4">
-        <CardContent className="p-3">
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-amber-500" />
-            <span className="text-xs font-semibold text-gray-700">오늘의 목표</span>
-          </div>
-          {isEditingGoal ? (
-            <div className="mt-1.5 flex gap-2">
+          {/* 목표 인라인 */}
+          <div className="mt-1.5 flex items-center gap-1.5 border-t border-gray-100 pt-1.5">
+            <Target className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />
+            {isEditingGoal ? (
               <Input
                 value={dailyGoal}
                 onChange={(e) => setDailyGoal(e.target.value)}
-                placeholder="예: 수학 개념원리 2단원 완성하기"
-                className="h-7 flex-1 text-xs"
+                placeholder="오늘의 목표를 입력하세요..."
+                className="h-6 flex-1 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0"
                 autoFocus
                 onKeyDown={(e) => e.key === 'Enter' && setIsEditingGoal(false)}
+                onBlur={() => setIsEditingGoal(false)}
               />
-              <Button
-                size="sm"
-                className="h-7 px-2 text-[10px]"
-                onClick={() => setIsEditingGoal(false)}
+            ) : (
+              <p
+                onClick={() => setIsEditingGoal(true)}
+                className="flex-1 cursor-pointer truncate text-xs text-gray-500 hover:text-gray-700"
               >
-                확인
-              </Button>
-            </div>
-          ) : (
-            <p
-              onClick={() => setIsEditingGoal(true)}
-              className="mt-1 cursor-pointer rounded-md border border-transparent px-1 py-0.5 text-sm text-gray-600 hover:border-gray-200 hover:bg-gray-50"
-            >
-              {dailyGoal || <span className="text-gray-300">목표를 입력하세요...</span>}
-            </p>
-          )}
+                {dailyGoal || <span className="text-gray-300">🎯 목표를 입력하세요...</span>}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      {/* ===== 통합 타임라인 (루틴 + 미션) ===== */}
-      {timelineItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-200 py-16">
-          <BookOpen className="mb-3 h-10 w-10 text-gray-300" />
-          <p className="mb-1 text-sm font-medium text-gray-500">오늘의 일정이 없습니다</p>
-          <p className="mb-4 text-xs text-gray-400">
-            주간루틴을 설정하거나, + 버튼으로 미션을 추가하세요
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {timelineItems.map((item) => {
-            // ======= 루틴 카드 =======
-            if (item.type === 'routine') {
-              const routine = item.data;
-              const rColor =
-                routine.majorCategory === 'class'
-                  ? '#3b82f6'
-                  : routine.majorCategory === 'self_study'
-                    ? '#10b981'
-                    : routine.majorCategory === 'exercise'
-                      ? '#f59e0b'
-                      : '#8b5cf6';
-              const categoryLabel =
-                routine.majorCategory === 'class'
-                  ? '수업'
-                  : routine.majorCategory === 'self_study'
-                    ? '자습'
-                    : routine.majorCategory === 'exercise'
-                      ? '운동'
-                      : '일정';
+      {/* ===== 하루 타임 블록 캘린더 ===== */}
+      <Card className="mb-4">
+        <CardContent className="p-0">
+          <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-2.5">
+            <Clock className="h-4 w-4 text-blue-500" />
+            <span className="text-sm font-semibold text-gray-700">하루 일정</span>
+            <span className="ml-auto text-[10px] text-gray-400">{timelineItems.length}개 일정</span>
+          </div>
 
-              return (
-                <div
-                  key={`routine-${routine.id}`}
-                  className="rounded-xl border bg-gradient-to-r transition-all"
-                  style={{
-                    borderLeftWidth: '4px',
-                    borderLeftColor: rColor,
-                    backgroundImage: `linear-gradient(to right, ${rColor}08, ${rColor}03)`,
-                  }}
-                >
-                  <div className="flex items-stretch">
-                    {/* 시간 */}
+          <div className="relative overflow-y-auto" style={{ maxHeight: '420px' }}>
+            <div
+              className="relative"
+              style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px`, minHeight: '200px' }}
+            >
+              {/* 시간 눈금 */}
+              {Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => {
+                const hour = CALENDAR_START_HOUR + i;
+                return (
+                  <div
+                    key={hour}
+                    className="absolute left-0 right-0 flex items-start"
+                    style={{ top: `${i * HOUR_HEIGHT}px` }}
+                  >
+                    <span className="w-10 flex-shrink-0 pr-1 text-right text-[10px] text-gray-400">
+                      {hour < 24 ? `${String(hour).padStart(2, '0')}:00` : ''}
+                    </span>
+                    <div className="h-px flex-1 bg-gray-100" />
+                  </div>
+                );
+              })}
+
+              {/* 현재 시간 표시 */}
+              {isToday &&
+                (() => {
+                  const now = new Date();
+                  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+                  const calendarStartMinutes = CALENDAR_START_HOUR * 60;
+                  if (nowMinutes >= calendarStartMinutes && nowMinutes <= CALENDAR_END_HOUR * 60) {
+                    const top = ((nowMinutes - calendarStartMinutes) / 60) * HOUR_HEIGHT;
+                    return (
+                      <div
+                        className="absolute right-0 z-10 flex items-center"
+                        style={{ top: `${top}px`, left: '36px' }}
+                      >
+                        <div className="h-2 w-2 rounded-full bg-red-500" />
+                        <div className="h-px flex-1 bg-red-400" />
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+              {/* 타임 블록들 */}
+              {timeBlocks.map((block) => {
+                if (block.type === 'routine') {
+                  const routine = block.data;
+                  const rColor =
+                    routine.majorCategory === 'class'
+                      ? '#3b82f6'
+                      : routine.majorCategory === 'self_study'
+                        ? '#10b981'
+                        : routine.majorCategory === 'exercise'
+                          ? '#f59e0b'
+                          : '#8b5cf6';
+                  const categoryLabel =
+                    routine.majorCategory === 'class'
+                      ? '수업'
+                      : routine.majorCategory === 'self_study'
+                        ? '자습'
+                        : routine.majorCategory === 'exercise'
+                          ? '운동'
+                          : '일정';
+
+                  return (
                     <div
-                      className="flex flex-col items-center justify-center px-3 py-3"
-                      style={{ minWidth: '64px' }}
+                      key={`routine-${routine.id}`}
+                      className="absolute overflow-hidden rounded-md border"
+                      style={{
+                        top: `${block.top}px`,
+                        height: `${block.height - 2}px`,
+                        left: '44px',
+                        right: '8px',
+                        backgroundColor: `${rColor}12`,
+                        borderColor: `${rColor}30`,
+                        borderLeftWidth: '3px',
+                        borderLeftColor: rColor,
+                      }}
                     >
-                      <span className="text-sm font-bold" style={{ color: rColor }}>
-                        {routine.startTime || '00:00'}
-                      </span>
-                      <span className="text-[10px] text-gray-400">~</span>
-                      <span className="text-xs" style={{ color: rColor + 'cc' }}>
-                        {routine.endTime || '00:00'}
-                      </span>
-                    </div>
-
-                    <div className="w-px" style={{ backgroundColor: rColor + '20' }} />
-
-                    {/* 내용 */}
-                    <div className="flex-1 px-3 py-3">
-                      <div className="mb-1 flex items-center gap-2">
-                        <span
-                          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
-                          style={{ backgroundColor: rColor }}
-                        >
-                          <Clock className="h-2.5 w-2.5" />
-                          {categoryLabel}
-                        </span>
-                        <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] font-medium text-gray-500">
-                          루틴
+                      <div className="flex h-full items-start gap-1.5 px-2 py-1">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1">
+                            <span
+                              className="rounded px-1 py-px text-[9px] font-bold text-white"
+                              style={{ backgroundColor: rColor }}
+                            >
+                              {categoryLabel}
+                            </span>
+                            <span className="text-[9px] text-gray-400">루틴</span>
+                          </div>
+                          <p className="mt-0.5 truncate text-[11px] font-medium text-gray-700">
+                            {routine.title}
+                          </p>
+                          {routine.subject && block.height > 40 && (
+                            <p className="truncate text-[10px] text-gray-400">{routine.subject}</p>
+                          )}
+                        </div>
+                        <span className="flex-shrink-0 text-[9px] text-gray-400">
+                          {routine.startTime}
                         </span>
                       </div>
-                      <p className="text-sm font-medium text-gray-800">{routine.title}</p>
-                      {routine.subject && (
-                        <p className="mt-0.5 text-[11px] text-gray-500">{routine.subject}</p>
-                      )}
                     </div>
-                  </div>
-                </div>
-              );
-            }
+                  );
+                }
 
-            // ======= 미션 카드 =======
-            const mission = item.data;
-            const color = getSubjectColor(mission.subject);
-            const isCompleted =
-              mission.status === 'completed' || (mission.progress && mission.progress >= 100);
-            const planStart = mission.startPage ?? '';
-            const planEnd = mission.endPage ?? '';
-            const planTotal =
-              typeof planStart === 'number' && typeof planEnd === 'number'
-                ? planEnd - planStart
-                : mission.amount;
-            const completionRate = isCompleted ? 100 : mission.progress || 0;
-            const hasResult =
-              completionRate > 0 || mission.resultStartPage || mission.resultEndPage;
+                // 미션 블록
+                const mission = block.data;
+                const color = getSubjectColor(mission.subject);
+                const isCompleted =
+                  mission.status === 'completed' || (mission.progress && mission.progress >= 100);
+                const completionRate = isCompleted ? 100 : mission.progress || 0;
 
-            return (
-              <div
-                key={`mission-${mission.id}`}
-                className="rounded-xl border bg-white transition-all hover:shadow-md"
-                style={{ borderLeftWidth: '4px', borderLeftColor: color }}
-              >
-                {/* 상단: 계획 정보 (클릭 → 수정) */}
-                <button
-                  onClick={() => handleEditMission(mission)}
-                  className="group flex w-full items-stretch text-left"
-                >
-                  {/* 시간 */}
+                return (
                   <div
-                    className="flex flex-col items-center justify-center px-3 py-3"
-                    style={{ minWidth: '64px' }}
+                    key={`mission-${mission.id}`}
+                    className="absolute cursor-pointer overflow-hidden rounded-md border transition-shadow hover:shadow-md"
+                    style={{
+                      top: `${block.top}px`,
+                      height: `${block.height - 2}px`,
+                      left: '44px',
+                      right: '8px',
+                      backgroundColor: isCompleted ? '#f0fdf4' : '#ffffff',
+                      borderColor: isCompleted ? '#bbf7d0' : `${color}40`,
+                      borderLeftWidth: '3px',
+                      borderLeftColor: isCompleted ? '#22c55e' : color,
+                    }}
+                    onClick={() => handleEditMission(mission)}
                   >
-                    <span className="text-sm font-bold text-gray-700">{mission.startTime}</span>
-                    <span className="text-[10px] text-gray-400">~</span>
-                    <span className="text-xs text-gray-500">{mission.endTime}</span>
-                  </div>
-
-                  <div className="w-px bg-gray-100" />
-
-                  {/* 내용 */}
-                  <div className="flex-1 px-3 py-3">
-                    <div className="mb-1 flex items-center gap-2">
-                      <span
-                        className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
-                        style={{ backgroundColor: color }}
-                      >
-                        {mission.subject || '미지정'}
-                      </span>
-                      <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-medium text-orange-600">
-                        미션
-                      </span>
-                      {isCompleted && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                    </div>
-                    <p className="text-sm font-medium text-gray-800">
-                      {mission.content || mission.title || '(내용 없음)'}
-                    </p>
-                    <div className="mt-1 flex items-center gap-3 text-[11px] text-gray-500">
-                      {mission.title && (
-                        <span className="flex items-center gap-0.5">
-                          <BookOpen className="h-3 w-3" />
-                          {mission.title}
-                        </span>
-                      )}
-                      {(planStart || planEnd) && (
-                        <span>
-                          p.{planStart}~{planEnd} ({planTotal}p)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 수정 아이콘 */}
-                  <div className="flex items-center px-2 opacity-0 transition-opacity group-hover:opacity-100">
-                    <Pencil className="h-3.5 w-3.5 text-gray-400" />
-                  </div>
-                </button>
-
-                {/* 하단: 결과 영역 */}
-                <div className="border-t border-gray-100 px-3 py-2">
-                  {hasResult ? (
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 flex-1 rounded-full bg-gray-100">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${Math.min(100, completionRate)}%`,
-                                backgroundColor: completionRate >= 100 ? '#22c55e' : '#8b5cf6',
-                              }}
-                            />
-                          </div>
+                    <div className="flex h-full items-start gap-1.5 px-2 py-1">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
                           <span
-                            className={`text-xs font-bold ${completionRate >= 100 ? 'text-green-600' : 'text-purple-600'}`}
+                            className="rounded px-1 py-px text-[9px] font-bold text-white"
+                            style={{ backgroundColor: color }}
                           >
-                            {completionRate}%
+                            {mission.subject || '미지정'}
                           </span>
+                          {isCompleted && <CheckCircle2 className="h-3 w-3 text-green-500" />}
                         </div>
-                        {(mission.resultStartPage || mission.resultEndPage) && (
-                          <p className="mt-0.5 text-[10px] text-gray-400">
-                            실제: p.{mission.resultStartPage}~{mission.resultEndPage}
-                            {mission.resultMemo && ` · ${mission.resultMemo}`}
+                        <p
+                          className={`mt-0.5 truncate text-[11px] font-medium ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+                        >
+                          {mission.content || mission.title || '(내용 없음)'}
+                        </p>
+                        {block.height > 45 && (mission.startPage || mission.endPage) && (
+                          <p className="truncate text-[10px] text-gray-400">
+                            p.{mission.startPage}~{mission.endPage}
                           </p>
                         )}
                       </div>
-                      <button
-                        onClick={(e) => handleOpenResult(mission, e)}
-                        className="rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-[10px] font-semibold text-purple-600 transition-colors hover:bg-purple-100"
-                      >
-                        📝 수정
-                      </button>
+                      <div className="flex flex-shrink-0 flex-col items-end gap-0.5">
+                        <span className="text-[9px] text-gray-400">{mission.startTime}</span>
+                        {completionRate > 0 && !isCompleted && (
+                          <span className="rounded bg-purple-100 px-1 text-[9px] font-bold text-purple-600">
+                            {completionRate}%
+                          </span>
+                        )}
+                        {!isCompleted && (
+                          <button
+                            onClick={(e) => handleOpenResult(mission, e)}
+                            className="mt-auto rounded bg-purple-50 px-1 py-px text-[9px] font-semibold text-purple-500 transition-colors hover:bg-purple-100"
+                          >
+                            결과
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <button
-                      onClick={(e) => handleOpenResult(mission, e)}
-                      className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-purple-300 bg-purple-50/50 py-1.5 text-xs font-semibold text-purple-500 transition-colors hover:bg-purple-100"
-                    >
-                      <ClipboardCheck className="h-3.5 w-3.5" />
-                      결과 입력
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                  </div>
+                );
+              })}
 
-      {/* 시간 분포 차트 */}
+              {/* 빈 상태 */}
+              {timelineItems.length === 0 && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <BookOpen className="mb-2 h-8 w-8 text-gray-200" />
+                  <p className="text-xs text-gray-400">오늘의 일정이 없습니다</p>
+                  <p className="mt-0.5 text-[10px] text-gray-300">+ 버튼으로 미션을 추가하세요</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ===== 오늘 성과 ===== */}
       {dayMissions.length > 0 && (
-        <Card className="mt-4">
+        <Card className="mb-4">
           <CardContent className="p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4 text-purple-500" />
+              <span className="text-sm font-semibold text-gray-700">오늘 성과</span>
+              <span className="ml-auto rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-600">
+                달성률 {progressPercent}%
+              </span>
+            </div>
+
+            {/* 진행률 바 */}
+            <div className="mb-4 rounded-lg bg-gray-50 p-3">
+              <div className="mb-1.5 flex items-center justify-between text-[11px]">
+                <span className="text-gray-500">
+                  완료 {completedMissions} / 전체 {totalMissions}
+                </span>
+                <span
+                  className={`font-bold ${progressPercent >= 100 ? 'text-green-600' : 'text-blue-600'}`}
+                >
+                  {progressPercent}%
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-gray-200">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${progressPercent}%`,
+                    backgroundColor: progressPercent >= 100 ? '#22c55e' : '#3b82f6',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* 도넛 차트 */}
             <div className="grid grid-cols-2 gap-4">
-              <DonutChart slices={plannedSlices} title="📋 계획 시간 분포" totalLabel="총 계획" />
-              <DonutChart slices={executedSlices} title="✅ 실행 시간 분포" totalLabel="총 실행" />
+              <DonutChart slices={plannedSlices} title="📋 계획 시간" totalLabel="총 계획" />
+              <DonutChart slices={executedSlices} title="✅ 실행 시간" totalLabel="총 실행" />
             </div>
           </CardContent>
         </Card>
