@@ -11,16 +11,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  ArrowLeft,
   Loader2,
   BookOpen,
   MonitorPlay,
   FileText,
   Target,
-  TrendingUp,
   Calendar,
   Sparkles,
   MessageSquare,
+  BarChart3,
+  Trash2,
 } from 'lucide-react';
 import {
   useGetPlans,
@@ -35,7 +35,7 @@ import { useGetTutorBoardEvents } from '@/stores/server/planner/tutorboard';
 import type { ExtendedLongTermPlan } from '@/stores/server/planner/planner-types';
 import { getSubjectColor, type LongTermPlan } from '@/types/planner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1145,6 +1145,9 @@ function PlannerPlansPage() {
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentTarget, setCommentTarget] = useState<LongTermPlan | null>(null);
 
+  // 탭 상태
+  const [activeTab, setActiveTab] = useState<'calendar' | 'plans' | 'analysis'>('plans');
+
   const handleCreatePlan = async (data: {
     planName: string;
     description: string;
@@ -1238,114 +1241,309 @@ function PlannerPlansPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-4 py-6">
-      {/* 헤더 */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="rounded-lg p-2 hover:bg-gray-100">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold">장기 계획</h1>
-            <p className="mt-1 text-gray-500">계획을 세우고 일정을 관리하세요</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* ═══════ 히어로 헤더 ═══════ */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-800 px-4 pb-20 pt-6 text-white md:pb-24 md:pt-8">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+          <div className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-indigo-400/10 blur-3xl" />
+        </div>
+
+        <div className="relative mx-auto max-w-4xl">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Link to="/" className="rounded-full p-1.5 transition-colors hover:bg-white/10">
+                <ChevronLeft className="h-5 w-5" />
+              </Link>
+              <h1 className="text-lg font-bold tracking-tight md:text-xl">장기 계획</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+                <Sparkles className="h-3 w-3 text-yellow-300" />
+                목표 관리
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-4 text-center">
+            <h2 className="text-2xl font-extrabold tracking-tight md:text-3xl">나의 장기 계획</h2>
+            <p className="mt-1 text-sm text-blue-200">계획을 세우고 일정을 관리하세요</p>
+          </div>
+
+          {/* 통계 3카드 */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-xl bg-gradient-to-br from-blue-400 to-blue-500 p-3 text-center shadow-lg">
+              <div className="text-lg font-extrabold text-white">{stats.total}</div>
+              <div className="text-[10px] font-medium text-white/80">전체 계획</div>
+            </div>
+            <div className="rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-500 p-3 text-center shadow-lg">
+              <div className="text-lg font-extrabold text-white">
+                {stats.inProgress + stats.completed}
+              </div>
+              <div className="text-[10px] font-medium text-white/80">진행/완료</div>
+            </div>
+            <div className="rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 p-3 text-center shadow-lg">
+              <div className="text-lg font-extrabold text-white">{stats.avgProgress}%</div>
+              <div className="text-[10px] font-medium text-white/80">평균 진행률</div>
+            </div>
           </div>
         </div>
-        <Button onClick={() => guard(() => setIsPlanSetupOpen(true))} className="gap-2">
-          <Plus className="h-4 w-4" />
-          장기계획 세우기
-        </Button>
-      </div>
+      </section>
 
-      {/* 통계 카드 */}
-      <div className="mb-6 grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-blue-100 p-2">
-              <Target className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">전체 계획</p>
-              <p className="text-xl font-bold">{stats.total}개</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-green-100 p-2">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">진행 중</p>
-              <p className="text-xl font-bold">{stats.inProgress}개</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-purple-100 p-2">
-              <BookOpen className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">완료</p>
-              <p className="text-xl font-bold">{stats.completed}개</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-lg bg-orange-100 p-2">
-              <Target className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">평균 진행률</p>
-              <p className="text-xl font-bold">{stats.avgProgress}%</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* ═══════ 탭 바 + 메인 콘텐츠 ═══════ */}
+      <div className="relative mx-auto -mt-10 max-w-2xl px-4 pb-24">
+        <div className="mb-4 flex overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/50">
+          {[
+            { key: 'calendar' as const, label: '📅 캘린더' },
+            { key: 'plans' as const, label: '📚 계획 목록' },
+            { key: 'analysis' as const, label: '📊 분석' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex flex-1 items-center justify-center gap-1.5 px-3 py-3 text-sm font-semibold transition-all ${
+                activeTab === tab.key
+                  ? 'border-b-2 border-indigo-600 bg-indigo-50 text-indigo-700'
+                  : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-      {/* 월간 캘린더 */}
-      <MonthlyCalendar plans={plans || []} />
+        {/* ═══════ 캘린더 탭 ═══════ */}
+        {activeTab === 'calendar' && <MonthlyCalendar plans={plans || []} />}
 
-      {/* 계획 목록 */}
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            장기 계획 목록
-          </CardTitle>
-        </CardHeader>
-      </Card>
+        {/* ═══════ 계획 목록 탭 ═══════ */}
+        {activeTab === 'plans' && (
+          <div className="space-y-3">
+            {plans && plans.length > 0 ? (
+              plans.map((plan) => {
+                const color = getSubjectColor(plan.subject || '기타');
+                const progress =
+                  plan.totalAmount && plan.totalAmount > 0
+                    ? Math.round((plan.completedAmount / plan.totalAmount) * 100)
+                    : 0;
+                const isCompleted = progress >= 100;
+                const startDate = plan.startDate
+                  ? new Date(plan.startDate).toLocaleDateString('ko-KR')
+                  : '-';
+                const endDate = plan.endDate
+                  ? new Date(plan.endDate).toLocaleDateString('ko-KR')
+                  : '-';
 
-      <div className="space-y-4">
-        {plans && plans.length > 0 ? (
-          plans.map((plan) => (
-            <PlanCard
-              key={plan.id}
-              plan={plan as ExtendedLongTermPlan}
-              onDistribute={() => guard(() => handleDistribute(plan as ExtendedLongTermPlan))}
-              onDelete={() => guard(() => handleDelete(plan.id))}
-              onComment={() => {
-                setCommentTarget(plan);
-                setCommentOpen(true);
-              }}
-            />
-          ))
-        ) : (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <BookOpen className="mx-auto mb-4 h-12 w-12 text-gray-300" />
-              <p className="mb-2 text-gray-500">등록된 장기 계획이 없습니다.</p>
-              <p className="mb-4 text-sm text-gray-400">
-                계획명, 교과, 과목을 선택하고 기간을 설정하여 장기 계획을 시작하세요.
-              </p>
-              <Button onClick={() => guard(() => setIsPlanSetupOpen(true))} className="gap-2">
-                <Plus className="h-4 w-4" />첫 계획 추가하기
-              </Button>
-            </CardContent>
-          </Card>
+                return (
+                  <div
+                    key={plan.id}
+                    className="group rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                    style={{
+                      borderLeftWidth: '4px',
+                      borderLeftColor: isCompleted ? '#22c55e' : color,
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* 아이콘 */}
+                      <div
+                        className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${
+                          plan.type === 'lecture' ? 'bg-purple-50' : 'bg-blue-50'
+                        }`}
+                      >
+                        {plan.type === 'lecture' ? (
+                          <MonitorPlay className="h-5 w-5 text-purple-500" />
+                        ) : (
+                          <BookOpen className="h-5 w-5 text-blue-500" />
+                        )}
+                      </div>
+
+                      {/* 내용 */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
+                            style={{ backgroundColor: color }}
+                          >
+                            {plan.subject || '미지정'}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            {plan.type === 'lecture' ? '강의' : '교재'}
+                          </span>
+                          {(plan as ExtendedLongTermPlan).isDistributed && (
+                            <span className="rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-medium text-green-600">
+                              완료
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 truncate text-sm font-medium text-gray-800">
+                          {plan.title}
+                        </p>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
+                          <span>
+                            {startDate} ~ {endDate}
+                          </span>
+                          {plan.weeklyTarget && (
+                            <>
+                              <span>·</span>
+                              <span>
+                                주 {plan.weeklyTarget}
+                                {plan.type === 'lecture' ? '강' : 'p'}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {/* 진행률 바 */}
+                        <div className="mt-2">
+                          <div className="mb-1 flex items-center justify-between text-[10px]">
+                            <span className="text-gray-400">
+                              {plan.completedAmount ?? 0} / {plan.totalAmount ?? 0}
+                            </span>
+                            <span className="font-bold" style={{ color }}>
+                              {progress}%
+                            </span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{ width: `${progress}%`, backgroundColor: color }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 액션 */}
+                      <div className="flex flex-shrink-0 flex-col items-center gap-1">
+                        <button
+                          onClick={() => {
+                            setCommentTarget(plan);
+                            setCommentOpen(true);
+                          }}
+                          className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-indigo-50 hover:text-indigo-500"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        </button>
+                        {!(plan as ExtendedLongTermPlan).isDistributed && (
+                          <button
+                            onClick={() =>
+                              guard(() => handleDistribute(plan as ExtendedLongTermPlan))
+                            }
+                            className="rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-100"
+                          >
+                            분배
+                          </button>
+                        )}
+                        <button
+                          onClick={() => guard(() => handleDelete(plan.id))}
+                          className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
+                <BookOpen className="mb-3 h-12 w-12 text-gray-200" />
+                <p className="mb-1 text-sm font-medium text-gray-400">등록된 계획이 없습니다</p>
+                <p className="mb-4 text-xs text-gray-300">+ 버튼으로 계획을 추가하세요</p>
+                <button
+                  onClick={() => guard(() => setIsPlanSetupOpen(true))}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  계획 추가하기
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══════ 분석 탭 ═══════ */}
+        {activeTab === 'analysis' && (
+          <div className="space-y-4">
+            {plans && plans.length > 0 ? (
+              <>
+                {/* 과목별 진행률 */}
+                <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="mb-3 text-sm font-bold text-gray-700">📚 과목별 진행률</h3>
+                  <div className="space-y-2.5">
+                    {(() => {
+                      const bySubject: Record<string, { completed: number; total: number }> = {};
+                      plans.forEach((p) => {
+                        const s = p.subject || '기타';
+                        if (!bySubject[s]) bySubject[s] = { completed: 0, total: 0 };
+                        bySubject[s].completed += p.completedAmount || 0;
+                        bySubject[s].total += p.totalAmount || 0;
+                      });
+                      return Object.entries(bySubject).map(([subject, { completed, total }]) => {
+                        const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+                        const c = getSubjectColor(subject);
+                        return (
+                          <div key={subject}>
+                            <div className="mb-1 flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className="inline-block h-2 w-2 rounded-full"
+                                  style={{ backgroundColor: c }}
+                                />
+                                <span className="font-medium text-gray-700">{subject}</span>
+                              </div>
+                              <span className="font-bold text-gray-500">{pct}%</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                              <div
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%`, backgroundColor: c }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+
+                {/* 달성 요약 */}
+                <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="mb-3 text-sm font-bold text-gray-700">🎯 달성 요약</h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-xl bg-blue-50 p-3 text-center">
+                      <div className="text-xl font-extrabold text-blue-600">{stats.total}</div>
+                      <div className="text-[10px] font-medium text-blue-500">전체</div>
+                    </div>
+                    <div className="rounded-xl bg-amber-50 p-3 text-center">
+                      <div className="text-xl font-extrabold text-amber-600">
+                        {stats.inProgress}
+                      </div>
+                      <div className="text-[10px] font-medium text-amber-500">진행 중</div>
+                    </div>
+                    <div className="rounded-xl bg-green-50 p-3 text-center">
+                      <div className="text-xl font-extrabold text-green-600">{stats.completed}</div>
+                      <div className="text-[10px] font-medium text-green-500">완료</div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-12 shadow-sm">
+                <BarChart3 className="mb-3 h-10 w-10 text-gray-200" />
+                <p className="text-sm text-gray-400">분석할 데이터가 없습니다</p>
+              </div>
+            )}
+          </div>
         )}
       </div>
+
+      {/* FAB */}
+      {activeTab === 'plans' && (
+        <button
+          onClick={() => guard(() => setIsPlanSetupOpen(true))}
+          className="fixed bottom-20 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 transition-all hover:scale-105 hover:shadow-xl active:scale-95 md:bottom-6 md:right-[calc(50%-28rem)]"
+        >
+          <Plus className="h-7 w-7" />
+        </button>
+      )}
 
       {/* 장기 계획 설정 다이얼로그 */}
       <PlanSetupDialog

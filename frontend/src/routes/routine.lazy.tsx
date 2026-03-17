@@ -8,12 +8,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  ArrowLeft,
   Loader2,
   MessageSquare,
   Calendar,
   BookOpen,
   Target,
+  Sparkles,
+  BarChart3,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
@@ -1236,6 +1239,9 @@ function PlannerRoutinePage() {
   const [editingRoutine, setEditingRoutine] = useState<Routine | undefined>();
   const { guard, LoginGuardModal } = useLoginGuard();
 
+  // 탭 상태 (캘린더/루틴목록/분석)
+  const [activeTab, setActiveTab] = useState<'calendar' | 'routines' | 'analysis'>('calendar');
+
   // 코멘트 다이얼로그 상태
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentTarget, setCommentTarget] = useState<Routine | null>(null);
@@ -1277,6 +1283,21 @@ function PlannerRoutinePage() {
     setCommentOpen(true);
   };
 
+  // 통계 계산 (hooks must be before any early return)
+  const totalRoutines = routines?.length || 0;
+  const studyRoutines =
+    routines?.filter((r) => r.majorCategory === 'class' || r.majorCategory === 'self_study')
+      .length || 0;
+  const totalWeeklyHours = useMemo(() => {
+    if (!routines) return 0;
+    return routines.reduce((sum, r) => {
+      const [sh, sm] = r.startTime.split(':').map(Number);
+      const [eh, em] = r.endTime.split(':').map(Number);
+      const dur = (eh * 60 + em - (sh * 60 + sm)) * r.days.filter(Boolean).length;
+      return sum + dur;
+    }, 0);
+  }, [routines]);
+
   if (isLoading) {
     return (
       <div className="mx-auto w-full max-w-screen-xl px-4 py-6">
@@ -1287,117 +1308,294 @@ function PlannerRoutinePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-xl px-4 py-6">
-      {/* 헤더 */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="rounded-lg p-2 hover:bg-gray-100">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold">주간 루틴</h1>
-            <p className="mt-1 text-gray-500">반복되는 학습 루틴을 설정하세요</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* ═══════ 히어로 헤더 ═══════ */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-800 px-4 pb-20 pt-6 text-white md:pb-24 md:pt-8">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-white/5 blur-3xl" />
+          <div className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-indigo-400/10 blur-3xl" />
+        </div>
+
+        <div className="relative mx-auto max-w-4xl">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Link to="/" className="rounded-full p-1.5 transition-colors hover:bg-white/10">
+                <ChevronLeft className="h-5 w-5" />
+              </Link>
+              <h1 className="text-lg font-bold tracking-tight md:text-xl">주간 루틴</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+                <Sparkles className="h-3 w-3 text-yellow-300" />
+                반복 학습
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-4 text-center">
+            <h2 className="text-2xl font-extrabold tracking-tight md:text-3xl">나의 주간 루틴</h2>
+            <p className="mt-1 text-sm text-blue-200">반복되는 학습 일정을 관리하세요</p>
+          </div>
+
+          {/* 통계 3카드 */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-xl bg-gradient-to-br from-blue-400 to-blue-500 p-3 text-center shadow-lg">
+              <div className="text-lg font-extrabold text-white">{totalRoutines}</div>
+              <div className="text-[10px] font-medium text-white/80">전체 루틴</div>
+            </div>
+            <div className="rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-500 p-3 text-center shadow-lg">
+              <div className="text-lg font-extrabold text-white">{studyRoutines}</div>
+              <div className="text-[10px] font-medium text-white/80">학습 루틴</div>
+            </div>
+            <div className="rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 p-3 text-center shadow-lg">
+              <div className="text-lg font-extrabold text-white">
+                {totalWeeklyHours > 0 ? `${Math.round(totalWeeklyHours / 60)}h` : '-'}
+              </div>
+              <div className="text-[10px] font-medium text-white/80">주간 학습</div>
+            </div>
           </div>
         </div>
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          루틴 추가
-        </Button>
-      </div>
+      </section>
 
-      {/* 금주 미션 */}
-      <WeeklyMissionSection />
+      {/* ═══════ 탭 바 + 메인 콘텐츠 ═══════ */}
+      <div className="relative mx-auto -mt-10 max-w-2xl px-4 pb-24">
+        <div className="mb-4 flex overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/50">
+          {[
+            { key: 'calendar' as const, label: '📅 캘린더' },
+            { key: 'routines' as const, label: '📋 루틴 목록' },
+            { key: 'analysis' as const, label: '📊 분석' },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex flex-1 items-center justify-center gap-1.5 px-3 py-3 text-sm font-semibold transition-all ${
+                activeTab === tab.key
+                  ? 'border-b-2 border-indigo-600 bg-indigo-50 text-indigo-700'
+                  : 'text-gray-400 hover:bg-gray-50 hover:text-gray-600'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-      {/* 주간 캘린더 */}
-      <WeeklyCalendar routines={routines || []} />
+        {/* ═══════ 캘린더 탭 ═══════ */}
+        {activeTab === 'calendar' && (
+          <div className="space-y-4">
+            <WeeklyMissionSection />
+            <WeeklyCalendar routines={routines || []} />
+          </div>
+        )}
 
-      {/* 루틴 목록 */}
-      <div className="space-y-3">
-        {routines && routines.length > 0 ? (
-          routines.map((routine) => {
-            const colors = MAJOR_CATEGORY_COLORS[routine.majorCategory] || {
-              bg: 'bg-gray-500',
-              border: 'border-gray-600',
-              text: 'text-gray-600',
-            };
-            return (
-              <Card key={routine.id}>
-                <CardContent className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-4">
-                    <div className={`h-10 w-1 rounded-full ${colors.bg}`} />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded px-2 py-0.5 text-xs font-medium ${colors.bg} text-white`}
-                        >
-                          {MAJOR_CATEGORY_LABELS[routine.majorCategory]}
-                        </span>
-                        {routine.subject && (
-                          <span className="rounded bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
-                            {routine.subject}
+        {/* ═══════ 루틴 목록 탭 ═══════ */}
+        {activeTab === 'routines' && (
+          <div className="space-y-3">
+            {routines && routines.length > 0 ? (
+              routines.map((routine) => {
+                const colors = MAJOR_CATEGORY_COLORS[routine.majorCategory] || {
+                  bg: 'bg-gray-500',
+                  border: 'border-gray-600',
+                  text: 'text-gray-600',
+                };
+                const subjectColor = routine.subject ? getSubjectColor(routine.subject) : undefined;
+                return (
+                  <div
+                    key={routine.id}
+                    className="group rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`w-1 self-stretch rounded-full ${colors.bg}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white ${colors.bg}`}
+                          >
+                            {MAJOR_CATEGORY_LABELS[routine.majorCategory]}
                           </span>
-                        )}
+                          {routine.subject && (
+                            <span
+                              className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
+                              style={{ backgroundColor: subjectColor }}
+                            >
+                              {routine.subject}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-gray-800">{routine.title}</p>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
+                          <span>
+                            {routine.startTime} ~ {routine.endTime}
+                          </span>
+                          <span>·</span>
+                          <span>
+                            {routine.startDate} ~ {routine.endDate}
+                          </span>
+                        </div>
+                        {/* 요일 뱃지 */}
+                        <div className="mt-2 flex gap-1">
+                          {DAYS_KR.map((day, idx) => (
+                            <span
+                              key={day}
+                              className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium ${
+                                routine.days[idx]
+                                  ? 'bg-indigo-500 text-white'
+                                  : 'bg-gray-100 text-gray-300'
+                              }`}
+                            >
+                              {day}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                      <h3 className="mt-1 font-semibold">{routine.title}</h3>
-                      <p className="text-sm text-gray-500">
-                        {routine.startTime} ~ {routine.endTime}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {routine.startDate} ~ {routine.endDate}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <div className="flex gap-1">
-                      {DAYS_KR.map((day, idx) => (
-                        <span
-                          key={day}
-                          className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${
-                            routine.days[idx]
-                              ? 'bg-ultrasonic-500 text-white'
-                              : 'bg-gray-100 text-gray-400'
-                          }`}
+                      {/* 액션 버튼 */}
+                      <div className="flex flex-shrink-0 flex-col items-center gap-1">
+                        <button
+                          onClick={() => handleComment(routine)}
+                          className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-indigo-50 hover:text-indigo-500"
                         >
-                          {day}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-indigo-50 hover:text-indigo-500"
-                        title="코멘트"
-                        onClick={() => handleComment(routine)}
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                      </button>
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(routine)}>
-                        수정
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                        onClick={() => handleDelete(routine.id)}
-                      >
-                        삭제
-                      </Button>
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleEdit(routine)}
+                          className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(routine.id)}
+                          className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        ) : (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <p className="mb-4 text-gray-500">등록된 루틴이 없습니다.</p>
-              <Button onClick={handleCreate}>첫 루틴 추가하기</Button>
-            </CardContent>
-          </Card>
+                );
+              })
+            ) : (
+              <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
+                <Calendar className="mb-3 h-12 w-12 text-gray-200" />
+                <p className="mb-1 text-sm font-medium text-gray-400">등록된 루틴이 없습니다</p>
+                <p className="mb-4 text-xs text-gray-300">+ 버튼으로 루틴을 추가하세요</p>
+                <button
+                  onClick={handleCreate}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  루틴 추가하기
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══════ 분석 탭 ═══════ */}
+        {activeTab === 'analysis' && (
+          <div className="space-y-4">
+            {routines && routines.length > 0 ? (
+              <>
+                {/* 카테고리별 분석 */}
+                <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="mb-3 text-sm font-bold text-gray-700">📊 카테고리별 루틴</h3>
+                  <div className="space-y-2.5">
+                    {Object.entries(MAJOR_CATEGORY_LABELS).map(([key, label]) => {
+                      const count = routines.filter((r) => r.majorCategory === key).length;
+                      const maxCount = Math.max(
+                        ...Object.keys(MAJOR_CATEGORY_LABELS).map(
+                          (k) => routines.filter((r) => r.majorCategory === k).length,
+                        ),
+                        1,
+                      );
+                      const catColors = MAJOR_CATEGORY_COLORS[key as RoutineMajorCategory];
+                      return (
+                        <div key={key}>
+                          <div className="mb-1 flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`inline-block h-2 w-2 rounded-full ${catColors.bg}`}
+                              />
+                              <span className="font-medium text-gray-700">{label}</span>
+                            </div>
+                            <span className="font-bold text-gray-500">{count}개</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                            <div
+                              className={`h-full rounded-full ${catColors.bg} transition-all duration-500`}
+                              style={{ width: `${(count / maxCount) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 요일별 분석 */}
+                <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="mb-3 text-sm font-bold text-gray-700">📅 요일별 루틴 수</h3>
+                  <div className="grid grid-cols-7 gap-2">
+                    {DAYS_KR.map((day, idx) => {
+                      const count = routines.filter((r) => r.days[idx]).length;
+                      return (
+                        <div key={day} className="text-center">
+                          <div
+                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-xl ${count > 0 ? 'bg-indigo-50' : 'bg-gray-50'}`}
+                          >
+                            <span
+                              className={`text-sm font-bold ${count > 0 ? 'text-indigo-600' : 'text-gray-300'}`}
+                            >
+                              {count}
+                            </span>
+                          </div>
+                          <span className="mt-1 block text-[10px] font-medium text-gray-400">
+                            {day}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 달성 요약 */}
+                <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                  <h3 className="mb-3 text-sm font-bold text-gray-700">🎯 요약</h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-xl bg-blue-50 p-3 text-center">
+                      <div className="text-xl font-extrabold text-blue-600">{totalRoutines}</div>
+                      <div className="text-[10px] font-medium text-blue-500">전체</div>
+                    </div>
+                    <div className="rounded-xl bg-emerald-50 p-3 text-center">
+                      <div className="text-xl font-extrabold text-emerald-600">{studyRoutines}</div>
+                      <div className="text-[10px] font-medium text-emerald-500">학습</div>
+                    </div>
+                    <div className="rounded-xl bg-amber-50 p-3 text-center">
+                      <div className="text-xl font-extrabold text-amber-600">
+                        {Math.round(totalWeeklyHours / 60)}
+                      </div>
+                      <div className="text-[10px] font-medium text-amber-500">주간 시간(h)</div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-12 shadow-sm">
+                <BarChart3 className="mb-3 h-10 w-10 text-gray-200" />
+                <p className="text-sm text-gray-400">분석할 데이터가 없습니다</p>
+              </div>
+            )}
+          </div>
         )}
       </div>
+
+      {/* FAB */}
+      {activeTab === 'routines' && (
+        <button
+          onClick={handleCreate}
+          className="fixed bottom-20 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 transition-all hover:scale-105 hover:shadow-xl active:scale-95 md:bottom-6 md:right-[calc(50%-28rem)]"
+        >
+          <Plus className="h-7 w-7" />
+        </button>
+      )}
 
       {/* 폼 다이얼로그 */}
       <RoutineFormDialog
