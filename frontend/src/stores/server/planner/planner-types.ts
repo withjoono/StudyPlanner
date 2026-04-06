@@ -88,6 +88,10 @@ export interface DailyMission {
   progress: number;
   weekNumber?: number;
   weeklyTarget?: number;
+  // 결과 필드
+  resultStartPage?: number;
+  resultEndPage?: number;
+  resultMemo?: string;
 }
 
 // ================================================================

@@ -37,6 +37,7 @@
     "date-fns": "^3.6.0",
     "firebase": "^12.8.0",
     "framer-motion": "^11.3.17",
+    "geobuk-shared": "file:../../geobuk-shared",
     "humps": "^2.0.1",
     "lucide-react": "^0.417.0",
     "react": "^18.3.1",

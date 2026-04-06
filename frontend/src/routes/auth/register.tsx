@@ -5,10 +5,10 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { useRegisterWithEmail, useSendCode, useVerifyCode } from '@/stores/server/auth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from 'geobuk-shared/ui';
+import { Input } from 'geobuk-shared/ui';
 import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
+import { Card } from 'geobuk-shared/ui';
 import { Loader2, Mail, Lock, User, Phone, CheckCircle } from 'lucide-react';
 
 export const Route = createFileRoute('/auth/register')({
@@ -281,7 +281,3 @@ function RegisterPage() {
     </div>
   );
 }
-
-
-
-

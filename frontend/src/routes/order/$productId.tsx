@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate, useParams } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Card } from 'geobuk-shared/ui';
+import { Button } from 'geobuk-shared/ui';
+import { Input } from 'geobuk-shared/ui';
 import { Label } from '@/components/ui/label';
 import { ProtectedRoute } from '@/components/auth';
 import {
@@ -120,7 +120,21 @@ function OrderPage() {
       });
 
       // 2. 아임포트 결제 호출
-      const IMP = (window as unknown as { IMP?: { init: (code: string) => void; request_pay: (params: unknown, callback: (response: { success: boolean; imp_uid?: string; error_msg?: string }) => void) => void } }).IMP;
+      const IMP = (
+        window as unknown as {
+          IMP?: {
+            init: (code: string) => void;
+            request_pay: (
+              params: unknown,
+              callback: (response: {
+                success: boolean;
+                imp_uid?: string;
+                error_msg?: string;
+              }) => void,
+            ) => void;
+          };
+        }
+      ).IMP;
       if (!IMP) {
         toast.error('결제 모듈을 불러올 수 없습니다. 페이지를 새로고침해주세요.');
         return;
@@ -269,7 +283,3 @@ function OrderPage() {
     </div>
   );
 }
-
-
-
-

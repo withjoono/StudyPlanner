@@ -34,10 +34,10 @@ import {
   SUBJECT_COLORS,
   getSubjectColor,
 } from '@/types/planner';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { Button } from 'geobuk-shared/ui';
+import { Card, CardContent } from 'geobuk-shared/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'geobuk-shared/ui';
+import { Input } from 'geobuk-shared/ui';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CommentDialog } from '@/components/planner/CommentDialog';

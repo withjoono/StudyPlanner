@@ -12,8 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+} from 'geobuk-shared/ui';
+import { Button } from 'geobuk-shared/ui';
 import { redirectToHubLogin, redirectToHubRegister } from '@/lib/auth/hub-login';
 
 interface LoginRequiredModalProps {

@@ -37,10 +37,9 @@ import {
 import type { DailyMission } from '@/stores/server/planner/planner-types';
 import { getSubjectColor } from '@/types/planner';
 import type { Routine } from '@/types/planner';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { Button } from 'geobuk-shared/ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'geobuk-shared/ui';
+import { Input } from 'geobuk-shared/ui';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useUpsertReflection } from '@/stores/server/planner/hooks';
@@ -713,14 +712,14 @@ function ResultDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="p-0 sm:max-w-[400px]">
         {/* 헤더 */}
-        <div className="rounded-t-lg bg-purple-50 px-5 py-3">
+        <div className="rounded-t-lg px-5 py-3" style={{ backgroundColor: `${color}15` }}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold text-purple-700">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold" style={{ color }}>
               <ClipboardCheck className="h-4.5 w-4.5" />
               결과 입력
             </DialogTitle>
           </DialogHeader>
-          <p className="mt-1 text-xs text-purple-500">
+          <p className="mt-1 text-xs" style={{ color: `${color}99` }}>
             {mission.startTime}~{mission.endTime} · {mission.subject || '미지정'} ·{' '}
             {mission.content || mission.title || ''}
           </p>
@@ -979,7 +978,6 @@ function MyMissionsPage() {
   // 루틴 상세 시트 상태
   const [routineSheetOpen, setRoutineSheetOpen] = useState(false);
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
-  const [pendingResultOpen, setPendingResultOpen] = useState(false);
 
   // 탭 상태 (계획/결과/분석)
   const [activeTab, setActiveTab] = useState<'plan' | 'result' | 'analysis'>('plan');
@@ -1107,7 +1105,6 @@ function MyMissionsPage() {
 
   // 루틴 → 미션 변환
   const handleConvertRoutineToMission = (routine: Routine) => {
-    setPendingResultOpen(true);
     createMutation.mutate(
       {
         date: dateStr,
@@ -1124,11 +1121,9 @@ function MyMissionsPage() {
             setResultTarget(created);
             setResultDialogOpen(true);
           }
-          setPendingResultOpen(false);
         },
         onError: () => {
           toast.error('미션 생성에 실패했습니다.');
-          setPendingResultOpen(false);
         },
       },
     );
@@ -1416,10 +1411,9 @@ function MyMissionsPage() {
                           : '일정';
 
                   return (
-                    <button
+                    <div
                       key={`plan-routine-${routine.id}`}
-                      onClick={() => handleRoutineClick(routine)}
-                      className="group flex w-full items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.99]"
+                      className="group flex w-full items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
                     >
                       <div
                         className="w-1 self-stretch rounded-full"
@@ -1434,7 +1428,11 @@ function MyMissionsPage() {
                         </span>
                         <span className="text-[9px] text-gray-400">{routine.endTime}</span>
                       </div>
-                      <div className="min-w-0 flex-1">
+                      {/* 루틴 정보 — 클릭 시 상세 시트 */}
+                      <button
+                        onClick={() => handleRoutineClick(routine)}
+                        className="min-w-0 flex-1 text-left"
+                      >
                         <div className="flex items-center gap-1.5">
                           <span
                             className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
@@ -1452,9 +1450,18 @@ function MyMissionsPage() {
                         {routine.subject && (
                           <p className="truncate text-xs text-gray-400">{routine.subject}</p>
                         )}
-                      </div>
-                      <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300 transition-transform group-hover:translate-x-0.5" />
-                    </button>
+                      </button>
+                      {/* 결과 입력 버튼 — 변환 모달 없이 바로 처리 */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleConvertRoutineToMission(routine);
+                        }}
+                        className="flex-shrink-0 rounded-lg bg-purple-50 px-2.5 py-1.5 text-[10px] font-semibold text-purple-600 transition-colors hover:bg-purple-100 active:bg-purple-200"
+                      >
+                        ✓ 결과
+                      </button>
+                    </div>
                   );
                 }
 
@@ -1513,12 +1520,19 @@ function MyMissionsPage() {
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
-                      {!isCompleted && (
+                      {isCompleted ? (
                         <button
                           onClick={(e) => handleOpenResult(mission, e)}
-                          className="rounded-lg bg-purple-50 px-2 py-1 text-[10px] font-semibold text-purple-600 transition-colors hover:bg-purple-100"
+                          className="rounded-lg bg-green-50 px-2 py-1 text-[10px] font-semibold text-green-600 transition-colors hover:bg-green-100"
                         >
-                          결과
+                          ✓ 완료
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => handleOpenResult(mission, e)}
+                          className="rounded-lg bg-purple-50 px-2.5 py-1.5 text-[10px] font-semibold text-purple-600 transition-colors hover:bg-purple-100 active:bg-purple-200"
+                        >
+                          ✓ 결과
                         </button>
                       )}
                     </div>

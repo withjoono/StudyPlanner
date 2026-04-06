@@ -4,11 +4,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { useState } from 'react';
-import { usePasswordResetRequest, useVerifyResetCode, usePasswordReset } from '@/stores/server/auth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  usePasswordResetRequest,
+  useVerifyResetCode,
+  usePasswordReset,
+} from '@/stores/server/auth';
+import { Button } from 'geobuk-shared/ui';
+import { Input } from 'geobuk-shared/ui';
 import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
+import { Card } from 'geobuk-shared/ui';
 import { Loader2, Mail, Phone, Lock, ArrowLeft, CheckCircle } from 'lucide-react';
 
 export const Route = createFileRoute('/auth/reset-password')({
@@ -119,9 +123,7 @@ function ResetPasswordPage() {
               <div
                 key={s}
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                  step >= s
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 text-gray-500'
+                  step >= s ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500'
                 }`}
               >
                 {step > s ? <CheckCircle className="h-4 w-4" /> : s}
@@ -206,12 +208,7 @@ function ResetPasswordPage() {
               )}
             </Button>
 
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => setStep(1)}
-            >
+            <Button type="button" variant="ghost" className="w-full" onClick={() => setStep(1)}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               이전으로
             </Button>
@@ -282,7 +279,3 @@ function ResetPasswordPage() {
     </div>
   );
 }
-
-
-
-

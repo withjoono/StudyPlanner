@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useSearch } from '@tanstack/react-router';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card } from 'geobuk-shared/ui';
+import { Button } from 'geobuk-shared/ui';
 import { Check, Star } from 'lucide-react';
 import { useIsAuthenticated } from '@/stores/client/use-auth-store';
 
@@ -139,9 +139,7 @@ function ProductsPage() {
                 <Link to={`/order/${product.id}`}>
                   <Button
                     className={`w-full ${
-                      product.recommended
-                        ? 'bg-indigo-600 hover:bg-indigo-700'
-                        : ''
+                      product.recommended ? 'bg-indigo-600 hover:bg-indigo-700' : ''
                     }`}
                     variant={product.recommended ? 'default' : 'outline'}
                   >
@@ -162,7 +160,3 @@ function ProductsPage() {
     </div>
   );
 }
-
-
-
-

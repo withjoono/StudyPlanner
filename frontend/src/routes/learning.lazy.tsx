@@ -13,8 +13,8 @@ import {
 } from '@/stores/server/planner';
 import type { PlannerItem } from '@/types/planner';
 import { SUBJECT_COLORS } from '@/types/planner';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from 'geobuk-shared/ui';
+import { Card, CardContent, CardHeader, CardTitle } from 'geobuk-shared/ui';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 
