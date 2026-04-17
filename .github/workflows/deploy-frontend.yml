@@ -1,0 +1,33 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://npm.pkg.github.com'
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Deploy to Firebase Hosting
+        working-directory: frontend
+        run: npx firebase-tools deploy --only hosting --project=ts-front-479305 --token "${{ secrets.FIREBASE_TOKEN }}"
