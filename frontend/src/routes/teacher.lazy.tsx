@@ -57,7 +57,7 @@ function TeacherPage() {
   const { data: students = [], isLoading } = useTeacherStudents();
 
   // 역할 체크 — 선생님이 아닌 경우 안내
-  if (user && (user as any).role !== 'teacher') {
+  if (user && user.role !== 'teacher') {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-center text-gray-500">
         <div>

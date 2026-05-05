@@ -135,9 +135,10 @@ model TeacherStudent {
 
   teacher         User                    @relation("TeacherUser", fields: [teacherId], references: [id], onDelete: Cascade)
   student         Student                 @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  managedSubjects TeacherStudentSubject[]
-  comments        TeacherStudentComment[]
-  ratings         PlannerRating[]
+  managedSubjects    TeacherStudentSubject[]
+  comments           TeacherStudentComment[]
+  ratings            PlannerRating[]
+  mentoringSessions  MentoringSession[]
 
   @@unique([teacherId, studentId], name: "uk_teacher_student")
   @@index([teacherId], name: "idx_ts_teacher")
@@ -981,6 +982,33 @@ model Sp2022KyokwaSubject {
 
   @@index([kyokwaCode], name: "idx_sp2022_kyokwa_code")
   @@map("sp_2022_kyokwa_subject")
+}
+
+// ================================================================
+// 멘토링 세션 (선생님 주간 검사)
+// ================================================================
+
+/// 선생님 주간 멘토링 세션 (주간 검사 + 피드백)
+model MentoringSession {
+  id               BigInt    @id @default(autoincrement())
+  teacherStudentId BigInt    @map("teacher_student_id")
+  weekStart        DateTime  @map("week_start") @db.Date
+  weekEnd          DateTime  @map("week_end") @db.Date
+  checklist        Json?     // { planAdherence, missionRate, routinePractice, photoUpload, reflection }
+  grade            String?   @db.VarChar(2)  // A, B, C, D, F
+  subjectComments  Json?     @map("subject_comments") // { "국어": "...", "수학": "..." }
+  overallComment   String?   @db.Text @map("overall_comment")
+  nextWeekTask     String?   @db.Text @map("next_week_task")
+  studentAcked     Boolean   @default(false) @map("student_acked")
+  studentAckedAt   DateTime? @map("student_acked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  teacherStudent   TeacherStudent @relation(fields: [teacherStudentId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherStudentId, weekStart], name: "uk_mentoring_session")
+  @@index([teacherStudentId], name: "idx_ms_teacher_student")
+  @@map("sp_mentoring_session")
 }
 
 // ================================================================

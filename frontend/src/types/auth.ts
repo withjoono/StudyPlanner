@@ -7,6 +7,7 @@ export interface Member {
   id: string; // Hub varchar ID → SP ID (예: "sp_S26H208011")
   email: string;
   userName: string;
+  role?: string; // e.g. 'teacher', 'student', 'parent'
   phone?: string;
   profileImageUrl?: string;
   school?: string;

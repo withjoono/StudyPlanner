@@ -19,6 +19,7 @@ import { RankingModule } from './ranking/ranking.module';
 import { AcornModule } from './acorn/acorn.module';
 import { MyClassModule } from './myclass/myclass.module';
 import { BadgeModule } from './badge/badge.module';
+import { MentoringModule } from './mentoring/mentoring.module';
 
 @Module({
   imports: [
@@ -68,6 +69,9 @@ import { BadgeModule } from './badge/badge.module';
 
     // 뱃지 & 칭호
     BadgeModule,
+
+    // 멘토링 (선생님 주간 검사 + 학생 피드백 수신함)
+    MentoringModule,
   ],
 })
 export class AppModule {}

@@ -1,24 +1,655 @@
 import { createLazyFileRoute } from '@tanstack/react-router';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { useState } from 'react';
+import {
+  ClipboardList,
+  CheckCircle2,
+  Circle,
+  ChevronRight,
+  ChevronLeft,
+  BookOpen,
+  Clock,
+  Target,
+  Star,
+  Camera,
+  MessageSquare,
+  Save,
+  Check,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  useMentoringDashboard,
+  useInspectionSummary,
+  useSaveSession,
+  useMentoringSessions,
+  useAckSession,
+  type MentoringSessionDetail,
+} from '@/stores/server/mentoring';
+import { useAuthStore } from '@/stores/client/use-auth-store';
 
 export const Route = createLazyFileRoute('/mentoring/human')({
   component: HumanMentoringPage,
 });
 
-const mentoringDesignContent =
-  '# 📋 스터디플래너 멘토링 기능 설계\n\n> **시나리오**: 선생님이 담당 학생들의 스터디플래너를 **주 1회** 검사하고, 피드백을 남기는 워크플로우\n\n---\n\n## 현재 시스템 분석 (이미 있는 것)\n\n현재 StudyPlanner에는 멘토링의 **기반 인프라**가 이미 상당히 갖추어져 있습니다:\n\n| 모듈 | 현재 상태 | 멘토링 활용 가능성 |\n|------|-----------|-------------------|\n| **Teacher 모듈** | 학생 연결, 과목별 권한, 미션 열람/생성, 인증사진 조회, 대시보드 | ✅ 핵심 기반 |\n| **Comment 시스템** | 미션/루틴/플랜별 코멘트, 읽음 처리, 역할별 권한 | ✅ 1:1 피드백 기반 |\n| **Message 시스템** | 쪽지 발송/수신/대화 스레드, 읽음 처리 | ✅ 소통 채널 |\n| **Report 모듈** | 주간 리포트 자동 생성, 과목별 분석, AI 피드백 (stub) | ✅ 주간 검사 기반 |\n| **Scoring 모듈** | 일간 성과 점수 (과목 가중치 × 난이도 × 학습량) | ✅ 정량 평가 기반 |\n| **Growth 모듈** | 회고, Streak, 주간 비교, AI 코칭, 기분 트렌드 | ✅ 학생 자기평가 |\n\n> [!IMPORTANT]\n> 핵심: "멘토링"은 새로운 기능을 만드는 것이 아니라, **이미 있는 파편화된 기능들을 "주간 검사 워크플로우"로 엮는 것**이 본질입니다.\n\n---\n\n## 선생님의 주간 검사 워크플로우 (As-Is → To-Be)\n\n### As-Is (현재)\n```\n선생님 로그인 → TeacherAdmin → 학생 선택 → 플래너 탭 열람 → 개별 코멘트 작성\n```\n**문제점**: \n- 학생별로 "이번 주 어땠는지"를 한눈에 볼 수 없음\n- 매주 같은 패턴의 검사를 반복하지만, 구조화된 검사 양식이 없음\n- 학생 회고(Growth)와 선생님 피드백이 연결되지 않음\n- 과거 검사 이력을 추적할 수 없음\n\n### To-Be (멘토링 후)\n```\n선생님 로그인 → 멘토링 대시보드 → 학생 주간 요약 자동 생성 \n→ 체크리스트 검사 → 구조화된 피드백 → 학생에게 알림 → 이력 축적\n```\n\n---\n\n## 멘토링 기능 목록 (Priority 순)\n\n### 🔴 P0: 핵심 기능 (MVP — 먼저 개발)\n\n#### 1. 주간 검사 리포트 (Weekly Inspection Report)\n\n선생님이 학생의 플래너를 검사할 때 **자동으로 생성되는 요약 화면**\n\n```\n┌─────────────────────────────────────────────────────┐\n│  📊 김영희 — 4월 3주차 주간 요약                      │\n│                                                     │\n│  ┌──────────┐ ┌──────────┐ ┌──────────┐            │\n│  │ 미션 달성 │ │ 학습 시간 │ │ 성과 점수 │            │\n│  │  15/20   │ │   8h 30m │ │   342pt  │            │\n│  │   75%    │ │  ▲ +2h   │ │  ▲ +45   │            │\n│  └──────────┘ └──────────┘ └──────────┘            │\n│                                                     │\n│  과목별 달성률                                       │\n│  ████████████████░░░░ 국어 80%                      │\n│  ██████████████████░░ 수학 90%  ← 가장 잘함          │\n│  ████████░░░░░░░░░░░░ 영어 40%  ← 주의 필요          │\n│                                                     │\n│  📝 학생 자기 회고 (Growth 데이터 연동)               │\n│  기분: 😊 좋음 → 😐 보통 → 😊 좋음                    │\n│  잘한 것: "수학 개념 정리를 매일 했다"                  │\n│  아쉬운 것: "영어 단어 암기를 거의 못 했다"             │\n│  내일 개선: "영어 30분을 루틴에 추가"                   │\n│                                                     │\n│  🔍 인증사진 미리보기 (최근 5장)                      │\n│  [📸] [📸] [📸] [📸] [📸]                           │\n└─────────────────────────────────────────────────────┘\n```\n\n**구현 포인트**:\n- 기존 `ReportService.generateWeeklyReport()` 확장\n- `GrowthService`의 회고 데이터와 머지\n- `TeacherService.getStudentPhotos()` 연동\n- **새로운 API**: `GET /teacher/students/:id/weekly-inspection?week=2026-W17`\n\n---\n\n#### 2. 구조화된 피드백 폼 (Structured Feedback)\n\n자유 코멘트가 아닌, **검사 항목별 구조화된 피드백**\n\n```\n┌─────────────────────────────────────────────────────┐\n│  ✍️ 주간 멘토링 피드백                               │\n│                                                     │\n│  📋 검사 체크리스트                                   │\n│  ☑ 장기계획 일정 준수 여부                             │\n│  ☑ 일일 미션 성실도 (완료율 50% 이상)                  │\n│  ☐ 루틴 실천 여부                                     │\n│  ☑ 인증사진 업로드                                    │\n│  ☐ 자기 회고 작성                                     │\n│                                                     │\n│  ⭐ 종합 평가                                        │\n│  [A] [B] [C] [D] [F]  ← 이번 주 등급                │\n│       ▲ 선택됨                                       │\n│                                                     │\n│  💬 과목별 코멘트                                     │\n│  국어: [잘하고 있어요. 문학 파트 더 신경쓰세요___]      │\n│  수학: [이번 주 최고! 계속 이 페이스 유지!_________]    │\n│  영어: [단어 암기 루틴을 추가합시다____________]       │\n│                                                     │\n│  📝 종합 코멘트                                      │\n│  [전체적으로 안정적인 한 주였어요.                     │\n│   영어에 조금 더 시간을 투자하면 좋겠습니다.            │\n│   수학은 정말 잘하고 있어요! 💪___________________]    │\n│                                                     │\n│  📌 다음 주 과제                                     │\n│  [영어 단어 하루 30개 / 수학 심화 문제집 시작___]      │\n│                                                     │\n│  [💾 피드백 저장 및 전송]                             │\n└─────────────────────────────────────────────────────┘\n```\n\n**DB 스키마 (새 테이블)**:\n```prisma\nmodel MentoringSession {\n  id              BigInt   @id @default(autoincrement())\n  teacherStudentId BigInt  // TeacherStudent 연결\n  weekStart       DateTime\n  weekEnd         DateTime\n  \n  // 체크리스트 (JSON)\n  checklist       Json?    // { planAdherence: bool, missionRate: bool, ... }\n  \n  // 평가\n  grade           String?  // A, B, C, D, F\n  \n  // 과목별 코멘트 (JSON)\n  subjectComments Json?    // { "국어": "...", "수학": "..." }\n  \n  // 종합\n  overallComment  String?  @db.Text\n  nextWeekTask    String?  @db.Text\n  \n  // 학생 확인\n  studentAcked    Boolean  @default(false)\n  studentAckedAt  DateTime?\n  \n  createdAt       DateTime @default(now())\n  updatedAt       DateTime @updatedAt\n  \n  teacherStudent  TeacherStudent @relation(fields: [teacherStudentId], references: [id])\n  \n  @@unique([teacherStudentId, weekStart], name: "uk_mentoring_session")\n}\n```\n\n---\n\n#### 3. 학생 수신함 (Student Mentoring Inbox)\n\n학생이 StudyPlanner에서 선생님의 주간 피드백을 확인하는 화면\n\n```\n┌─────────────────────────────────────────────────────┐\n│  📬 선생님 피드백                            [NEW 🔴] │\n│                                                     │\n│  ┌─────────────────────────────────────────┐        │\n│  │ 📅 4월 3주차 (04.14 ~ 04.20)            │        │\n│  │ 등급: B  |  선생님: 김선생님              │        │\n│  │ "전체적으로 안정적인 한 주였어요..."       │        │\n│  │ 📌 다음 주 과제: 영어 단어 하루 30개      │        │\n│  │                              [확인 ✅]   │        │\n│  └─────────────────────────────────────────┘        │\n│                                                     │\n│  ┌─────────────────────────────────────────┐        │\n│  │ 📅 4월 2주차 (04.07 ~ 04.13)     ✅ 확인 │        │\n│  │ 등급: A  |  선생님: 김선생님              │        │\n│  │ "수학 진도가 정말 빨라졌어요! ..."       │        │\n│  └─────────────────────────────────────────┘        │\n└─────────────────────────────────────────────────────┘\n```\n\n**구현 포인트**:\n- 새 라우트: `/mentoring` (StudyPlanner 프론트엔드)\n- 기존 `RecentCommentsCard` 패턴 재사용\n- `studentAcked` 플래그로 확인 여부 추적\n- 대시보드에 "새 피드백 🔴" 배지 표시\n\n---\n\n### 🟡 P1: 강화 기능 (2차 스프린트)\n\n#### 4. 멘토링 대시보드 (선생님용 일괄 검사 뷰)\n\n학생 15명을 한 화면에서 순차 검사할 수 있는 효율적 UI\n\n```\n┌─────────────────────────────────────────────────────────┐\n│  📋 4월 3주차 주간 검사                     [일괄 전송] │\n│                                                         │\n│  학생          달성률   학습시간  등급   상태            │\n│  ─────────────────────────────────────────────────────  │\n│  🟢 김영희      75%     8h 30m   B     ✅ 검사 완료     │\n│  🔴 이철수      35%     3h 10m   -     🔲 미검사        │\n│  🟡 박지민      60%     5h 45m   -     🔲 미검사        │\n│  🟢 최수진      92%    11h 20m   A     ✅ 검사 완료     │\n│  ...                                                    │\n│                                                         │\n│  진행: 2/15 완료  [🔴 위험 3명] [🟡 보통 7명] [🟢 우수 5명] │\n└─────────────────────────────────────────────────────────┘\n```\n\n**구현 포인트**:\n- 기존 `TeacherService.getDashboard()` 확장\n- `MentoringSession` 존재 여부로 "검사 완료" 판별\n- 위험 학생(달성률 < 50%) 상단 정렬\n- TeacherAdmin 프론트엔드에 `/mentoring` 라우트 추가\n\n---\n\n#### 5. 다음 주 과제 → 미션 자동 생성 연동\n\n선생님이 "다음 주 과제"로 적은 내용을 학생의 실제 미션으로 변환\n\n```\n피드백의 "다음 주 과제" 필드\n   ↓ [미션으로 변환] 버튼\n   ↓\nDailyMission 생성 (기존 TeacherService.createMission() 활용)\n   ↓\n학생 플래너에 "선생님 배정 미션 🏷️" 표시\n```\n\n**구현 포인트**:\n- 기존 `createMission()` API 재사용\n- 미션에 `source: \'mentoring\'` 태그 추가\n- 학생 미션 목록에서 선생님 배정 미션 시각적 구분\n\n---\n\n#### 6. 멘토링 히스토리 타임라인\n\n학생별 주간 검사 이력을 시간순으로 추적\n\n```\n📅 4월 3주차 — B등급 — "안정적인 한 주"\n📅 4월 2주차 — A등급 — "수학 진도 빨라짐!"  ▲\n📅 4월 1주차 — C등급 — "영어 부진 심각"      ▼\n📅 3월 4주차 — B등급 — "전반적으로 양호"\n```\n\n**구현 포인트**:\n- `GET /teacher/students/:id/mentoring-history?limit=12`\n- 등급 추이 그래프 (A=5, B=4, C=3, D=2, F=1)\n- 학생도 본인의 히스토리를 `/mentoring` 에서 열람 가능\n\n---\n\n### 🟢 P2: 고도화 기능 (3차 이후)\n\n#### 7. AI 피드백 초안 자동 생성\n\n현재 `ReportService.generateStubFeedback()`를 LLM으로 교체하여, 선생님이 검사할 때 피드백 초안을 자동 생성\n\n```\n[AI 초안 생성] 클릭\n   ↓\n학생의 주간 데이터 + 회고 + 과거 멘토링 이력\n   ↓ Gemini 2.5 Flash\n   ↓\n"영희는 이번 주 수학에서 큰 성장을 보였습니다. \n 특히 심화 문제 풀이량이 지난주 대비 40% 증가했습니다.\n 반면 영어 학습 시간이 목표 대비 60% 부족합니다.\n 다음 주에는 영어 단어 암기를 일일 루틴에 \n 포함시키는 것을 추천합니다."\n   ↓\n선생님이 수정 후 저장\n```\n\n#### 8. 학부모 공유 (읽기 전용)\n\n`ParentStudent` 관계를 활용하여 학부모도 멘토링 피드백을 열람 가능\n\n#### 9. 알림 시스템 (Push / 인앱)\n\n- 선생님이 피드백 저장 시 → 학생에게 Push 알림\n- 학생이 확인(Ack) 시 → 선생님에게 알림\n- 검사 미완료 학생 리마인더 (일요일 저녁)\n\n---\n\n## 구현 아키텍처\n\n### 백엔드 (StudyPlanner Backend)\n\n```\nbackend/src/\n├── mentoring/                          [NEW]\n│   ├── mentoring.module.ts\n│   ├── mentoring.controller.ts         # REST API\n│   ├── mentoring.service.ts            # 비즈니스 로직\n│   └── dto/\n│       ├── create-session.dto.ts\n│       └── inspection-summary.dto.ts\n├── teacher/\n│   └── teacher.service.ts              # getDashboard 확장\n├── report/\n│   └── report.service.ts               # 주간 데이터 집계 공유\n└── planner/\n    └── comment.service.ts              # 기존 코멘트와 연동\n```\n\n### 주요 API 엔드포인트\n\n| Method | Path | 설명 | 위치 |\n|--------|------|------|------|\n| `GET` | `/mentoring/inspection/:studentId` | 주간 검사 요약 자동 생성 | TeacherAdmin |\n| `POST` | `/mentoring/sessions` | 멘토링 세션(피드백) 저장 | TeacherAdmin |\n| `GET` | `/mentoring/sessions` | 멘토링 이력 조회 | 양쪽 |\n| `GET` | `/mentoring/sessions/:id` | 멘토링 세션 상세 | 양쪽 |\n| `PATCH` | `/mentoring/sessions/:id/ack` | 학생 확인(Ack) 처리 | StudyPlanner |\n| `GET` | `/mentoring/dashboard` | 선생님 일괄 검사 현황 | TeacherAdmin |\n| `GET` | `/mentoring/unread` | 학생 미확인 피드백 수 | StudyPlanner |\n\n### 프론트엔드 변경\n\n#### StudyPlanner (학생 앱)\n```\nfrontend/src/routes/\n├── mentoring.lazy.tsx                  [NEW] 멘토링 피드백 수신함\n└── index.tsx                           [MODIFY] 대시보드에 "새 피드백" 배지 추가\n```\n\n#### TeacherAdmin (선생님 앱)\n```\nsrc/routes/\n├── mentoring/\n│   ├── index.lazy.tsx                  [NEW] 멘토링 대시보드 (일괄 검사)\n│   └── $studentId.lazy.tsx             [NEW] 학생별 검사 & 피드백 작성\n└── students/\n    └── $studentId.lazy.tsx             [MODIFY] 기존 학생 상세에 멘토링 탭 추가\n```\n\n---\n\n## 데이터 흐름 (주간 검사 시나리오)\n\n```mermaid\nsequenceDiagram\n    participant T as 선생님 (TeacherAdmin)\n    participant API as StudyPlanner Backend\n    participant DB as PostgreSQL\n    participant S as 학생 (StudyPlanner)\n\n    Note over T: 매주 일요일 저녁, 주간 검사 시작\n\n    T->>API: GET /mentoring/dashboard\n    API->>DB: 전체 학생 주간 요약 집계\n    DB-->>API: 학생별 달성률, 학습시간, 위험 여부\n    API-->>T: 대시보드 렌더링\n\n    T->>T: 위험 학생(🔴) 먼저 클릭\n\n    T->>API: GET /mentoring/inspection/:studentId\n    API->>DB: WeeklyReport + DailyScore + Missions + Growth + Photos\n    DB-->>API: 통합 주간 데이터\n    API-->>T: 주간 검사 요약 화면\n\n    T->>T: 체크리스트 체크, 등급 선택, 코멘트 작성\n\n    T->>API: POST /mentoring/sessions\n    API->>DB: MentoringSession 생성\n    API->>DB: (옵션) 다음 주 미션 생성\n    DB-->>API: 세션 저장 완료\n    API-->>T: ✅ 피드백 저장 완료\n\n    Note over S: 학생이 앱 열기\n    S->>API: GET /mentoring/unread\n    API-->>S: { unreadCount: 1 }\n    S->>S: 대시보드에 🔴 배지 표시\n\n    S->>API: GET /mentoring/sessions (내 세션)\n    API-->>S: 주간 피드백 목록\n    S->>S: 피드백 확인 & "다음 주 과제" 확인\n\n    S->>API: PATCH /mentoring/sessions/:id/ack\n    API->>DB: studentAcked = true\n    API-->>S: ✅ 확인 완료\n```\n\n---\n\n## 기존 기능과의 시너지\n\n| 기존 기능 | 멘토링에서 활용하는 방식 |\n|-----------|------------------------|\n| `DailyScore` | 주간 검사 요약의 성과 점수 산출 |\n| `WeeklyReport` | 주간 검사 요약의 기초 데이터 |\n| `Growth 회고` | 학생의 자기평가를 선생님이 확인 → 피드백에 반영 |\n| `Comment 시스템` | 기존 과목별 코멘트와 별개로, 멘토링은 "주간 종합 평가" 역할 |\n| `Message 시스템` | 멘토링 피드백과 별개로, 즉시 소통용으로 유지 |\n| `TeacherStudent 연결` | 멘토링 세션의 권한 기반 |\n| `TeacherStudentSubject` | 과목별 코멘트의 필터 기준 |\n| `VerificationPhoto` | 인증사진 검사 (실제로 공부했는지 확인) |\n\n---\n\n## 개발 우선순위 & 일정 추정\n\n| Phase | 기능 | 백엔드 | 프론트 | 총 예상 |\n|-------|------|--------|--------|---------|\n| **P0** | DB 스키마 + MentoringModule 기본 | 1일 | - | 1일 |\n| **P0** | 주간 검사 요약 API | 1일 | - | 1일 |\n| **P0** | 구조화된 피드백 저장 API | 0.5일 | - | 0.5일 |\n| **P0** | TeacherAdmin 검사 UI | - | 2일 | 2일 |\n| **P0** | StudyPlanner 학생 수신함 UI | - | 1일 | 1일 |\n| **P1** | 멘토링 대시보드 (일괄 검사) | 0.5일 | 1일 | 1.5일 |\n| **P1** | 과제 → 미션 변환 | 0.5일 | 0.5일 | 1일 |\n| **P1** | 히스토리 타임라인 | 0.5일 | 1일 | 1.5일 |\n| **P2** | AI 피드백 초안 | 1일 | 0.5일 | 1.5일 |\n| **P2** | 학부모 공유 | 0.5일 | 0.5일 | 1일 |\n| **P2** | 알림 시스템 | 2일 | 1일 | 3일 |\n| | | | | **~15일** |\n\n> [!TIP]\n> **P0만으로도 충분히 사용 가능합니다.** MVP는 약 5~6일이면 완성할 수 있습니다.\n> 핵심은 "새로 만드는 것"이 아니라 "이미 있는 데이터를 주간 검사 워크플로우로 조합하는 것"입니다.\n\n---\n\n## 핵심 설계 원칙\n\n1. **기존 데이터 재사용**: 새로운 데이터를 학생에게 입력받지 않음. 이미 쌓이는 미션/점수/회고 데이터를 집계만 함\n2. **선생님 효율 극대화**: 15명 학생을 30분 안에 검사 완료할 수 있는 UX\n3. **학생 부담 최소화**: 학생은 기존처럼 플래너만 쓰면 됨. 멘토링은 "받는 것"\n4. **점진적 고도화**: Comment → 구조화된 피드백 → AI 보조 순으로 진화\n';
+const GRADES = ['A', 'B', 'C', 'D', 'F'] as const;
+const GRADE_COLORS: Record<string, string> = {
+  A: 'bg-emerald-500 text-white',
+  B: 'bg-blue-500 text-white',
+  C: 'bg-amber-500 text-white',
+  D: 'bg-orange-500 text-white',
+  F: 'bg-red-500 text-white',
+};
+const CHECKLIST_LABELS: Record<string, string> = {
+  planAdherence: '장기계획 일정 준수',
+  missionRate: '일일 미션 성실도 (50% 이상)',
+  routinePractice: '루틴 실천 여부',
+  photoUpload: '인증사진 업로드',
+  reflection: '자기 회고 작성',
+};
+
+function formatMinutes(min: number) {
+  if (min < 60) return `${min}분`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m > 0 ? `${h}시간 ${m}분` : `${h}시간`;
+}
 
 function HumanMentoringPage() {
-  return (
-    <div className="mx-auto max-w-screen-xl px-4 py-8">
-      <div className="rounded-xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5">
-        <h1 className="mb-6 border-b pb-4 text-2xl font-bold text-gray-900">전문가 멘토링</h1>
+  const user = useAuthStore((s) => s.user);
+  const isTeacher = user?.role === 'teacher';
+  return isTeacher ? <TeacherView /> : <StudentView />;
+}
 
-        <div className="prose prose-indigo prose-headings:text-indigo-900 prose-headings:font-bold prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-4 prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3 prose-p:leading-relaxed prose-a:text-indigo-600 hover:prose-a:text-indigo-500 prose-strong:text-indigo-900 prose-strong:font-semibold prose-ul:list-disc prose-ul:pl-5 prose-ol:list-decimal prose-ol:pl-5 prose-blockquote:border-l-4 prose-blockquote:border-indigo-200 prose-blockquote:pl-4 prose-blockquote:italic prose-code:text-indigo-600 prose-code:bg-indigo-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-gray-800 prose-pre:text-gray-100 prose-pre:p-4 prose-pre:rounded-lg prose-pre:overflow-x-auto prose-table:w-full prose-table:border-collapse prose-th:border prose-th:border-gray-300 prose-th:p-2 prose-th:bg-gray-50 prose-td:border prose-td:border-gray-300 prose-td:p-2 max-w-none text-gray-700">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{mentoringDesignContent}</ReactMarkdown>
+// ================================================================
+// 선생님 뷰: 대시보드 → 학생 상세 검사
+// ================================================================
+
+function TeacherView() {
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+  const { data: dashboard, isLoading } = useMentoringDashboard();
+
+  if (selectedStudentId) {
+    return (
+      <InspectionView
+        studentId={selectedStudentId}
+        week={dashboard?.week}
+        onBack={() => setSelectedStudentId(null)}
+      />
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-screen-lg px-4 py-8">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 shadow">
+          <ClipboardList className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">주간 멘토링 검사</h1>
+          {dashboard && (
+            <p className="text-sm text-gray-500">
+              {dashboard.week.start} ~ {dashboard.week.end}
+            </p>
+          )}
         </div>
       </div>
+
+      {dashboard && (
+        <div className="mb-6 grid grid-cols-3 gap-4">
+          <StatCard label="전체 학생" value={dashboard.total} color="blue" />
+          <StatCard label="검사 완료" value={dashboard.done} color="emerald" />
+          <StatCard label="위험 학생" value={dashboard.atRisk} color="red" />
+        </div>
+      )}
+
+      <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
+        {isLoading ? (
+          <div className="py-16 text-center text-gray-400">로딩 중...</div>
+        ) : !dashboard || dashboard.students.length === 0 ? (
+          <div className="py-16 text-center text-gray-400">등록된 학생이 없습니다.</div>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {dashboard.students.map((s) => (
+              <li key={s.studentId}>
+                <button
+                  onClick={() => setSelectedStudentId(s.studentId)}
+                  className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-gray-50"
+                >
+                  <span className="text-xl">
+                    {s.sessionDone ? '✅' : s.missionRate < 50 ? '🔴' : '🟡'}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900">{s.studentName}</span>
+                      {s.grade && (
+                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">
+                          {s.grade}학년
+                        </span>
+                      )}
+                      {s.sessionDone && s.sessionGrade && (
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-xs font-bold ${GRADE_COLORS[s.sessionGrade] ?? 'bg-gray-200 text-gray-700'}`}
+                        >
+                          {s.sessionGrade}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
+                      <span>달성률 {s.missionRate}%</span>
+                      <span>·</span>
+                      <span>{formatMinutes(s.studyMinutes)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    {s.sessionDone ? (
+                      <span className="font-medium text-emerald-600">검사 완료</span>
+                    ) : (
+                      <span className="text-gray-400">미검사</span>
+                    )}
+                    <ChevronRight className="h-4 w-4 text-gray-300" />
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: 'blue' | 'emerald' | 'red';
+}) {
+  const colorMap = {
+    blue: 'bg-blue-50 text-blue-700 border-blue-100',
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    red: 'bg-red-50 text-red-700 border-red-100',
+  };
+  return (
+    <div className={`rounded-xl border p-4 ${colorMap[color]}`}>
+      <div className="text-3xl font-bold">{value}</div>
+      <div className="mt-1 text-sm opacity-80">{label}</div>
+    </div>
+  );
+}
+
+// ================================================================
+// 선생님: 학생별 상세 검사
+// ================================================================
+
+function InspectionView({
+  studentId,
+  week,
+  onBack,
+}: {
+  studentId: number;
+  week?: { start: string; end: string };
+  onBack: () => void;
+}) {
+  const { data, isLoading } = useInspectionSummary(studentId, week?.start);
+  const saveMutation = useSaveSession(studentId);
+
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
+  const [grade, setGrade] = useState('');
+  const [subjectComments, setSubjectComments] = useState<Record<string, string>>({});
+  const [overallComment, setOverallComment] = useState('');
+  const [nextWeekTask, setNextWeekTask] = useState('');
+  const [initialized, setInitialized] = useState(false);
+
+  if (data && !initialized) {
+    const ex = data.existingSession;
+    if (ex) {
+      setChecklist((ex.checklist as Record<string, boolean>) ?? {});
+      setGrade(ex.grade ?? '');
+      setSubjectComments((ex.subjectComments as Record<string, string>) ?? {});
+      setOverallComment(ex.overallComment ?? '');
+      setNextWeekTask(ex.nextWeekTask ?? '');
+    }
+    setInitialized(true);
+  }
+
+  async function handleSave() {
+    if (!data) return;
+    try {
+      await saveMutation.mutateAsync({
+        weekStart: data.week.start,
+        weekEnd: data.week.end,
+        checklist,
+        grade: grade || undefined,
+        subjectComments,
+        overallComment: overallComment || undefined,
+        nextWeekTask: nextWeekTask || undefined,
+      });
+      toast.success('피드백이 저장됐습니다.');
+    } catch {
+      toast.error('저장에 실패했습니다.');
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-screen-lg px-4 py-16 text-center text-gray-400">
+        주간 데이터를 불러오는 중...
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  const { stats } = data;
+
+  return (
+    <div className="mx-auto max-w-screen-lg space-y-6 px-4 py-8">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="rounded-lg p-2 transition-colors hover:bg-gray-100">
+          <ChevronLeft className="h-5 w-5 text-gray-500" />
+        </button>
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">
+            {data.student.name} — {data.week.start.slice(5)} ~ {data.week.end.slice(5)} 주간 검사
+          </h2>
+          {data.student.grade && <p className="text-sm text-gray-500">{data.student.grade}학년</p>}
+        </div>
+      </div>
+
+      {/* 주간 요약 카드 */}
+      <div className="grid grid-cols-3 gap-4">
+        <SummaryCard
+          icon={<Target className="h-5 w-5 text-indigo-500" />}
+          label="미션 달성률"
+          value={`${stats.missionRate}%`}
+          sub={`${stats.completedMissions}/${stats.totalMissions}`}
+          danger={stats.missionRate < 50}
+        />
+        <SummaryCard
+          icon={<Clock className="h-5 w-5 text-blue-500" />}
+          label="학습 시간"
+          value={formatMinutes(stats.studyMinutes)}
+          sub={
+            stats.studyMinutesDelta > 0
+              ? `▲ ${formatMinutes(stats.studyMinutesDelta)}`
+              : stats.studyMinutesDelta < 0
+                ? `▼ ${formatMinutes(Math.abs(stats.studyMinutesDelta))}`
+                : '지난 주와 동일'
+          }
+        />
+        <SummaryCard
+          icon={<Star className="h-5 w-5 text-amber-500" />}
+          label="성과 점수"
+          value={`${stats.totalScore}pt`}
+          sub={
+            stats.scoreDelta > 0
+              ? `▲ +${stats.scoreDelta}`
+              : stats.scoreDelta < 0
+                ? `▼ ${stats.scoreDelta}`
+                : '지난 주와 동일'
+          }
+        />
+      </div>
+
+      {/* 과목별 달성률 */}
+      {data.subjectStats.length > 0 && (
+        <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-900/5">
+          <h3 className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
+            <BookOpen className="h-4 w-4 text-indigo-500" />
+            과목별 달성률
+          </h3>
+          <div className="space-y-3">
+            {data.subjectStats
+              .sort((a, b) => b.rate - a.rate)
+              .map((s) => (
+                <div key={s.subject}>
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="text-gray-700">{s.subject}</span>
+                    <span
+                      className={`font-semibold ${s.rate >= 80 ? 'text-emerald-600' : s.rate >= 50 ? 'text-amber-600' : 'text-red-600'}`}
+                    >
+                      {s.rate}%
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-100">
+                    <div
+                      className={`h-2 rounded-full transition-all ${s.rate >= 80 ? 'bg-emerald-400' : s.rate >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+                      style={{ width: `${s.rate}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* 학생 회고 */}
+      {data.reflections.length > 0 && (
+        <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-900/5">
+          <h3 className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
+            <MessageSquare className="h-4 w-4 text-violet-500" />
+            학생 자기 회고
+          </h3>
+          <div className="space-y-3">
+            {data.reflections.slice(0, 3).map((r, i) => (
+              <div key={i} className="rounded-lg bg-gray-50 p-3 text-sm">
+                <div className="mb-1 text-xs text-gray-400">
+                  {r.date ? String(r.date).slice(0, 10) : ''} {r.mood && `· ${r.mood}`}
+                </div>
+                {r.goodPoints && (
+                  <p className="text-emerald-700">
+                    <span className="font-medium">잘한 점: </span>
+                    {r.goodPoints}
+                  </p>
+                )}
+                {r.badPoints && (
+                  <p className="mt-1 text-red-700">
+                    <span className="font-medium">아쉬운 점: </span>
+                    {r.badPoints}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 인증사진 */}
+      {data.photos.length > 0 && (
+        <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-900/5">
+          <h3 className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
+            <Camera className="h-4 w-4 text-pink-500" />
+            인증사진 ({data.photos.length}장)
+          </h3>
+          <div className="flex gap-2 overflow-x-auto">
+            {data.photos.map((p) => (
+              <img
+                key={p.id}
+                src={p.url}
+                alt="인증사진"
+                className="h-20 w-20 flex-shrink-0 rounded-lg object-cover ring-1 ring-gray-200"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 피드백 폼 */}
+      <div className="space-y-5 rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-900/5">
+        <h3 className="flex items-center gap-2 font-semibold text-gray-900">
+          <ClipboardList className="h-4 w-4 text-indigo-500" />
+          주간 피드백 작성
+        </h3>
+
+        {/* 체크리스트 */}
+        <div>
+          <p className="mb-2 text-sm font-medium text-gray-700">검사 체크리스트</p>
+          <div className="space-y-2">
+            {Object.entries(CHECKLIST_LABELS).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setChecklist((prev) => ({ ...prev, [key]: !prev[key] }))}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50"
+              >
+                {checklist[key] ? (
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-emerald-500" />
+                ) : (
+                  <Circle className="h-4 w-4 flex-shrink-0 text-gray-300" />
+                )}
+                <span className={checklist[key] ? 'text-gray-900' : 'text-gray-500'}>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 종합 등급 */}
+        <div>
+          <p className="mb-2 text-sm font-medium text-gray-700">종합 등급</p>
+          <div className="flex gap-2">
+            {GRADES.map((g) => (
+              <button
+                key={g}
+                onClick={() => setGrade(g === grade ? '' : g)}
+                className={`h-9 w-9 rounded-lg text-sm font-bold transition-all ${grade === g ? (GRADE_COLORS[g] ?? 'bg-gray-200') : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 과목별 코멘트 */}
+        {data.subjectStats.length > 0 && (
+          <div>
+            <p className="mb-2 text-sm font-medium text-gray-700">과목별 코멘트</p>
+            <div className="space-y-2">
+              {data.subjectStats.map((s) => (
+                <div key={s.subject} className="flex items-start gap-2">
+                  <span className="mt-2 w-14 flex-shrink-0 text-xs font-medium text-gray-600">
+                    {s.subject}
+                  </span>
+                  <input
+                    type="text"
+                    placeholder={`${s.subject} 코멘트`}
+                    value={subjectComments[s.subject] ?? ''}
+                    onChange={(e) =>
+                      setSubjectComments((prev) => ({ ...prev, [s.subject]: e.target.value }))
+                    }
+                    className="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-indigo-400 focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 종합 코멘트 */}
+        <div>
+          <p className="mb-2 text-sm font-medium text-gray-700">종합 코멘트</p>
+          <textarea
+            rows={3}
+            placeholder="이번 주 전반적인 피드백을 입력하세요..."
+            value={overallComment}
+            onChange={(e) => setOverallComment(e.target.value)}
+            className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+          />
+        </div>
+
+        {/* 다음 주 과제 */}
+        <div>
+          <p className="mb-2 text-sm font-medium text-gray-700">다음 주 과제</p>
+          <input
+            type="text"
+            placeholder="다음 주 학생에게 줄 과제나 목표를 입력하세요..."
+            value={nextWeekTask}
+            onChange={(e) => setNextWeekTask(e.target.value)}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none"
+          />
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={saveMutation.isPending}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+        >
+          <Save className="h-4 w-4" />
+          {saveMutation.isPending ? '저장 중...' : '피드백 저장 및 전송'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({
+  icon,
+  label,
+  value,
+  sub,
+  danger,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub: string;
+  danger?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl p-4 shadow-sm ring-1 ${danger ? 'bg-red-50 ring-red-100' : 'bg-white ring-gray-900/5'}`}
+    >
+      <div className="mb-1 flex items-center gap-2">
+        {icon}
+        <span className="text-xs text-gray-500">{label}</span>
+      </div>
+      <div className={`text-xl font-bold ${danger ? 'text-red-600' : 'text-gray-900'}`}>
+        {value}
+      </div>
+      <div className="mt-1 text-xs text-gray-400">{sub}</div>
+    </div>
+  );
+}
+
+// ================================================================
+// 학생 뷰: 피드백 수신함
+// ================================================================
+
+function StudentView() {
+  const { data: sessions, isLoading } = useMentoringSessions('student');
+  const ackMutation = useAckSession();
+
+  async function handleAck(id: number) {
+    try {
+      await ackMutation.mutateAsync(id);
+      toast.success('확인했습니다.');
+    } catch {
+      toast.error('오류가 발생했습니다.');
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-screen-md px-4 py-8">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 shadow">
+          <MessageSquare className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">선생님 피드백</h1>
+          <p className="text-sm text-gray-500">주간 멘토링 피드백 수신함</p>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="py-16 text-center text-gray-400">불러오는 중...</div>
+      ) : !sessions || sessions.length === 0 ? (
+        <div className="rounded-xl bg-white p-12 text-center shadow-sm ring-1 ring-gray-900/5">
+          <MessageSquare className="mx-auto mb-3 h-10 w-10 text-gray-200" />
+          <p className="text-gray-500">아직 받은 피드백이 없습니다.</p>
+          <p className="mt-1 text-sm text-gray-400">
+            선생님이 주간 검사를 완료하면 여기에 표시됩니다.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {sessions.map((session) => (
+            <SessionCard key={session.id} session={session} onAck={handleAck} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SessionCard({
+  session,
+  onAck,
+}: {
+  session: MentoringSessionDetail;
+  onAck: (id: number) => void;
+}) {
+  const [expanded, setExpanded] = useState(!session.studentAcked);
+  const isNew = !session.studentAcked;
+
+  return (
+    <div
+      className={`rounded-xl shadow-sm ring-1 transition-all ${isNew ? 'bg-indigo-50 ring-indigo-200' : 'bg-white ring-gray-900/5'}`}
+    >
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-4"
+      >
+        <div className="flex items-center gap-3">
+          {isNew && <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" />}
+          <div className="text-left">
+            <div className="font-semibold text-gray-900">
+              {session.weekStart.slice(0, 10)} ~ {session.weekEnd.slice(0, 10)}
+            </div>
+            <div className="mt-0.5 flex items-center gap-2 text-sm">
+              {session.grade && (
+                <span
+                  className={`rounded px-1.5 py-0.5 text-xs font-bold ${GRADE_COLORS[session.grade] ?? 'bg-gray-200 text-gray-700'}`}
+                >
+                  {session.grade}등급
+                </span>
+              )}
+              {isNew ? (
+                <span className="font-medium text-indigo-600">새 피드백</span>
+              ) : (
+                <span className="text-xs text-gray-400">확인 완료</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <ChevronRight
+          className={`h-4 w-4 text-gray-400 transition-transform ${expanded ? 'rotate-90' : ''}`}
+        />
+      </button>
+
+      {expanded && (
+        <div className="space-y-4 border-t border-gray-100 px-5 pb-5 pt-4">
+          {session.overallComment && (
+            <div className="rounded-lg bg-white p-4 ring-1 ring-gray-100">
+              <p className="mb-1 text-xs font-medium text-gray-400">종합 코멘트</p>
+              <p className="text-sm leading-relaxed text-gray-700">{session.overallComment}</p>
+            </div>
+          )}
+
+          {session.subjectComments && Object.keys(session.subjectComments).length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-medium text-gray-400">과목별 피드백</p>
+              <div className="space-y-2">
+                {Object.entries(session.subjectComments as Record<string, string>)
+                  .filter(([, v]) => v)
+                  .map(([subject, comment]) => (
+                    <div key={subject} className="flex gap-2 text-sm">
+                      <span className="w-10 flex-shrink-0 font-medium text-gray-600">
+                        {subject}
+                      </span>
+                      <span className="text-gray-700">{comment}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {session.nextWeekTask && (
+            <div className="rounded-lg bg-amber-50 p-4 ring-1 ring-amber-100">
+              <p className="mb-1 text-xs font-medium text-amber-600">📌 다음 주 과제</p>
+              <p className="text-sm text-gray-700">{session.nextWeekTask}</p>
+            </div>
+          )}
+
+          {!session.studentAcked && (
+            <button
+              onClick={() => onAck(session.id)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+            >
+              <Check className="h-4 w-4" />
+              확인했습니다
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

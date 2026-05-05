@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useLeaderboard, type LeaderboardEntry } from '@/stores/server/ranking';
-import { useAuthStore } from '@/stores/client/use-auth-store';
 import { Trophy, TrendingUp, TrendingDown, Minus, Clock, Target, Medal } from 'lucide-react';
 
 const periodLabels: Record<string, string> = {
@@ -50,7 +49,6 @@ export default function Leaderboard() {
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [groupId, setGroupId] = useState<string | undefined>(undefined);
   const { data, isLoading, error } = useLeaderboard(period, undefined, groupId);
-  const { user } = useAuthStore();
 
   return (
     <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
