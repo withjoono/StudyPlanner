@@ -180,53 +180,27 @@ function RootLayout() {
                   />
                 </button>
                 {myclassDropdownOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                    {/* 목표대학 반 */}
+                  <div className="absolute left-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                     <a
                       href="/myclass?type=university"
-                      className="flex w-full items-center px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setMyclassDropdownOpen(false)}
                     >
                       🎓 목표대학 반
                     </a>
                     <a
-                      href="/mentoring/ai?type=university"
-                      className="flex w-full items-center px-6 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50"
-                      onClick={() => setMyclassDropdownOpen(false)}
-                    >
-                      ✦ 성취율 AI 평가
-                    </a>
-                    <div className="my-1 border-t border-gray-100" />
-                    {/* 담당 선생님 반 */}
-                    <a
                       href="/myclass?type=teacher"
-                      className="flex w-full items-center px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setMyclassDropdownOpen(false)}
                     >
                       👨‍🏫 담당 선생님 반
                     </a>
                     <a
-                      href="/mentoring/ai?type=teacher"
-                      className="flex w-full items-center px-6 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50"
-                      onClick={() => setMyclassDropdownOpen(false)}
-                    >
-                      ✦ 성취율 AI 평가
-                    </a>
-                    <div className="my-1 border-t border-gray-100" />
-                    {/* 스터디 반 */}
-                    <a
                       href="/myclass?type=study"
-                      className="flex w-full items-center px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setMyclassDropdownOpen(false)}
                     >
                       📚 스터디 반
-                    </a>
-                    <a
-                      href="/mentoring/ai?type=study"
-                      className="flex w-full items-center px-6 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50"
-                      onClick={() => setMyclassDropdownOpen(false)}
-                    >
-                      ✦ 성취율 AI 평가
                     </a>
                   </div>
                 )}
@@ -402,16 +376,13 @@ function RootLayout() {
                 </p>
                 {[
                   { href: '/myclass?type=university', label: '🎓 목표대학 반' },
-                  { href: '/mentoring/ai?type=university', label: '　✦ 성취율 AI 평가', sub: true },
                   { href: '/myclass?type=teacher', label: '👨‍🏫 담당 선생님 반' },
-                  { href: '/mentoring/ai?type=teacher', label: '　✦ 성취율 AI 평가', sub: true },
                   { href: '/myclass?type=study', label: '📚 스터디 반' },
-                  { href: '/mentoring/ai?type=study', label: '　✦ 성취율 AI 평가', sub: true },
                 ].map((item) => (
                   <a
                     key={item.href}
                     href={item.href}
-                    className={`block rounded-md px-3 py-1.5 text-sm hover:bg-gray-50 ${'sub' in item && item.sub ? 'text-indigo-600' : 'text-gray-700'}`}
+                    className="block rounded-md px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     {item.label}

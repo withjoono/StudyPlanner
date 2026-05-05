@@ -8,7 +8,7 @@
  */
 
 import { createLazyFileRoute } from '@tanstack/react-router';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   Plus,
   Trophy,
@@ -20,10 +20,13 @@ import {
   Target,
   Clock,
   Star,
-  Medal,
   Trash2,
   LogOut,
-  Search,
+  BrainCircuit,
+  ChevronDown,
+  ChevronUp,
+  TrendingUp,
+  BarChart2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -37,15 +40,12 @@ import {
   type MyClassRoom,
   type LeaderboardEntry,
 } from '@/stores/server/myclass';
-import { useAuthStore } from '@/stores/client';
-import { useShareCard } from '@/hooks/useShareCard';
 
 export const Route = createLazyFileRoute('/myclass')({
   component: MyClassPage,
 });
 
 function MyClassPage() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [joinCode, setJoinCode] = useState('');
@@ -216,6 +216,7 @@ function RoomDetail({ roomId, onBack }: { roomId: number; onBack: () => void }) 
   const { data: leaderboard } = useMyClassLeaderboard(roomId, 'weekly');
   const deleteMutation = useDeleteMyClass();
   const leaveMutation = useLeaveMyClass();
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
 
   const handleCopyCode = () => {
     if (room?.roomCode) {
@@ -402,7 +403,173 @@ function RoomDetail({ roomId, onBack }: { roomId: number; onBack: () => void }) 
               )}
             </div>
           </div>
+
+          {/* AI 성취율 평가 */}
+          <AiEvaluationPanel
+            open={aiPanelOpen}
+            onToggle={() => setAiPanelOpen((v) => !v)}
+            leaderboard={leaderboard}
+          />
         </>
+      )}
+    </div>
+  );
+}
+
+// ─────────── AI 성취율 평가 패널 ───────────
+
+type AiLeaderboard = ReturnType<typeof useMyClassLeaderboard>['data'];
+
+function AiEvaluationPanel({
+  open,
+  onToggle,
+  leaderboard,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  leaderboard: AiLeaderboard;
+}) {
+  const entries = leaderboard?.leaderboard ?? [];
+  const myEntry = leaderboard?.myRank;
+
+  const avgScore =
+    entries.length > 0
+      ? Math.round(entries.reduce((s, e) => s + e.totalScore, 0) / entries.length)
+      : 0;
+  const avgMinutes =
+    entries.length > 0
+      ? Math.round(entries.reduce((s, e) => s + e.studyMinutes, 0) / entries.length)
+      : 0;
+  const topScore = entries[0]?.totalScore ?? 0;
+  const myScore = myEntry?.totalScore ?? 0;
+  const myRate = topScore > 0 ? Math.round((myScore / topScore) * 100) : 0;
+
+  const getAiComment = () => {
+    if (entries.length === 0) return '이번 주 학습 데이터가 아직 없습니다.';
+    if (myRate >= 90) return '🏆 최상위권입니다! 이번 주 반에서 뛰어난 성취율을 보이고 있어요.';
+    if (myRate >= 70) return '📈 상위권입니다. 조금만 더 하면 1등도 가능해요!';
+    if (myRate >= 50) return '📊 평균 수준입니다. 학습 시간을 조금 늘려보세요.';
+    if (myScore > 0) return '💪 아직 성장 중입니다. 꾸준히 하면 반드시 올라갈 수 있어요!';
+    return '📝 이번 주 학습 기록을 남기면 AI 평가를 받을 수 있어요.';
+  };
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm">
+      {/* 헤더 — 항상 표시 */}
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-violet-50/40"
+      >
+        <div className="flex items-center gap-2">
+          <BrainCircuit className="h-5 w-5 text-violet-500" />
+          <span className="text-base font-bold text-gray-900">AI 성취율 평가</span>
+          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-600">
+            BETA
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-400">
+          {open ? (
+            <>
+              평가 닫기 <ChevronUp className="h-4 w-4" />
+            </>
+          ) : (
+            <>
+              평가 받기 <ChevronDown className="h-4 w-4" />
+            </>
+          )}
+        </div>
+      </button>
+
+      {/* 평가 내용 — 토글 */}
+      {open && (
+        <div className="border-t border-violet-100 px-6 pb-6 pt-4">
+          {entries.length === 0 ? (
+            <p className="text-center text-sm text-gray-400">
+              이번 주 학습 데이터가 없어 평가를 생성할 수 없습니다.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {/* AI 코멘트 */}
+              <div className="rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50 p-4 ring-1 ring-violet-100">
+                <p className="text-sm font-medium leading-relaxed text-gray-700">
+                  {getAiComment()}
+                </p>
+              </div>
+
+              {/* 나의 성취율 게이지 */}
+              {myScore > 0 && (
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between text-sm">
+                    <span className="font-medium text-gray-700">나의 성취율 (1위 대비)</span>
+                    <span className="font-bold text-violet-600">{myRate}%</span>
+                  </div>
+                  <div className="h-2.5 w-full rounded-full bg-gray-100">
+                    <div
+                      className="h-2.5 rounded-full bg-gradient-to-r from-violet-400 to-indigo-500 transition-all"
+                      style={{ width: `${myRate}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 반 평균 통계 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-center">
+                  <BarChart2 className="mx-auto mb-1 h-4 w-4 text-indigo-400" />
+                  <div className="text-base font-bold text-gray-900">
+                    {avgScore.toLocaleString()}
+                  </div>
+                  <div className="text-xs text-gray-400">반 평균 점수</div>
+                </div>
+                <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-center">
+                  <TrendingUp className="mx-auto mb-1 h-4 w-4 text-emerald-400" />
+                  <div className="text-base font-bold text-gray-900">
+                    {Math.floor(avgMinutes / 60)}h {avgMinutes % 60}m
+                  </div>
+                  <div className="text-xs text-gray-400">반 평균 학습시간</div>
+                </div>
+              </div>
+
+              {/* 멤버별 성취율 */}
+              <div>
+                <p className="mb-2 text-xs font-semibold text-gray-500">멤버별 성취율</p>
+                <div className="space-y-2">
+                  {entries.map((e) => {
+                    const rate = topScore > 0 ? Math.round((e.totalScore / topScore) * 100) : 0;
+                    const isMe = e.studentId === myEntry?.studentId;
+                    return (
+                      <div key={e.studentId}>
+                        <div className="mb-0.5 flex items-center justify-between text-xs">
+                          <span
+                            className={`font-medium ${isMe ? 'text-indigo-600' : 'text-gray-600'}`}
+                          >
+                            {isMe ? '나' : e.name}
+                            {e.rank === 1 && ' 👑'}
+                          </span>
+                          <span
+                            className={`font-bold ${isMe ? 'text-indigo-600' : 'text-gray-500'}`}
+                          >
+                            {rate}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-gray-100">
+                          <div
+                            className={`h-1.5 rounded-full transition-all ${isMe ? 'bg-indigo-500' : 'bg-gray-300'}`}
+                            style={{ width: `${rate}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <p className="text-center text-[11px] text-gray-400">
+                * AI 평가는 이번 주 점수·학습시간 기반으로 자동 산출됩니다.
+              </p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
