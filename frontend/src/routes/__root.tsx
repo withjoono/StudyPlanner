@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/client/use-auth-store';
 
 import { useSsoExchange } from '@/stores/server/auth';
 import { useEffect, useRef, useState } from 'react';
-import { Bell, X, GraduationCap, LayoutGrid, Users, LogOut, ChevronDown } from 'lucide-react';
+import { Bell, X, LayoutGrid, Users, LogOut, ChevronDown } from 'lucide-react';
 import { WonCircle } from '@/components/icons';
 import PromoPage from '@/components/PromoPage';
 import { useAcornBalance } from '@/stores/server/acorn';
@@ -28,9 +28,9 @@ function RootLayout() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [mentoringDropdownOpen, setMentoringDropdownOpen] = useState(false);
+  const [myclassDropdownOpen, setMyclassDropdownOpen] = useState(false);
   const userDropdownRef = useRef<HTMLDivElement>(null);
-  const mentoringDropdownRef = useRef<HTMLDivElement>(null);
+  const myclassDropdownRef = useRef<HTMLDivElement>(null);
   const [isSSOLoading, setIsSSOLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return !!params.get('sso_code');
@@ -59,21 +59,18 @@ function RootLayout() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [userDropdownOpen]);
 
-  // 드롭다운 외부 클릭 감지 (멘토링)
+  // 드롭다운 외부 클릭 감지 (마이 클래스)
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        mentoringDropdownRef.current &&
-        !mentoringDropdownRef.current.contains(e.target as Node)
-      ) {
-        setMentoringDropdownOpen(false);
+      if (myclassDropdownRef.current && !myclassDropdownRef.current.contains(e.target as Node)) {
+        setMyclassDropdownOpen(false);
       }
     };
-    if (mentoringDropdownOpen) {
+    if (myclassDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [mentoringDropdownOpen]);
+  }, [myclassDropdownOpen]);
 
   // SSO 코드 처리
   useEffect(() => {
@@ -171,35 +168,66 @@ function RootLayout() {
               <NavLink to="/missions">금일계획</NavLink>
               <NavLink to="/growth">성장</NavLink>
               <NavLink to="/learning">분석</NavLink>
-              <NavLink to="/myclass">마이클래스</NavLink>
-              <NavLink to="/badges">뱃지</NavLink>
-              {/* 멘토링 드롭다운 */}
-              <div className="relative" ref={mentoringDropdownRef}>
+              {/* 마이 클래스 드롭다운 */}
+              <div className="relative" ref={myclassDropdownRef}>
                 <button
-                  onClick={() => setMentoringDropdownOpen((v) => !v)}
+                  onClick={() => setMyclassDropdownOpen((v) => !v)}
                   className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
                 >
-                  멘토링
+                  마이 클래스
                   <ChevronDown
-                    className={`h-4 w-4 transition-transform ${mentoringDropdownOpen ? 'rotate-180' : ''}`}
+                    className={`h-4 w-4 transition-transform ${myclassDropdownOpen ? 'rotate-180' : ''}`}
                   />
                 </button>
-                {mentoringDropdownOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-32 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                    <Link
-                      to="/mentoring/human"
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      onClick={() => setMentoringDropdownOpen(false)}
+                {myclassDropdownOpen && (
+                  <div className="absolute left-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                    {/* 목표대학 반 */}
+                    <a
+                      href="/myclass?type=university"
+                      className="flex w-full items-center px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                      onClick={() => setMyclassDropdownOpen(false)}
                     >
-                      전문가 멘토링
-                    </Link>
-                    <Link
-                      to="/mentoring/ai"
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      onClick={() => setMentoringDropdownOpen(false)}
+                      🎓 목표대학 반
+                    </a>
+                    <a
+                      href="/mentoring/ai?type=university"
+                      className="flex w-full items-center px-6 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50"
+                      onClick={() => setMyclassDropdownOpen(false)}
                     >
-                      AI 멘토링
-                    </Link>
+                      ✦ 성취율 AI 평가
+                    </a>
+                    <div className="my-1 border-t border-gray-100" />
+                    {/* 담당 선생님 반 */}
+                    <a
+                      href="/myclass?type=teacher"
+                      className="flex w-full items-center px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                      onClick={() => setMyclassDropdownOpen(false)}
+                    >
+                      👨‍🏫 담당 선생님 반
+                    </a>
+                    <a
+                      href="/mentoring/ai?type=teacher"
+                      className="flex w-full items-center px-6 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50"
+                      onClick={() => setMyclassDropdownOpen(false)}
+                    >
+                      ✦ 성취율 AI 평가
+                    </a>
+                    <div className="my-1 border-t border-gray-100" />
+                    {/* 스터디 반 */}
+                    <a
+                      href="/myclass?type=study"
+                      className="flex w-full items-center px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
+                      onClick={() => setMyclassDropdownOpen(false)}
+                    >
+                      📚 스터디 반
+                    </a>
+                    <a
+                      href="/mentoring/ai?type=study"
+                      className="flex w-full items-center px-6 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50"
+                      onClick={() => setMyclassDropdownOpen(false)}
+                    >
+                      ✦ 성취율 AI 평가
+                    </a>
                   </div>
                 )}
               </div>
@@ -358,10 +386,6 @@ function RootLayout() {
                   { to: '/missions', label: '금일계획' },
                   { to: '/growth', label: '성장' },
                   { to: '/learning', label: '분석' },
-                  { to: '/myclass', label: '🏠 마이 클래스' },
-                  { to: '/badges', label: '🏅 뱃지' },
-                  { to: '/mentoring/human', label: '전문가 멘토링' },
-                  { to: '/mentoring/ai', label: 'AI 멘토링' },
                 ].map((item) => (
                   <Link
                     key={item.to}
@@ -371,6 +395,27 @@ function RootLayout() {
                   >
                     {item.label}
                   </Link>
+                ))}
+                <div className="my-1 border-t border-gray-100" />
+                <p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  마이 클래스
+                </p>
+                {[
+                  { href: '/myclass?type=university', label: '🎓 목표대학 반' },
+                  { href: '/mentoring/ai?type=university', label: '　✦ 성취율 AI 평가', sub: true },
+                  { href: '/myclass?type=teacher', label: '👨‍🏫 담당 선생님 반' },
+                  { href: '/mentoring/ai?type=teacher', label: '　✦ 성취율 AI 평가', sub: true },
+                  { href: '/myclass?type=study', label: '📚 스터디 반' },
+                  { href: '/mentoring/ai?type=study', label: '　✦ 성취율 AI 평가', sub: true },
+                ].map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className={`block rounded-md px-3 py-1.5 text-sm hover:bg-gray-50 ${'sub' in item && item.sub ? 'text-indigo-600' : 'text-gray-700'}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {item.label}
+                  </a>
                 ))}
                 {isAuthenticated && user && (
                   <>
