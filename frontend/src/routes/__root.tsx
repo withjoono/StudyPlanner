@@ -7,6 +7,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Bell, X, GraduationCap, LayoutGrid, Users, LogOut, ChevronDown } from 'lucide-react';
 import { WonCircle } from '@/components/icons';
 import PromoPage from '@/components/PromoPage';
+import { useAcornBalance } from '@/stores/server/acorn';
+import { useMyBadges } from '@/stores/server/badge';
+import { Footer } from 'geobuk-shared/ui';
 
 // Hub URL
 const HUB_URL =
@@ -25,7 +28,9 @@ function RootLayout() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [mentoringDropdownOpen, setMentoringDropdownOpen] = useState(false);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+  const mentoringDropdownRef = useRef<HTMLDivElement>(null);
   const [isSSOLoading, setIsSSOLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return !!params.get('sso_code');
@@ -36,7 +41,12 @@ function RootLayout() {
   const forcePromo = new URLSearchParams(window.location.search).get('promo') === '1';
   const showPromo = ((!isAuthenticated && isHomePath) || forcePromo) && !isSSOLoading;
 
-  // 드롭다운 외부 클릭 감지
+  // 도토리 잔액
+  const { data: acornData } = useAcornBalance();
+
+  // 뱃지
+  const { data: badgeData } = useMyBadges();
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (userDropdownRef.current && !userDropdownRef.current.contains(e.target as Node)) {
@@ -48,6 +58,22 @@ function RootLayout() {
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [userDropdownOpen]);
+
+  // 드롭다운 외부 클릭 감지 (멘토링)
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        mentoringDropdownRef.current &&
+        !mentoringDropdownRef.current.contains(e.target as Node)
+      ) {
+        setMentoringDropdownOpen(false);
+      }
+    };
+    if (mentoringDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [mentoringDropdownOpen]);
 
   // SSO 코드 처리
   useEffect(() => {
@@ -64,9 +90,11 @@ function RootLayout() {
           setIsSSOLoading(false);
         },
         onError: () => {
-          toast.error('SSO 로그인에 실패했습니다.');
+          toast.error('SSO 로그인에 실패했습니다. 다시 시도해주세요.');
           setIsSSOLoading(false);
-          navigate({ to: '/auth/login' });
+          // URL에서 sso_code 제거 (무한 리다이렉트 방지: /auth/login → Hub → sso_code → 실패 루프)
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
         },
       });
     }
@@ -116,9 +144,11 @@ function RootLayout() {
             {/* 왼쪽: 로고 */}
             <div className="flex items-center gap-3">
               <Link to="/" className="flex items-center gap-2" style={{ textDecoration: 'none' }}>
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-600">
-                  <GraduationCap className="h-4 w-4 text-white" />
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="StudyPlanner Logo"
+                  className="h-7 w-7 rounded-md object-contain"
+                />
                 <span className="hidden text-[15px] font-bold tracking-tight text-indigo-600 sm:inline">
                   Study Planner
                 </span>
@@ -141,6 +171,38 @@ function RootLayout() {
               <NavLink to="/missions">금일계획</NavLink>
               <NavLink to="/growth">성장</NavLink>
               <NavLink to="/learning">분석</NavLink>
+              <NavLink to="/myclass">마이클래스</NavLink>
+              <NavLink to="/badges">뱃지</NavLink>
+              {/* 멘토링 드롭다운 */}
+              <div className="relative" ref={mentoringDropdownRef}>
+                <button
+                  onClick={() => setMentoringDropdownOpen((v) => !v)}
+                  className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                >
+                  멘토링
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${mentoringDropdownOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {mentoringDropdownOpen && (
+                  <div className="absolute left-0 top-full z-50 mt-1 w-32 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                    <Link
+                      to="/mentoring/human"
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => setMentoringDropdownOpen(false)}
+                    >
+                      전문가 멘토링
+                    </Link>
+                    <Link
+                      to="/mentoring/ai"
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      onClick={() => setMentoringDropdownOpen(false)}
+                    >
+                      AI 멘토링
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 오른쪽: 아이콘 버튼 + 사용자 정보 */}
@@ -155,6 +217,37 @@ function RootLayout() {
                   ⏱️
                 </span>
               </Link>
+              {/* 🌰 도토리 잔액 */}
+              {isAuthenticated && (
+                <div
+                  className="flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold transition-colors hover:bg-amber-50"
+                  title={`도토리 ${acornData?.balance ?? 0}개`}
+                  style={{
+                    background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+                    color: '#92400e',
+                  }}
+                >
+                  <span className="text-base" role="img" aria-label="도토리">
+                    🌰
+                  </span>
+                  <span>{acornData?.balance ?? 0}</span>
+                </div>
+              )}
+              {/* 🏅 뱃지 */}
+              {isAuthenticated && (
+                <Link
+                  to="/badges"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-purple-50"
+                  title="뱃지 컬렉션"
+                >
+                  <span className="text-lg">🏅</span>
+                  {(badgeData?.newCount ?? 0) > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                      {badgeData!.newCount}
+                    </span>
+                  )}
+                </Link>
+              )}
               {/* 결제 */}
               <a
                 href={`${HUB_URL}/products`}
@@ -265,6 +358,10 @@ function RootLayout() {
                   { to: '/missions', label: '금일계획' },
                   { to: '/growth', label: '성장' },
                   { to: '/learning', label: '분석' },
+                  { to: '/myclass', label: '🏠 마이 클래스' },
+                  { to: '/badges', label: '🏅 뱃지' },
+                  { to: '/mentoring/human', label: '전문가 멘토링' },
+                  { to: '/mentoring/ai', label: 'AI 멘토링' },
                 ].map((item) => (
                   <Link
                     key={item.to}
@@ -350,6 +447,7 @@ function RootLayout() {
       {/* 메인 콘텐츠 */}
       <main className={showPromo ? '' : 'pb-20 md:pb-10'}>
         {showPromo ? <PromoPage /> : <Outlet />}
+        {!showPromo && <Footer />}
       </main>
 
       {/* Toast notifications */}

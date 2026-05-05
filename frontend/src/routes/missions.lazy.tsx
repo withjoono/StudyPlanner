@@ -655,6 +655,7 @@ function MissionDialog({
 interface ResultFormData {
   startPage: string;
   endPage: string;
+  studyMinutes: string;
   progress: string;
   memo: string;
   understanding: number;
@@ -674,6 +675,7 @@ function ResultDialog({
   const [form, setForm] = useState<ResultFormData>({
     startPage: '',
     endPage: '',
+    studyMinutes: '',
     progress: '0',
     memo: '',
     understanding: 3,
@@ -681,9 +683,24 @@ function ResultDialog({
 
   useMemo(() => {
     if (mission && open) {
+      // 미션 계획 시간으로 학습 시간 초기값 계산
+      const calcMinutes = () => {
+        try {
+          if (mission.startTime && mission.endTime) {
+            const [sh, sm] = mission.startTime.split(':').map(Number);
+            const [eh, em] = mission.endTime.split(':').map(Number);
+            const diff = eh * 60 + em - (sh * 60 + sm);
+            return diff > 0 ? String(diff) : '';
+          }
+        } catch {
+          /* ignore */
+        }
+        return '';
+      };
       setForm({
         startPage: mission.resultStartPage?.toString() || '',
         endPage: mission.resultEndPage?.toString() || '',
+        studyMinutes: calcMinutes(),
         progress: mission.progress?.toString() || '0',
         memo: mission.resultMemo || '',
         understanding: 3,
@@ -748,6 +765,28 @@ function ResultDialog({
               />
               <div className="flex h-8 min-w-[50px] items-center justify-center rounded-md bg-purple-100 text-sm font-bold text-purple-700">
                 {resultTotal > 0 ? `${resultTotal}p` : '-'}
+              </div>
+            </div>
+          </div>
+
+          {/* 실제 학습 시간 */}
+          <div>
+            <Label className="text-xs font-semibold text-gray-600">실제 학습 시간 (분)</Label>
+            <div className="mt-1.5 flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                max={720}
+                placeholder="학습 시간"
+                value={form.studyMinutes}
+                onChange={(e) => update('studyMinutes', e.target.value)}
+                className="h-8 flex-1 text-center text-sm"
+              />
+              <span className="text-xs text-gray-400">분</span>
+              <div className="flex h-8 min-w-[60px] items-center justify-center rounded-md bg-blue-100 text-xs font-bold text-blue-700">
+                {Number(form.studyMinutes) > 0
+                  ? `${Math.floor(Number(form.studyMinutes) / 60)}h ${Number(form.studyMinutes) % 60}m`
+                  : '-'}
               </div>
             </div>
           </div>
@@ -1182,6 +1221,7 @@ function MyMissionsPage() {
     const resultEnd = Number(data.endPage) || undefined;
     const resultAmount = resultStart && resultEnd ? resultEnd - resultStart : undefined;
     const progressNum = Number(data.progress) || 0;
+    const studyMins = Number(data.studyMinutes) || undefined;
 
     updateMutation.mutate(
       {
@@ -1194,6 +1234,7 @@ function MyMissionsPage() {
             amount: resultAmount,
             achievementRate: progressNum / 100,
             note: data.memo || undefined,
+            studyMinutes: studyMins,
           },
         },
       },

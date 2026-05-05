@@ -31,13 +31,22 @@ export class AuthService {
       const result = response.data;
       const data = result.data || result;
 
-      if (data.accessToken) {
-        return {
-          success: true,
-          accessToken: data.accessToken,
-          refreshToken: data.refreshToken,
-        };
+      const hubData = result.data || result;
+      const memberId = hubData.memberId;
+
+      if (!memberId) {
+        throw new UnauthorizedException('SSO 인증 정보가 올바르지 않습니다.');
       }
+
+      // StudyPlanner는 현재 별도의 JwtService 주입이 없으므로
+      // Hub 토큰을 그대로 사용하되, memberId를 확인합니다.
+      // (만약 추후 자체 토큰 발급이 필요하면 여기에 추가)
+      return {
+        success: true,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        memberId: memberId,
+      };
 
       throw new UnauthorizedException('Invalid SSO response');
     } catch (error: any) {

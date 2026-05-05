@@ -10,10 +10,17 @@ import { MissionService } from './mission.service';
 import { CommentController } from './comment.controller';
 import { CommentService } from './comment.service';
 import { SharedScheduleModule } from '../shared-schedule/shared-schedule.module';
+import { ScoringModule } from '../scoring/scoring.module';
 
 @Module({
-  imports: [SharedScheduleModule],
-  controllers: [PlannerController, RoutineController, PlanController, MissionController, CommentController],
+  imports: [SharedScheduleModule, ScoringModule],
+  controllers: [
+    PlannerController,
+    RoutineController,
+    PlanController,
+    MissionController,
+    CommentController,
+  ],
   providers: [PlannerService, RoutineService, PlanService, MissionService, CommentService],
   exports: [PlannerService, RoutineService, PlanService, MissionService, CommentService],
 })

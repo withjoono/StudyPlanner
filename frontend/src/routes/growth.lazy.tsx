@@ -9,7 +9,7 @@
  */
 
 import { createLazyFileRoute } from '@tanstack/react-router';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Flame,
   Trophy,
@@ -41,6 +41,10 @@ import {
 import { useAuthStore } from '@/stores/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { CelebrationModal, type CelebrationMilestone } from '@/components/share/CelebrationModal';
+import { StreakShareCard } from '@/components/share/ShareCard';
+import { useShareCard } from '@/hooks/useShareCard';
+import { useEarnAcorn } from '@/stores/server/acorn';
 
 export const Route = createLazyFileRoute('/growth')({
   component: GrowthPage,
@@ -329,18 +333,30 @@ function StreakCard({
   streak,
   longestStreak,
   weeklyAchievements,
+  onShareClick,
 }: {
   streak: number;
   longestStreak: number;
   weeklyAchievements: number[];
+  onShareClick?: () => void;
 }) {
   const maxVal = Math.max(...weeklyAchievements, 1);
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-      <h3 className="mb-5 flex items-center gap-2 text-lg font-bold text-gray-900">
-        <Flame className="h-5 w-5 text-orange-500" /> 연속 달성
-      </h3>
+      <div className="mb-5 flex items-center justify-between">
+        <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900">
+          <Flame className="h-5 w-5 text-orange-500" /> 연속 달성
+        </h3>
+        {onShareClick && (
+          <button
+            onClick={onShareClick}
+            className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-orange-400 to-pink-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-transform hover:scale-105"
+          >
+            📤 공유 🌰+10
+          </button>
+        )}
+      </div>
 
       {/* Streak 카운터 */}
       <div className="mb-6 flex items-center gap-6">
@@ -749,10 +765,47 @@ function MoodTrendCard({
 
 function GrowthPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const dateStr = formatDateStr(selectedDate);
 
   const { data: stats, isLoading: statsLoading } = useGetGrowthStats();
+
+  // 공유 관련
+  const streakCardRef = useRef<HTMLDivElement>(null);
+  const { share, isSharing } = useShareCard();
+  const [celebration, setCelebration] = useState<CelebrationMilestone | null>(null);
+  const [shownMilestones, setShownMilestones] = useState<Set<string>>(new Set());
+
+  // 마일스톤 자동 감지
+  useEffect(() => {
+    if (!stats) return;
+    const { streak } = stats;
+    const milestoneThresholds = [7, 14, 21, 30, 50, 100];
+
+    for (const threshold of milestoneThresholds) {
+      if (streak === threshold && !shownMilestones.has(`streak_${threshold}`)) {
+        setCelebration({
+          type: 'streak',
+          streak,
+          longestStreak: stats.longestStreak,
+          userName: user?.userName,
+        });
+        setShownMilestones((prev) => new Set(prev).add(`streak_${threshold}`));
+        break;
+      }
+    }
+  }, [stats, shownMilestones, user]);
+
+  const handleStreakShare = () => {
+    if (!stats) return;
+    setCelebration({
+      type: 'streak',
+      streak: stats.streak,
+      longestStreak: stats.longestStreak,
+      userName: user?.userName,
+    });
+  };
 
   const navigateDate = (dir: 'prev' | 'next') => {
     setSelectedDate((prev) => {
@@ -844,6 +897,7 @@ function GrowthPage() {
                 streak={stats.streak}
                 longestStreak={stats.longestStreak}
                 weeklyAchievements={stats.weeklyAchievements}
+                onShareClick={handleStreakShare}
               />
               <WeekCompareCard thisWeek={stats.thisWeek} lastWeek={stats.lastWeek} />
               <SubjectTrendCard subjectTrend={stats.subjectTrend} />
@@ -856,6 +910,9 @@ function GrowthPage() {
           )}
         </div>
       </div>
+
+      {/* 축하 모달 */}
+      <CelebrationModal milestone={celebration} onClose={() => setCelebration(null)} />
     </div>
   );
 }

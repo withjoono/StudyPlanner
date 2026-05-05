@@ -9,6 +9,13 @@
           "studyplanner-front"
         ]
       }
+    },
+    "studyplanner-new": {
+      "hosting": {
+        "studyplanner": [
+          "studyplanner-new"
+        ]
+      }
     }
   },
   "etags": {}

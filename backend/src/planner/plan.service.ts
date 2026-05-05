@@ -15,7 +15,9 @@ export class PlanService {
     private readonly sharedSchedule: SharedScheduleService,
   ) {}
 
-  private mapToPlan(plan: any): PlannerPlan {
+  private mapToPlan(
+    plan: any,
+  ): PlannerPlan & { isDistributed: boolean; startPage: number | null; endPage: number | null } {
     const total = plan.totalPages || 0;
     const done = plan.donePages || 0;
     const startDate = plan.startDate ? plan.startDate.toISOString().split('T')[0] : '';
@@ -45,6 +47,9 @@ export class PlanService {
       weeklyTarget,
       startDate,
       endDate,
+      isDistributed: plan.isDistributed ?? false,
+      startPage: plan.startPage ?? null,
+      endPage: plan.endPage ?? null,
       createdAt: plan.createdAt,
       updatedAt: plan.updatedAt,
     };
@@ -109,11 +114,16 @@ export class PlanService {
         dto.type === 'lecture' ? MaterialType.lecture : MaterialType.textbook;
     }
     if (dto.material !== undefined) updateData.materialName = dto.material;
-    if (dto.amount !== undefined) updateData.totalPages = dto.amount;
-    if (dto.done !== undefined) updateData.donePages = dto.done;
-    if (dto.finished !== undefined) updateData.donePages = dto.finished;
-    if (dto.startDay !== undefined) updateData.startDate = new Date(dto.startDay);
-    if (dto.endDay !== undefined) updateData.endDate = new Date(dto.endDay);
+    // Accept both camelCase (local) and snake_case (humps-converted from frontend)
+    const totalAmount = (dto as any).total_amount ?? (dto as any).totalAmount ?? dto.amount;
+    if (totalAmount !== undefined) updateData.totalPages = totalAmount;
+    const completedAmount =
+      (dto as any).completed_amount ?? (dto as any).completedAmount ?? dto.done ?? dto.finished;
+    if (completedAmount !== undefined) updateData.donePages = completedAmount;
+    const startDateStr = (dto as any).start_date ?? (dto as any).startDate ?? dto.startDay;
+    if (startDateStr !== undefined) updateData.startDate = new Date(startDateStr);
+    const endDateStr = (dto as any).end_date ?? (dto as any).endDate ?? dto.endDay;
+    if (endDateStr !== undefined) updateData.endDate = new Date(endDateStr);
 
     // Check if completed
     const donePages = updateData.donePages ?? existing.donePages;

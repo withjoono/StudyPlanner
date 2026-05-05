@@ -5,7 +5,7 @@
  */
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
   ChevronLeft,
@@ -21,6 +21,11 @@ import {
   MessageSquare,
   BarChart3,
   Trash2,
+  Pencil,
+  School,
+  Search,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import {
   useGetPlans,
@@ -29,9 +34,20 @@ import {
   useDeletePlan,
   useGetSubjects,
   useCreatePlan,
+  useUpdatePlan,
   useSearchMaterials,
+  useSearchAladinMaterials,
 } from '@/stores/server/planner';
 import { useGetTutorBoardEvents } from '@/stores/server/planner/tutorboard';
+import {
+  useGetLinkedSchool,
+  useGetSchoolEvents,
+  useSearchSchools,
+  useLinkSchool,
+  useUnlinkSchool,
+  useRefreshSchoolSchedule,
+  type NeisSchoolInfo,
+} from '@/stores/server/planner/school-schedule';
 import type { ExtendedLongTermPlan } from '@/stores/server/planner/planner-types';
 import { getSubjectColor, type LongTermPlan } from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
@@ -122,21 +138,26 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
   });
 
   // 디바운스된 검색
-  const searchCategory =
-    activeTab === 'textbook'
-      ? 'textbook'
-      : activeTab === 'reference'
-        ? 'reference'
-        : activeTab === 'lecture'
-          ? 'lecture'
-          : undefined;
-  const { data: searchResults } = useSearchMaterials(debouncedQuery, searchCategory);
+  const isBookSearch = activeTab === 'textbook' || activeTab === 'reference';
+
+  // 자체 DB 검색 (인강 등)
+  const { data: internalSearchResults } = useSearchMaterials(
+    !isBookSearch ? debouncedQuery : '',
+    activeTab === 'lecture' ? 'lecture' : undefined,
+  );
+
+  // 알라딘 API 검색 (교재/참고서)
+  const { data: aladinSearchResults } = useSearchAladinMaterials(
+    isBookSearch ? debouncedQuery : '',
+  );
+
+  const searchResults = isBookSearch ? aladinSearchResults : internalSearchResults;
 
   // 디바운스 처리
-  useState(() => {
+  useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
     return () => clearTimeout(timer);
-  });
+  }, [searchQuery]);
 
   // 검색어 변경 시 디바운스 적용
   const handleSearchChange = (value: string) => {
@@ -471,11 +492,19 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
                               key={m.id}
                               type="button"
                               onClick={() => handleSelectMaterial(m)}
-                              className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50"
+                              className="flex w-full items-start gap-3 px-3 py-2 text-left text-sm hover:bg-blue-50 focus:bg-blue-50"
                             >
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate font-medium text-gray-800">{m.name}</p>
-                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                              {m.cover && (
+                                <img
+                                  src={m.cover}
+                                  alt={m.name}
+                                  className="h-14 w-10 flex-shrink-0 rounded-sm object-cover shadow-sm"
+                                />
+                              )}
+                              <div className="min-w-0 flex-1 py-0.5">
+                                <p className="line-clamp-1 font-medium text-gray-800">{m.name}</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
+                                  {m.author && <span className="line-clamp-1">{m.author}</span>}
                                   {m.publisher && <span>{m.publisher}</span>}
                                   {m.totalPages && <span>{m.totalPages}p</span>}
                                 </div>
@@ -503,22 +532,45 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
 
                   {/* 선택된 교재 표시 */}
                   {selectedMaterial && (
-                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-blue-800">
+                    <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+                      <div className="flex items-start gap-4">
+                        {selectedMaterial.cover && (
+                          <img
+                            src={selectedMaterial.cover}
+                            alt={selectedMaterial.name}
+                            className="h-24 w-16 flex-shrink-0 rounded-md object-cover shadow-md"
+                          />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold leading-tight text-blue-900">
                             {selectedMaterial.name}
                           </p>
-                          <p className="text-xs text-blue-600">
+                          <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-blue-700">
                             {selectedMaterial.isManual ? (
-                              '직접 입력'
+                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 font-medium">
+                                직접 입력
+                              </span>
                             ) : (
                               <>
-                                {selectedMaterial.publisher && `${selectedMaterial.publisher} · `}
-                                {selectedMaterial.totalPages &&
-                                  `총 ${selectedMaterial.totalPages}p`}
+                                {selectedMaterial.author && (
+                                  <span className="opacity-80">{selectedMaterial.author}</span>
+                                )}
+                                {selectedMaterial.publisher && (
+                                  <span className="opacity-80">· {selectedMaterial.publisher}</span>
+                                )}
+                                {selectedMaterial.totalPages && (
+                                  <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 font-medium">
+                                    총 {selectedMaterial.totalPages}p
+                                  </span>
+                                )}
                               </>
                             )}
+                          </div>
+
+                          {/* 수동 범위 입력 안내 메시지 */}
+                          <p className="mt-3 rounded-md bg-blue-100/50 p-2 text-xs text-blue-600/80">
+                            책의 목차를 보고 오늘부터 공부할 <strong>시작 페이지</strong>와{' '}
+                            <strong>끝 페이지</strong>를 아래에 입력해 주세요.
                           </p>
                         </div>
                         <button
@@ -529,7 +581,7 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
                             setStartPage('');
                             setEndPage('');
                           }}
-                          className="text-xs text-blue-500 hover:text-blue-700"
+                          className="flex-shrink-0 rounded-md border border-blue-100 bg-white px-2 py-1 text-xs font-medium text-blue-500 shadow-sm hover:text-blue-700"
                         >
                           변경
                         </button>
@@ -686,28 +738,359 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
 }
 
 // ============================================
+// 장기 계획 수정 다이얼로그
+// ============================================
+
+interface EditPlanDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  plan: ExtendedLongTermPlan;
+  onSubmit: (data: Partial<ExtendedLongTermPlan>) => void;
+  isLoading?: boolean;
+}
+
+function EditPlanDialog({ open, onOpenChange, plan, onSubmit, isLoading }: EditPlanDialogProps) {
+  const { data: subjectsData } = useGetSubjects();
+  const groups = subjectsData?.groups || [];
+
+  const [title, setTitle] = useState(plan.title || '');
+  const [selectedKyokwa, setSelectedKyokwa] = useState(() => {
+    const group = groups.find((g: any) =>
+      g.subjects?.some((s: any) => s.subjectName === plan.subject),
+    );
+    return group?.kyokwa || '';
+  });
+  const [selectedSubject, setSelectedSubject] = useState(plan.subject || '');
+  const [startDate, setStartDate] = useState(plan.startDate || '');
+  const [endDate, setEndDate] = useState(plan.endDate || '');
+  const [startPage, setStartPage] = useState<number | ''>(plan.startPage ?? '');
+  const [endPage, setEndPage] = useState<number | ''>(
+    plan.endPage ?? (plan.startPage != null ? plan.startPage + plan.totalAmount - 1 : ''),
+  );
+
+  // 교과 변경 시 과목 초기화
+  const availableSubjects = useMemo(() => {
+    if (!selectedKyokwa) return [];
+    const group = groups.find((g: any) => g.kyokwa === selectedKyokwa);
+    return group?.subjects || [];
+  }, [selectedKyokwa, groups]);
+
+  const totalAmount = useMemo(() => {
+    const s = typeof startPage === 'number' ? startPage : 0;
+    const e = typeof endPage === 'number' ? endPage : 0;
+    return Math.max(0, e - s + 1);
+  }, [startPage, endPage]);
+
+  // 교과 목록이 로드되면 현재 과목의 교과를 자동으로 찾기
+  useEffect(() => {
+    if (groups.length > 0 && !selectedKyokwa && plan.subject) {
+      const group = groups.find((g: any) =>
+        g.subjects?.some((s: any) => s.subjectName === plan.subject),
+      );
+      if (group) setSelectedKyokwa(group.kyokwa);
+    }
+  }, [groups, plan.subject, selectedKyokwa]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) {
+      toast.error('제목을 입력해주세요.');
+      return;
+    }
+    onSubmit({
+      title: title.trim(),
+      subject: selectedSubject || plan.subject,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      totalAmount: totalAmount > 0 ? totalAmount : plan.totalAmount,
+      startPage: typeof startPage === 'number' ? startPage : plan.startPage,
+      endPage: typeof endPage === 'number' ? endPage : plan.endPage,
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle className="text-lg">계획 수정</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="editTitle" className="text-sm font-semibold text-gray-700">
+              제목
+            </Label>
+            <Input
+              id="editTitle"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-1.5"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-semibold text-gray-700">교과</Label>
+              <select
+                value={selectedKyokwa}
+                onChange={(e) => {
+                  setSelectedKyokwa(e.target.value);
+                  setSelectedSubject('');
+                }}
+                className="mt-1.5 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">교과 선택</option>
+                {groups.map((g: any) => (
+                  <option key={g.kyokwaCode || g.kyokwa} value={g.kyokwa}>
+                    {g.kyokwa}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="text-sm font-semibold text-gray-700">과목</Label>
+              <select
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                disabled={!selectedKyokwa}
+                className="mt-1.5 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+              >
+                <option value="">{selectedKyokwa ? '과목 선택' : '교과 먼저 선택'}</option>
+                {availableSubjects.map((s: any) => (
+                  <option key={s.id || s.subjectName} value={s.subjectName}>
+                    {s.subjectName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-semibold text-gray-700">시작일</Label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-semibold text-gray-700">종료일</Label>
+              <Input
+                type="date"
+                value={endDate}
+                min={startDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="mt-1.5"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-sm font-semibold text-gray-700">범위 (페이지/강)</Label>
+            <div className="mt-1.5 flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                placeholder="시작"
+                value={startPage}
+                onChange={(e) => setStartPage(e.target.value ? Number(e.target.value) : '')}
+                className="text-center"
+              />
+              <span className="text-gray-400">~</span>
+              <Input
+                type="number"
+                min={typeof startPage === 'number' ? startPage : 1}
+                placeholder="끝"
+                value={endPage}
+                onChange={(e) => setEndPage(e.target.value ? Number(e.target.value) : '')}
+                className="text-center"
+              />
+              <div className="w-20 flex-shrink-0 rounded-lg bg-blue-50 px-3 py-2 text-center">
+                <p className="text-lg font-bold text-blue-600">
+                  {totalAmount > 0 ? totalAmount : plan.totalAmount}
+                </p>
+                <p className="text-[10px] text-blue-400">총분량</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              취소
+            </Button>
+            <Button type="submit" disabled={isLoading} className="gap-2">
+              {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+              저장
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================
+// 학교 설정 다이얼로그
+// ============================================
+
+function SchoolSetupDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
+
+  const { data: linkedSchool } = useGetLinkedSchool();
+  const { data: results, isFetching } = useSearchSchools(debouncedQ);
+  const linkMutation = useLinkSchool();
+  const unlinkMutation = useUnlinkSchool();
+  const refreshMutation = useRefreshSchoolSchedule();
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(query), 400);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const handleLink = async (school: NeisSchoolInfo) => {
+    await linkMutation.mutateAsync(school);
+    onOpenChange(false);
+    setQuery('');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <School className="h-4 w-4 text-green-600" />
+            학교 일정 설정
+          </DialogTitle>
+        </DialogHeader>
+
+        {linkedSchool ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+              <p className="text-xs font-medium text-green-600">{linkedSchool.atptNm}</p>
+              <p className="mt-0.5 text-base font-bold text-green-900">{linkedSchool.schulNm}</p>
+              <p className="mt-0.5 text-xs text-green-600">{linkedSchool.schulKnd}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => refreshMutation.mutate(new Date().getFullYear())}
+                disabled={refreshMutation.isPending}
+              >
+                {refreshMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                일정 새로고침
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-red-500 hover:text-red-600"
+                onClick={() => unlinkMutation.mutate()}
+                disabled={unlinkMutation.isPending}
+              >
+                <X className="h-3.5 w-3.5" />
+                연결 해제
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-500">학교명을 입력해 NEIS에서 검색하세요.</p>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
+                placeholder="예: 강남고등학교"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-100">
+              {isFetching ? (
+                <div className="flex items-center justify-center py-6 text-sm text-gray-400">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  검색 중...
+                </div>
+              ) : results && results.length > 0 ? (
+                results.map((s) => (
+                  <button
+                    key={`${s.atptCode}-${s.schulCode}`}
+                    type="button"
+                    onClick={() => handleLink(s)}
+                    disabled={linkMutation.isPending}
+                    className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-green-50 disabled:opacity-60"
+                  >
+                    <School className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-800">{s.schulNm}</p>
+                      <p className="mt-0.5 text-[11px] text-gray-500">
+                        {s.atptNm} · {s.schulKnd}
+                        {s.address && ` · ${s.address}`}
+                      </p>
+                    </div>
+                  </button>
+                ))
+              ) : debouncedQ.length >= 2 ? (
+                <p className="py-4 text-center text-sm text-gray-400">검색 결과가 없습니다</p>
+              ) : (
+                <p className="py-4 text-center text-sm text-gray-400">두 글자 이상 입력하세요</p>
+              )}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================
 // 월간 캘린더 컴포넌트
 // ============================================
 
 function MonthlyCalendar({ plans }: { plans: LongTermPlan[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [schoolSetupOpen, setSchoolSetupOpen] = useState(false);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   // 튜터보드 일정 가져오기
   const { data: tbEvents } = useGetTutorBoardEvents();
 
+  // 학교 일정 가져오기
+  const { data: linkedSchool } = useGetLinkedSchool();
+  const { data: schoolEvents } = useGetSchoolEvents(
+    currentDate.getFullYear(),
+    currentDate.getMonth() + 1,
+  );
+
   // 날짜별 튜터보드 이벤트 필터링
   const getTbEventsForDate = (date: Date) => {
     if (!tbEvents) return [];
-
-    // YYYY-MM-DD 포맷 비교
     const dateStr = date.toISOString().split('T')[0];
-
     const assignments = tbEvents.assignments.filter((a) => a.date && a.date.startsWith(dateStr));
     const tests = tbEvents.tests.filter((t) => t.date && t.date.startsWith(dateStr));
-
     return [...assignments, ...tests];
+  };
+
+  // 날짜별 학교 행사 필터링
+  const getSchoolEventsForDate = (date: Date) => {
+    if (!schoolEvents?.length) return [];
+    const dateStr = date.toISOString().split('T')[0];
+    return schoolEvents.filter((e) => e.date === dateStr);
   };
 
   const DAYS_KR = ['일', '월', '화', '수', '목', '금', '토'];
@@ -834,15 +1217,35 @@ function MonthlyCalendar({ plans }: { plans: LongTermPlan[] }) {
           </button>
         </div>
 
-        {/* 범례 추가 */}
-        <div className="mb-2 flex items-center justify-end gap-3 text-xs text-gray-500">
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-orange-500"></span> 과제
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full bg-red-500"></span> 시험
-          </span>
+        {/* 학교 설정 + 범례 */}
+        <div className="mb-2 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setSchoolSetupOpen(true)}
+            className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-600 transition hover:border-green-300 hover:bg-green-50 hover:text-green-700"
+          >
+            <School className="h-3 w-3" />
+            {linkedSchool ? (
+              <span className="font-medium">{linkedSchool.schulNm}</span>
+            ) : (
+              <span>학교 설정</span>
+            )}
+          </button>
+          <div className="flex items-center gap-3 text-xs text-gray-500">
+            {linkedSchool && (
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-green-500"></span> 학교행사
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-orange-500"></span> 과제
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-red-500"></span> 시험
+            </span>
+          </div>
         </div>
+        <SchoolSetupDialog open={schoolSetupOpen} onOpenChange={setSchoolSetupOpen} />
 
         <div className="mb-2 grid grid-cols-7 text-center text-sm">
           {DAYS_KR.map((day, i) => (
@@ -892,6 +1295,30 @@ function MonthlyCalendar({ plans }: { plans: LongTermPlan[] }) {
                     >
                       {date.getDate()}
                     </span>
+
+                    {/* 학교 행사 */}
+                    {isCurrentMonth &&
+                      getSchoolEventsForDate(date).map((event) => (
+                        <div
+                          key={`neis-${event.id}`}
+                          className={`group relative mt-0.5 w-full cursor-help truncate rounded border px-0.5 py-px text-[10px] font-medium ${
+                            event.isHoliday
+                              ? 'border-red-200 bg-red-50 text-red-600'
+                              : 'border-green-200 bg-green-50 text-green-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1">
+                            <span
+                              className={`inline-block h-1 w-1 rounded-full ${event.isHoliday ? 'bg-red-500' : 'bg-green-500'}`}
+                            />
+                            <span className="truncate">{event.eventName}</span>
+                          </div>
+                          <div className="pointer-events-none absolute left-0 top-full z-10 hidden w-max max-w-[180px] rounded-lg border bg-white p-2 text-gray-800 shadow-lg group-hover:block">
+                            <p className="text-xs font-bold">{event.eventName}</p>
+                            <p className="text-[10px] text-gray-400">{event.date}</p>
+                          </div>
+                        </div>
+                      ))}
 
                     {/* 튜터보드 이벤트 (과제/시험) */}
                     {isCurrentMonth &&
@@ -1134,12 +1561,16 @@ function PlannerPlansPage() {
   const { data: plans, isLoading } = useGetPlans();
   const { data: routines } = useGetRoutines();
   const createPlanMutation = useCreatePlan();
+  const updatePlanMutation = useUpdatePlan();
   const distributeMutation = useDistributePlan();
   const deleteMutation = useDeletePlan();
 
   // 다이얼로그 상태
   const [isPlanSetupOpen, setIsPlanSetupOpen] = useState(false);
   const { guard, LoginGuardModal } = useLoginGuard();
+
+  // 수정 다이얼로그 상태
+  const [editTarget, setEditTarget] = useState<ExtendedLongTermPlan | null>(null);
 
   // 코멘트 다이얼로그 상태
   const [commentOpen, setCommentOpen] = useState(false);
@@ -1193,6 +1624,25 @@ function PlannerPlansPage() {
       toast.success('일정이 분배되었습니다!');
     } catch {
       toast.error('일정 분배에 실패했습니다.');
+    }
+  };
+
+  const handleEdit = async (plan: ExtendedLongTermPlan, data: Partial<ExtendedLongTermPlan>) => {
+    try {
+      await updatePlanMutation.mutateAsync({
+        id: plan.id,
+        title: data.title ?? plan.title,
+        subject: data.subject ?? plan.subject,
+        startDate: data.startDate ?? plan.startDate,
+        endDate: data.endDate ?? plan.endDate,
+        totalAmount: data.totalAmount ?? plan.totalAmount,
+        completedAmount: plan.completedAmount,
+        type: plan.type,
+      } as any);
+      setEditTarget(null);
+      toast.success('계획이 수정되었습니다.');
+    } catch {
+      toast.error('계획 수정에 실패했습니다.');
     }
   };
 
@@ -1421,6 +1871,13 @@ function PlannerPlansPage() {
                         >
                           <MessageSquare className="h-3.5 w-3.5" />
                         </button>
+                        <button
+                          onClick={() => guard(() => setEditTarget(plan as ExtendedLongTermPlan))}
+                          className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-amber-50 hover:text-amber-500"
+                          title="수정"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
                         {!(plan as ExtendedLongTermPlan).isDistributed && (
                           <button
                             onClick={() =>
@@ -1554,6 +2011,17 @@ function PlannerPlansPage() {
       />
 
       {LoginGuardModal}
+
+      {/* 수정 다이얼로그 */}
+      {editTarget && (
+        <EditPlanDialog
+          open={!!editTarget}
+          onOpenChange={(open) => !open && setEditTarget(null)}
+          plan={editTarget}
+          onSubmit={(data) => handleEdit(editTarget, data)}
+          isLoading={updatePlanMutation.isPending}
+        />
+      )}
 
       {/* 코멘트 다이얼로그 */}
       {commentTarget && (

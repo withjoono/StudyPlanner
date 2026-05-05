@@ -503,6 +503,147 @@ export class TeacherService {
   }
 
   // ================================================================
+  // 플래너 평가 (1-10점)
+  // ================================================================
+
+  /** 학생 플래너 평가 저장 (날짜별 upsert) */
+  async rateStudent(
+    teacherUserId: number,
+    studentId: number,
+    data: { date: string; score: number; comment?: string },
+  ) {
+    const link = await this.prisma.teacherStudent.findUnique({
+      where: {
+        uk_teacher_student: { teacherId: String(teacherUserId), studentId: BigInt(studentId) },
+      },
+    });
+    if (!link) throw new Error('해당 학생에 대한 접근 권한이 없습니다.');
+
+    const score = Math.min(10, Math.max(1, Math.round(data.score)));
+    const ratingDate = new Date(data.date);
+
+    const existing = await this.prisma.plannerRating.findUnique({
+      where: { uk_rating_date: { teacherStudentId: link.id, ratingDate } },
+    });
+
+    if (existing) {
+      const updated = await this.prisma.plannerRating.update({
+        where: { id: existing.id },
+        data: { score, comment: data.comment },
+      });
+      return this.serialize(updated);
+    } else {
+      const created = await this.prisma.plannerRating.create({
+        data: { teacherStudentId: link.id, ratingDate, score, comment: data.comment },
+      });
+      return this.serialize(created);
+    }
+  }
+
+  /** 학생 평가 목록 조회 */
+  async getStudentRatings(
+    teacherUserId: number,
+    studentId: number,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const link = await this.prisma.teacherStudent.findUnique({
+      where: {
+        uk_teacher_student: { teacherId: String(teacherUserId), studentId: BigInt(studentId) },
+      },
+    });
+    if (!link) throw new Error('해당 학생에 대한 접근 권한이 없습니다.');
+
+    const where: any = { teacherStudentId: link.id };
+    if (startDate || endDate) {
+      where.ratingDate = {};
+      if (startDate) where.ratingDate.gte = new Date(startDate);
+      if (endDate) where.ratingDate.lte = new Date(endDate);
+    }
+
+    const ratings = await this.prisma.plannerRating.findMany({
+      where,
+      orderBy: { ratingDate: 'desc' },
+    });
+    return ratings.map(this.serialize);
+  }
+
+  /** 다수 학생 비교 (평가 + 학습 통계) */
+  async compareStudents(teacherUserId: number, studentIds: number[], date?: string) {
+    const targetDate = date ? new Date(date) : new Date();
+    const dateStr = targetDate.toISOString().split('T')[0];
+
+    const results = await Promise.all(
+      studentIds.map(async (studentId) => {
+        const link = await this.prisma.teacherStudent.findUnique({
+          where: {
+            uk_teacher_student: { teacherId: String(teacherUserId), studentId: BigInt(studentId) },
+          },
+        });
+
+        const student = await this.prisma.student.findUnique({
+          where: { id: BigInt(studentId) },
+          select: { id: true, name: true, grade: true, schoolName: true },
+        });
+
+        // 오늘 미션
+        const missions = await this.prisma.dailyMission.findMany({
+          where: { studentId: BigInt(studentId), date: new Date(dateStr) },
+          include: { missionResults: { orderBy: { createdAt: 'desc' }, take: 1 } },
+        });
+
+        const total = missions.length;
+        const completed = missions.filter((m) => m.status === 'completed').length;
+
+        // 학습 분 합산
+        const studyMinutes = missions.reduce((sum, m) => {
+          const result = m.missionResults?.[0];
+          return sum + (result?.studyMinutes ?? 0);
+        }, 0);
+
+        // 분량 합산
+        const totalPages = missions.reduce((sum, m) => {
+          const result = m.missionResults?.[0];
+          return sum + (result?.amount ?? 0);
+        }, 0);
+
+        // 선생님 평가 (해당 날짜)
+        let rating = null;
+        if (link) {
+          const r = await this.prisma.plannerRating.findUnique({
+            where: { uk_rating_date: { teacherStudentId: link.id, ratingDate: new Date(dateStr) } },
+          });
+          if (r) rating = { score: r.score, comment: r.comment };
+        }
+
+        return {
+          studentId,
+          name: student?.name || '알 수 없음',
+          grade: student?.grade,
+          schoolName: student?.schoolName,
+          date: dateStr,
+          totalMissions: total,
+          completedMissions: completed,
+          completionRate: total > 0 ? Math.round((completed / total) * 100) : 0,
+          studyMinutes,
+          totalPages,
+          rating,
+          missions: missions.map((m) => ({
+            id: Number(m.id),
+            subject: m.subject,
+            content: m.content,
+            status: m.status,
+            studyMinutes: m.missionResults?.[0]?.studyMinutes ?? null,
+            amount: m.missionResults?.[0]?.amount ?? null,
+          })),
+        };
+      }),
+    );
+
+    return results;
+  }
+
+  // ================================================================
   // Helpers
   // ================================================================
 

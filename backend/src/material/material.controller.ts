@@ -23,6 +23,14 @@ export class MaterialController {
     return this.materialService.search(query, category, limit ? Number(limit) : 10, userId);
   }
 
+  @Get('aladin-search')
+  @ApiOperation({ summary: '알라딘 API 도서 검색 프록시' })
+  @ApiQuery({ name: 'q', description: '검색어 (도서명)', required: true })
+  @ApiQuery({ name: 'limit', required: false, description: '최대 결과 수 (기본 10)' })
+  async aladinSearch(@Query('q') query: string, @Query('limit') limit?: number) {
+    return this.materialService.aladinSearch(query, limit ? Number(limit) : 10);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: '교재 상세 정보 (목차 포함)' })
   async getDetail(@Param('id') id: number) {
@@ -31,7 +39,11 @@ export class MaterialController {
 
   @Post('import')
   @ApiOperation({ summary: 'results.json에서 참고서 데이터 일괄 임포트' })
-  @ApiQuery({ name: 'path', required: false, description: 'JSON 파일 경로 (기본: upload/results.json)' })
+  @ApiQuery({
+    name: 'path',
+    required: false,
+    description: 'JSON 파일 경로 (기본: upload/results.json)',
+  })
   async importData(@Query('path') filePath?: string) {
     return this.materialService.importFromJson(filePath);
   }

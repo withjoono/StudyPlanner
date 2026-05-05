@@ -6,7 +6,7 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:react-hooks/recommended',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs', 'node_modules', '*.gen.ts'],
+  ignorePatterns: ['dist', '.eslintrc.cjs', 'node_modules', '*.gen.ts', 'tailwind.config.js', '*.config.js'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 'latest',
@@ -88,7 +88,7 @@ module.exports = {
     eqeqeq: ['warn', 'always', { null: 'ignore' }],
 
     // TypeScript 규칙
-    '@typescript-eslint/no-explicit-any': 'off',
+    '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-unused-vars': [
       'warn',
       {

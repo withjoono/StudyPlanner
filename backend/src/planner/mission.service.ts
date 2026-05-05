@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma';
 import { Category, MissionStatus } from '@prisma/client';
 import { SharedScheduleService } from '../shared-schedule/shared-schedule.service';
+import { ScoringService } from '../scoring/scoring.service';
 
 export interface MissionDto {
   member_id?: number;
@@ -21,6 +22,7 @@ export interface MissionResultDto {
   amount?: number;
   achievement_rate?: number;
   note?: string;
+  study_minutes?: number;
 }
 
 export interface UpdateMissionDto {
@@ -64,6 +66,7 @@ export class MissionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sharedSchedule: SharedScheduleService,
+    private readonly scoringService: ScoringService,
   ) {}
 
   /** member_id로 학생 조회, 없으면 자동 생성 */
@@ -254,6 +257,15 @@ export class MissionService {
     }
 
     this.sharedSchedule.syncMission(mission);
+
+    // 미션 완료 시 일일 점수 자동 계산
+    if (dto.status === 'completed' && mission.studentId) {
+      const missionDate = mission.date instanceof Date ? mission.date : new Date(mission.date);
+      this.scoringService
+        .calculateDailyScore(Number(mission.studentId), missionDate)
+        .catch((err) => console.error('DailyScore 계산 오류:', err));
+    }
+
     return this.mapToResponse(mission, missionResult);
   }
 
@@ -268,6 +280,58 @@ export class MissionService {
     } catch {
       return false;
     }
+  }
+
+  /** 장기 계획 분배: 미션 대량 생성 + 계획 isDistributed 업데이트 */
+  async distributeMissions(planId: number, missions: any[]): Promise<{ created: number }> {
+    const plan = await this.prisma.longTermPlan.findUnique({
+      where: { id: BigInt(planId) },
+    });
+    if (!plan) throw new Error(`Plan ${planId} not found`);
+
+    const studentId = plan.studentId;
+    let created = 0;
+
+    for (const mission of missions) {
+      try {
+        const date = new Date(mission.date);
+        // humps converts camelCase→snake_case, accept both
+        const routineId = mission.routine_id ?? mission.routineId;
+        const startTime = mission.start_time ?? mission.startTime;
+        const endTime = mission.end_time ?? mission.endTime;
+        const startPage = mission.start_page ?? mission.startPage;
+        const endPage = mission.end_page ?? mission.endPage;
+        const missionData = await this.prisma.dailyMission.create({
+          data: {
+            missionCode: this.generateMissionCode(Number(studentId), date),
+            studentId,
+            planId: BigInt(planId),
+            routineId: routineId ? BigInt(routineId) : null,
+            date,
+            startTime: this.parseTime(startTime),
+            endTime: this.parseTime(endTime),
+            category: Category.study,
+            subject: mission.subject,
+            content: mission.content,
+            startPage,
+            endPage,
+            amount: mission.amount,
+            status: MissionStatus.pending,
+          },
+        });
+        this.sharedSchedule.syncMission(missionData);
+        created++;
+      } catch (err) {
+        console.error('Failed to create distributed mission:', err);
+      }
+    }
+
+    await this.prisma.longTermPlan.update({
+      where: { id: BigInt(planId) },
+      data: { isDistributed: true },
+    });
+
+    return { created };
   }
 
   /** MissionResult upsert */
@@ -286,6 +350,7 @@ export class MissionService {
           amount: dto.amount,
           achievementRate: dto.achievement_rate !== undefined ? dto.achievement_rate : undefined,
           note: dto.note,
+          studyMinutes: dto.study_minutes,
           completedDate: dto.achievement_rate && dto.achievement_rate >= 1 ? new Date() : undefined,
         },
       });
@@ -298,6 +363,7 @@ export class MissionService {
           amount: dto.amount,
           achievementRate: dto.achievement_rate,
           note: dto.note,
+          studyMinutes: dto.study_minutes,
           completedDate: dto.achievement_rate && dto.achievement_rate >= 1 ? new Date() : undefined,
         },
       });

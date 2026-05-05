@@ -137,6 +137,7 @@ model TeacherStudent {
   student         Student                 @relation(fields: [studentId], references: [id], onDelete: Cascade)
   managedSubjects TeacherStudentSubject[]
   comments        TeacherStudentComment[]
+  ratings         PlannerRating[]
 
   @@unique([teacherId, studentId], name: "uk_teacher_student")
   @@index([teacherId], name: "idx_ts_teacher")
@@ -202,6 +203,11 @@ model Student {
   messages          Message[]
   plannerComments   PlannerComment[]
   dailyReflections  DailyReflection[]
+  acornBalance      AcornBalance?
+  acornTransactions AcornTransaction[]
+  studyRoomsOwned   StudyRoom[]          @relation("RoomOwner")
+  studyRoomMemberships StudyRoomMember[]
+  badges            StudentBadge[]
 
   @@index([studentCode], name: "idx_student_code")
   @@index([year], name: "idx_student_year")
@@ -817,6 +823,23 @@ model TeacherStudentSubject {
   @@map("sp_teacher_student_subject")
 }
 
+/// 선생님 플래너 평가 (1-10점)
+model PlannerRating {
+  id               BigInt         @id @default(autoincrement())
+  teacherStudentId BigInt         @map("teacher_student_id")
+  ratingDate       DateTime       @db.Date @map("rating_date")
+  score            Int            // 1-10
+  comment          String?        @db.Text
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  teacherStudent   TeacherStudent @relation(fields: [teacherStudentId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherStudentId, ratingDate], name: "uk_rating_date")
+  @@index([teacherStudentId], name: "idx_rating_ts")
+  @@map("sp_planner_rating")
+}
+
 /// 선생님-학생 코멘트
 model TeacherStudentComment {
   id               BigInt   @id @default(autoincrement())
@@ -959,3 +982,124 @@ model Sp2022KyokwaSubject {
   @@index([kyokwaCode], name: "idx_sp2022_kyokwa_code")
   @@map("sp_2022_kyokwa_subject")
 }
+
+// ================================================================
+// 도토리 (Acorn) 보상 시스템
+// ================================================================
+
+/// 도토리 잔액
+model AcornBalance {
+  id        BigInt   @id @default(autoincrement())
+  studentId BigInt   @unique @map("student_id")
+  balance   Int      @default(0)
+  lifetime  Int      @default(0)  // 총 누적 획득량
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("sp_acorn_balance")
+}
+
+/// 도토리 거래 내역
+model AcornTransaction {
+  id          BigInt   @id @default(autoincrement())
+  studentId   BigInt   @map("student_id")
+  amount      Int      // +획득, -사용
+  type        String   @db.VarChar(30)  // 'sns_share' | 'invite' | 'streak' | 'mission_complete' | 'weekly_first' | 'report' | 'redeem'
+  description String?  @db.VarChar(200)
+  referenceId String?  @map("reference_id") @db.VarChar(50)  // 관련 ID
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId], name: "idx_acorn_student")
+  @@index([type], name: "idx_acorn_type")
+  @@index([studentId, createdAt], name: "idx_acorn_timeline")
+  @@map("sp_acorn_transaction")
+}
+
+// ================================================================
+// 마이 클래스 (사용자 생성 경쟁 반)
+// ================================================================
+
+/// 마이 클래스 (학생이 직접 만드는 경쟁 반)
+model StudyRoom {
+  id          BigInt    @id @default(autoincrement())
+  roomCode    String    @unique @map("room_code") @db.VarChar(20)
+  name        String    @db.VarChar(50)
+  description String?   @db.VarChar(200)
+  ownerId     BigInt    @map("owner_id")
+  subject     String?   @db.VarChar(50)
+  maxMembers  Int       @default(20) @map("max_members")
+  isPublic    Boolean   @default(false) @map("is_public")
+  weeklyGoal  Int?      @map("weekly_goal")      // 팀 주간 목표 (분)
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  owner       Student        @relation("RoomOwner", fields: [ownerId], references: [id])
+  members     StudyRoomMember[]
+
+  @@index([roomCode], name: "idx_room_code")
+  @@index([ownerId], name: "idx_room_owner")
+  @@index([isPublic, isActive], name: "idx_room_public")
+  @@map("sp_study_room")
+}
+
+/// 마이 클래스 멤버
+model StudyRoomMember {
+  id        BigInt   @id @default(autoincrement())
+  roomId    BigInt   @map("room_id")
+  studentId BigInt   @map("student_id")
+  role      String   @default("member") @db.VarChar(20) // 'owner' | 'member'
+  joinedAt  DateTime @default(now()) @map("joined_at")
+  isActive  Boolean  @default(true) @map("is_active")
+
+  room      StudyRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, studentId], name: "uk_room_member")
+  @@index([studentId], name: "idx_room_member_student")
+  @@map("sp_study_room_member")
+}
+
+// ================================================================
+// 뱃지 & 칭호 시스템
+// ================================================================
+
+/// 뱃지 카탈로그 (고정 목록)
+model Badge {
+  id          String   @id @db.VarChar(50)  // 'streak_7' | 'streak_30' | 'mission_100' ...
+  name        String   @db.VarChar(50)
+  description String   @db.VarChar(200)
+  emoji       String   @db.VarChar(10)
+  category    String   @db.VarChar(30)  // 'streak' | 'mission' | 'social' | 'growth' | 'special'
+  rarity      String   @default("common") @db.VarChar(20) // 'common' | 'rare' | 'epic' | 'legendary'
+  condition   String   @db.VarChar(200)  // 획득 조건 설명
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  students    StudentBadge[]
+
+  @@index([category], name: "idx_badge_category")
+  @@map("sp_badge")
+}
+
+/// 학생 획득 뱃지
+model StudentBadge {
+  id        BigInt   @id @default(autoincrement())
+  studentId BigInt   @map("student_id")
+  badgeId   String   @map("badge_id") @db.VarChar(50)
+  earnedAt  DateTime @default(now()) @map("earned_at")
+  isNew     Boolean  @default(true) @map("is_new")  // 미확인 뱃지
+
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+
+  @@unique([studentId, badgeId], name: "uk_student_badge")
+  @@index([studentId], name: "idx_student_badge")
+  @@map("sp_student_badge")
+}
+
+

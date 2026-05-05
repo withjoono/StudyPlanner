@@ -22,6 +22,20 @@ export class MissionController {
     }
   }
 
+  @Post('distribute')
+  @ApiOperation({ summary: '장기 계획 분배: 일간 미션 대량 생성' })
+  async distributeMissions(@Body() body: any) {
+    try {
+      // humps converts camelCase→snake_case so accept both
+      const planId = body.plan_id ?? body.planId;
+      const missions = body.missions ?? [];
+      return await this.missionService.distributeMissions(planId, missions);
+    } catch (error) {
+      console.error('distributeMissions error:', error);
+      return { error: 'Failed to distribute missions', message: error.message };
+    }
+  }
+
   @Post()
   @ApiOperation({ summary: '일간 미션 생성' })
   async createMission(@Body() dto: MissionDto) {

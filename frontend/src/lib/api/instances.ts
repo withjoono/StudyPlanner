@@ -2,9 +2,9 @@
  * Axios 인스턴스 설정
  * GB-Front의 인스턴스 패턴 적용
  *
- * - publicClient: 인증 불필요 (로그인, 회원가입 등) - GB-Back-Nest
- * - authClient: 인증 필요 (회원 관련 API) - GB-Back-Nest
- * - plannerClient: 플래너 전용 API - gb-planner 백엔드
+ * - publicClient: 인증 불필요 (로그인, 회원가입 등) - Hub Backend (GB-Back-Nest)
+ * - authClient: 인증 필요 (회원 관련 API) - Hub Backend (GB-Back-Nest)
+ * - plannerClient: 플래너 전용 API - StudyPlanner 백엔드
  */
 
 import axios from 'axios';
@@ -12,11 +12,11 @@ import { camelizeKeys, decamelizeKeys } from 'humps';
 import { env } from '@/lib/config/env';
 
 /**
- * Public API Client (인증 불필요) - GB-Back-Nest
+ * Public API Client (인증 불필요) - Hub Backend
  * - 로그인, 회원가입, 공개 데이터 등
  */
 export const publicClient = axios.create({
-  baseURL: env.apiUrlMain,
+  baseURL: env.apiUrlHub,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -25,11 +25,11 @@ export const publicClient = axios.create({
 });
 
 /**
- * Authenticated API Client (인증 필요) - GB-Back-Nest
+ * Authenticated API Client (인증 필요) - Hub Backend
  * - 회원 정보, 결제 등
  */
 export const authClient = axios.create({
-  baseURL: env.apiUrlMain,
+  baseURL: env.apiUrlHub,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -38,11 +38,11 @@ export const authClient = axios.create({
 });
 
 /**
- * Planner API Client - gb-planner 백엔드
+ * Planner API Client - StudyPlanner 백엔드
  * - 플래너 전용 API (루틴, 계획, 미션 등)
  */
 export const plannerClient = axios.create({
-  baseURL: env.apiUrlPlanner,
+  baseURL: env.apiUrl,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -71,11 +71,7 @@ const setupCaseConversion = (client: typeof axios) => {
   // Response: snake_case → camelCase
   client.interceptors.response.use(
     (response) => {
-      if (
-        response.data &&
-        typeof response.data === 'object' &&
-        !(response.data instanceof Blob)
-      ) {
+      if (response.data && typeof response.data === 'object' && !(response.data instanceof Blob)) {
         response.data = camelizeKeys(response.data);
       }
       return response;
@@ -93,7 +89,3 @@ const setupCaseConversion = (client: typeof axios) => {
 setupCaseConversion(publicClient);
 setupCaseConversion(authClient);
 setupCaseConversion(plannerClient);
-
-
-
-

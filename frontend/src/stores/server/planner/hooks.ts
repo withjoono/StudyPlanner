@@ -399,6 +399,20 @@ export function useSearchMaterials(keyword: string, category?: string) {
   });
 }
 
+/** 알라딘 API 도서 검색 (자동완성) */
+export function useSearchAladinMaterials(keyword: string) {
+  return useQuery({
+    queryKey: [...plannerKeys.materials(), 'aladin-search', keyword],
+    queryFn: async () => {
+      const response = await plannerClient.get('/materials/aladin-search', {
+        params: { q: keyword, limit: 10 },
+      });
+      return response.data as any[];
+    },
+    enabled: keyword.length >= 1,
+  });
+}
+
 // ============================================
 // 일간 미션 Hooks
 // ============================================
@@ -546,6 +560,7 @@ export function useUpdateMission() {
           amount?: number;
           achievementRate?: number;
           note?: string;
+          studyMinutes?: number;
         };
       };
     }) => {
@@ -566,6 +581,7 @@ export function useUpdateMission() {
           amount: data.result.amount,
           achievement_rate: data.result.achievementRate,
           note: data.result.note,
+          study_minutes: data.result.studyMinutes,
         };
       }
       const response = await plannerClient.put(`/planner/daily-missions/${missionId}`, payload);

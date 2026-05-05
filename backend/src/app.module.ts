@@ -15,6 +15,10 @@ import { StudentModule } from './student/student.module';
 import { SharedScheduleModule } from './shared-schedule/shared-schedule.module';
 import { MaterialModule } from './material/material.module';
 import { GrowthModule } from './growth/growth.module';
+import { RankingModule } from './ranking/ranking.module';
+import { AcornModule } from './acorn/acorn.module';
+import { MyClassModule } from './myclass/myclass.module';
+import { BadgeModule } from './badge/badge.module';
 
 @Module({
   imports: [
@@ -52,6 +56,18 @@ import { GrowthModule } from './growth/growth.module';
 
     // Growth (성장형 플래너)
     GrowthModule,
+
+    // Ranking (학습 랭킹 리더보드)
+    RankingModule,
+
+    // 도토리 (Acorn) 보상 시스템
+    AcornModule,
+
+    // 마이 클래스 (사용자 생성 경쟁 반)
+    MyClassModule,
+
+    // 뱃지 & 칭호
+    BadgeModule,
   ],
 })
 export class AppModule {}

@@ -32,10 +32,7 @@ export class MaterialService {
 
     // 교육과정 필터: 해당 교육과정 교재 + 전체공통(null) 교재만
     if (curriculum) {
-      where.OR = [
-        { curriculum: null },
-        { curriculum },
-      ];
+      where.OR = [{ curriculum: null }, { curriculum }];
     }
 
     if (category) {
@@ -119,7 +116,9 @@ export class MaterialService {
   /**
    * results.json에서 참고서 데이터 일괄 임포트
    */
-  async importFromJson(filePath?: string): Promise<{ imported: number; skipped: number; errors: number }> {
+  async importFromJson(
+    filePath?: string,
+  ): Promise<{ imported: number; skipped: number; errors: number }> {
     const resolvedPath = filePath || path.join(process.cwd(), 'upload', 'results.json');
 
     if (!fs.existsSync(resolvedPath)) {
@@ -236,7 +235,8 @@ export class MaterialService {
     if (/물리|화학|생명|지구|과학|통합과학/.test(t)) return SubjectCode.science;
     if (/사회|한국사|세계사|동아시아|경제|정치|윤리|지리|문화/.test(t)) return SubjectCode.social;
     if (/한국사/.test(t)) return SubjectCode.history;
-    if (/제2외국어|일본어|중국어|프랑스어|독일어|스페인어|아랍어/.test(t)) return SubjectCode.foreign;
+    if (/제2외국어|일본어|중국어|프랑스어|독일어|스페인어|아랍어/.test(t))
+      return SubjectCode.foreign;
     return SubjectCode.other;
   }
 
@@ -260,9 +260,7 @@ export class MaterialService {
    */
   private async parseTocToChapters(materialId: bigint, toc: string) {
     // "[목 차]" 제거 후 줄 단위 분리
-    const cleaned = toc
-      .replace(/\[목\s*차\]/g, '')
-      .replace(/\r\n/g, '\n');
+    const cleaned = toc.replace(/\[목\s*차\]/g, '').replace(/\r\n/g, '\n');
 
     const lines = cleaned
       .split('\n')
@@ -283,6 +281,56 @@ export class MaterialService {
           title: line.substring(0, 200), // 200자 제한
         },
       });
+    }
+  }
+
+  /**
+   * 알라딘 API 도서 검색 프록시
+   */
+  async aladinSearch(query: string, maxResults = 10) {
+    if (!query) return [];
+
+    // TTBKey는 환경변수 또는 하드코딩
+    const ttbkey = process.env.ALADIN_API_KEY || 'ttbwithjuno2323001';
+
+    // CategoryId 76000: 중고등참고서, 50246: 고등참고서 등
+    // 여기서는 넓게 검색하기 위해 파라미터로 받거나 지정하지 않음
+    const url = new URL('http://www.aladin.co.kr/ttb/api/ItemSearch.aspx');
+    url.searchParams.append('ttbkey', ttbkey);
+    url.searchParams.append('Query', query);
+    url.searchParams.append('QueryType', 'Title');
+    url.searchParams.append('MaxResults', maxResults.toString());
+    url.searchParams.append('start', '1');
+    url.searchParams.append('SearchTarget', 'Book');
+    url.searchParams.append('output', 'js');
+    url.searchParams.append('Version', '20131101');
+    url.searchParams.append('OptResult', 'subInfo');
+    // url.searchParams.append('CategoryId', '76000'); // 너무 좁히면 안 나올수도 있으므로 생략 또는 옵션
+
+    try {
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        throw new Error(`Aladin API error: ${response.status}`);
+      }
+      const data = await response.json();
+
+      if (!data.item || !Array.isArray(data.item)) {
+        return [];
+      }
+
+      return data.item.map((item: any) => ({
+        id: item.itemId || item.isbn13,
+        name: item.title,
+        publisher: item.publisher,
+        author: item.author,
+        cover: item.cover,
+        isbn: item.isbn13 || item.isbn,
+        totalPages: item.subInfo?.itemPage || null,
+        pubDate: item.pubDate,
+      }));
+    } catch (err) {
+      this.logger.error(`Aladin search failed: ${err.message}`);
+      return [];
     }
   }
 }

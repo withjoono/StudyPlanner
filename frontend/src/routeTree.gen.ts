@@ -19,18 +19,29 @@ import { Route as AuthRegisterRouteImport } from './routes/auth/register';
 import { Route as AuthLoginRouteImport } from './routes/auth/login';
 
 const TimerLazyRouteImport = createFileRoute('/timer')();
+const TeacherLazyRouteImport = createFileRoute('/teacher')();
 const RoutineLazyRouteImport = createFileRoute('/routine')();
 const PlansLazyRouteImport = createFileRoute('/plans')();
+const MyclassLazyRouteImport = createFileRoute('/myclass')();
 const MissionsLazyRouteImport = createFileRoute('/missions')();
 const LearningLazyRouteImport = createFileRoute('/learning')();
 const GrowthLazyRouteImport = createFileRoute('/growth')();
 const ConnectionsLazyRouteImport = createFileRoute('/connections')();
+const BadgesLazyRouteImport = createFileRoute('/badges')();
+const MentoringHumanLazyRouteImport = createFileRoute('/mentoring/human')();
+const MentoringAiLazyRouteImport = createFileRoute('/mentoring/ai')();
+const JoinCodeLazyRouteImport = createFileRoute('/join/$code')();
 
 const TimerLazyRoute = TimerLazyRouteImport.update({
   id: '/timer',
   path: '/timer',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/timer.lazy').then((d) => d.Route));
+const TeacherLazyRoute = TeacherLazyRouteImport.update({
+  id: '/teacher',
+  path: '/teacher',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/teacher.lazy').then((d) => d.Route));
 const RoutineLazyRoute = RoutineLazyRouteImport.update({
   id: '/routine',
   path: '/routine',
@@ -41,6 +52,11 @@ const PlansLazyRoute = PlansLazyRouteImport.update({
   path: '/plans',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/plans.lazy').then((d) => d.Route));
+const MyclassLazyRoute = MyclassLazyRouteImport.update({
+  id: '/myclass',
+  path: '/myclass',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/myclass.lazy').then((d) => d.Route));
 const MissionsLazyRoute = MissionsLazyRouteImport.update({
   id: '/missions',
   path: '/missions',
@@ -61,6 +77,11 @@ const ConnectionsLazyRoute = ConnectionsLazyRouteImport.update({
   path: '/connections',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/connections.lazy').then((d) => d.Route));
+const BadgesLazyRoute = BadgesLazyRouteImport.update({
+  id: '/badges',
+  path: '/badges',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/badges.lazy').then((d) => d.Route));
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -71,6 +92,21 @@ const ProductsIndexRoute = ProductsIndexRouteImport.update({
   path: '/products/',
   getParentRoute: () => rootRouteImport,
 } as any);
+const MentoringHumanLazyRoute = MentoringHumanLazyRouteImport.update({
+  id: '/mentoring/human',
+  path: '/mentoring/human',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/mentoring/human.lazy').then((d) => d.Route));
+const MentoringAiLazyRoute = MentoringAiLazyRouteImport.update({
+  id: '/mentoring/ai',
+  path: '/mentoring/ai',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/mentoring/ai.lazy').then((d) => d.Route));
+const JoinCodeLazyRoute = JoinCodeLazyRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/join.$code.lazy').then((d) => d.Route));
 const OrderProductIdRoute = OrderProductIdRouteImport.update({
   id: '/order/$productId',
   path: '/order/$productId',
@@ -94,111 +130,153 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
+  '/badges': typeof BadgesLazyRoute;
   '/connections': typeof ConnectionsLazyRoute;
   '/growth': typeof GrowthLazyRoute;
   '/learning': typeof LearningLazyRoute;
   '/missions': typeof MissionsLazyRoute;
+  '/myclass': typeof MyclassLazyRoute;
   '/plans': typeof PlansLazyRoute;
   '/routine': typeof RoutineLazyRoute;
+  '/teacher': typeof TeacherLazyRoute;
   '/timer': typeof TimerLazyRoute;
   '/auth/login': typeof AuthLoginRoute;
   '/auth/register': typeof AuthRegisterRoute;
   '/auth/reset-password': typeof AuthResetPasswordRoute;
   '/order/$productId': typeof OrderProductIdRoute;
+  '/join/$code': typeof JoinCodeLazyRoute;
+  '/mentoring/ai': typeof MentoringAiLazyRoute;
+  '/mentoring/human': typeof MentoringHumanLazyRoute;
   '/products': typeof ProductsIndexRoute;
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
+  '/badges': typeof BadgesLazyRoute;
   '/connections': typeof ConnectionsLazyRoute;
   '/growth': typeof GrowthLazyRoute;
   '/learning': typeof LearningLazyRoute;
   '/missions': typeof MissionsLazyRoute;
+  '/myclass': typeof MyclassLazyRoute;
   '/plans': typeof PlansLazyRoute;
   '/routine': typeof RoutineLazyRoute;
+  '/teacher': typeof TeacherLazyRoute;
   '/timer': typeof TimerLazyRoute;
   '/auth/login': typeof AuthLoginRoute;
   '/auth/register': typeof AuthRegisterRoute;
   '/auth/reset-password': typeof AuthResetPasswordRoute;
   '/order/$productId': typeof OrderProductIdRoute;
+  '/join/$code': typeof JoinCodeLazyRoute;
+  '/mentoring/ai': typeof MentoringAiLazyRoute;
+  '/mentoring/human': typeof MentoringHumanLazyRoute;
   '/products': typeof ProductsIndexRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   '/': typeof IndexRoute;
+  '/badges': typeof BadgesLazyRoute;
   '/connections': typeof ConnectionsLazyRoute;
   '/growth': typeof GrowthLazyRoute;
   '/learning': typeof LearningLazyRoute;
   '/missions': typeof MissionsLazyRoute;
+  '/myclass': typeof MyclassLazyRoute;
   '/plans': typeof PlansLazyRoute;
   '/routine': typeof RoutineLazyRoute;
+  '/teacher': typeof TeacherLazyRoute;
   '/timer': typeof TimerLazyRoute;
   '/auth/login': typeof AuthLoginRoute;
   '/auth/register': typeof AuthRegisterRoute;
   '/auth/reset-password': typeof AuthResetPasswordRoute;
   '/order/$productId': typeof OrderProductIdRoute;
+  '/join/$code': typeof JoinCodeLazyRoute;
+  '/mentoring/ai': typeof MentoringAiLazyRoute;
+  '/mentoring/human': typeof MentoringHumanLazyRoute;
   '/products/': typeof ProductsIndexRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
+    | '/badges'
     | '/connections'
     | '/growth'
     | '/learning'
     | '/missions'
+    | '/myclass'
     | '/plans'
     | '/routine'
+    | '/teacher'
     | '/timer'
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
     | '/order/$productId'
+    | '/join/$code'
+    | '/mentoring/ai'
+    | '/mentoring/human'
     | '/products';
   fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
+    | '/badges'
     | '/connections'
     | '/growth'
     | '/learning'
     | '/missions'
+    | '/myclass'
     | '/plans'
     | '/routine'
+    | '/teacher'
     | '/timer'
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
     | '/order/$productId'
+    | '/join/$code'
+    | '/mentoring/ai'
+    | '/mentoring/human'
     | '/products';
   id:
     | '__root__'
     | '/'
+    | '/badges'
     | '/connections'
     | '/growth'
     | '/learning'
     | '/missions'
+    | '/myclass'
     | '/plans'
     | '/routine'
+    | '/teacher'
     | '/timer'
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
     | '/order/$productId'
+    | '/join/$code'
+    | '/mentoring/ai'
+    | '/mentoring/human'
     | '/products/';
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
+  BadgesLazyRoute: typeof BadgesLazyRoute;
   ConnectionsLazyRoute: typeof ConnectionsLazyRoute;
   GrowthLazyRoute: typeof GrowthLazyRoute;
   LearningLazyRoute: typeof LearningLazyRoute;
   MissionsLazyRoute: typeof MissionsLazyRoute;
+  MyclassLazyRoute: typeof MyclassLazyRoute;
   PlansLazyRoute: typeof PlansLazyRoute;
   RoutineLazyRoute: typeof RoutineLazyRoute;
+  TeacherLazyRoute: typeof TeacherLazyRoute;
   TimerLazyRoute: typeof TimerLazyRoute;
   AuthLoginRoute: typeof AuthLoginRoute;
   AuthRegisterRoute: typeof AuthRegisterRoute;
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute;
   OrderProductIdRoute: typeof OrderProductIdRoute;
+  JoinCodeLazyRoute: typeof JoinCodeLazyRoute;
+  MentoringAiLazyRoute: typeof MentoringAiLazyRoute;
+  MentoringHumanLazyRoute: typeof MentoringHumanLazyRoute;
   ProductsIndexRoute: typeof ProductsIndexRoute;
 }
 
@@ -225,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlansLazyRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/myclass': {
+      id: '/myclass';
+      path: '/myclass';
+      fullPath: '/myclass';
+      preLoaderRoute: typeof MyclassLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/missions': {
       id: '/missions';
       path: '/missions';
@@ -246,11 +331,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GrowthLazyRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/teacher': {
+      id: '/teacher';
+      path: '/teacher';
+      fullPath: '/teacher';
+      preLoaderRoute: typeof TeacherLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/connections': {
       id: '/connections';
       path: '/connections';
       fullPath: '/connections';
       preLoaderRoute: typeof ConnectionsLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/badges': {
+      id: '/badges';
+      path: '/badges';
+      fullPath: '/badges';
+      preLoaderRoute: typeof BadgesLazyRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/': {
@@ -265,6 +364,27 @@ declare module '@tanstack/react-router' {
       path: '/products';
       fullPath: '/products';
       preLoaderRoute: typeof ProductsIndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/mentoring/human': {
+      id: '/mentoring/human';
+      path: '/mentoring/human';
+      fullPath: '/mentoring/human';
+      preLoaderRoute: typeof MentoringHumanLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/mentoring/ai': {
+      id: '/mentoring/ai';
+      path: '/mentoring/ai';
+      fullPath: '/mentoring/ai';
+      preLoaderRoute: typeof MentoringAiLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/join/$code': {
+      id: '/join/$code';
+      path: '/join/$code';
+      fullPath: '/join/$code';
+      preLoaderRoute: typeof JoinCodeLazyRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     '/order/$productId': {
@@ -300,17 +420,23 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BadgesLazyRoute: BadgesLazyRoute,
   ConnectionsLazyRoute: ConnectionsLazyRoute,
   GrowthLazyRoute: GrowthLazyRoute,
   LearningLazyRoute: LearningLazyRoute,
   MissionsLazyRoute: MissionsLazyRoute,
+  MyclassLazyRoute: MyclassLazyRoute,
   PlansLazyRoute: PlansLazyRoute,
   RoutineLazyRoute: RoutineLazyRoute,
+  TeacherLazyRoute: TeacherLazyRoute,
   TimerLazyRoute: TimerLazyRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   OrderProductIdRoute: OrderProductIdRoute,
+  JoinCodeLazyRoute: JoinCodeLazyRoute,
+  MentoringAiLazyRoute: MentoringAiLazyRoute,
+  MentoringHumanLazyRoute: MentoringHumanLazyRoute,
   ProductsIndexRoute: ProductsIndexRoute,
 };
 export const routeTree = rootRouteImport

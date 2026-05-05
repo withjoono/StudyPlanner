@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Put,
+  Body,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -149,6 +160,45 @@ export class TeacherController {
   ) {
     const userId = Number(req.user?.sub || 0);
     return this.teacherService.createMission(userId, parseInt(studentId), body);
+  }
+
+  // ================================================================
+  // Planner Rating (평가 시스템)
+  // ================================================================
+
+  @Put('students/:studentId/rating')
+  async rateStudent(
+    @Req() req: any,
+    @Param('studentId') studentId: string,
+    @Body() body: { date: string; score: number; comment?: string },
+  ) {
+    const userId = Number(req.user?.sub || 0);
+    return this.teacherService.rateStudent(userId, parseInt(studentId), body);
+  }
+
+  @Get('students/:studentId/ratings')
+  async getStudentRatings(
+    @Req() req: any,
+    @Param('studentId') studentId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const userId = Number(req.user?.sub || 0);
+    return this.teacherService.getStudentRatings(userId, parseInt(studentId), startDate, endDate);
+  }
+
+  @Get('compare')
+  async compareStudents(
+    @Req() req: any,
+    @Query('studentIds') studentIds: string,
+    @Query('date') date?: string,
+  ) {
+    const userId = Number(req.user?.sub || 0);
+    const ids = studentIds
+      .split(',')
+      .map((id) => parseInt(id.trim()))
+      .filter((n) => !isNaN(n));
+    return this.teacherService.compareStudents(userId, ids, date);
   }
 
   @Get('students/:studentId/photos')
