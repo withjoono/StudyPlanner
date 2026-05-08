@@ -33,7 +33,7 @@ jobs:
           cp -r dist package.json tailwind-preset.js $GITHUB_WORKSPACE/../geobuk-shared/
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install
 
       - name: Type Check (Strict)
         working-directory: frontend
