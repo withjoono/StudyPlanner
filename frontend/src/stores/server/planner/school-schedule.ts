@@ -7,14 +7,15 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { authClient } from '@/lib/api/instances';
+import { authClient, publicClient } from '@/lib/api/instances';
+import { useAuthStore } from '@/stores/client/use-auth-store';
 
 export interface NeisSchoolInfo {
   atptCode: string;
-  atptNm: string;
+  atptName: string;
   schulCode: string;
-  schulNm: string;
-  schulKnd: string;
+  schulName: string;
+  schulKind: string;
   address?: string | null;
 }
 
@@ -26,10 +27,39 @@ export interface SchoolEvent {
 }
 
 export interface LinkedSchool {
-  id: number;
-  schulNm: string;
-  atptNm: string;
-  schulKnd: string;
+  atptCode: string;
+  atptName: string;
+  schulCode: string;
+  schulName: string;
+  schulKind: string; // '고등학교' | '중학교' | '초등학교'
+  address?: string | null;
+}
+
+export interface TimetableItem {
+  grade: string; // '1' | '2' | '3'
+  classNm: string; // '1' | '2' | '3' ...
+  period: string; // '1' ~ '7'
+  subject: string; // 과목명
+  teacher: string | null;
+}
+
+// 교시별 표준 시간 (일반 고등학교 기준)
+export const PERIOD_TIMES: Record<string, { start: string; end: string }> = {
+  '1': { start: '08:40', end: '09:30' },
+  '2': { start: '09:40', end: '10:30' },
+  '3': { start: '10:40', end: '11:30' },
+  '4': { start: '11:40', end: '12:30' },
+  '5': { start: '13:30', end: '14:20' },
+  '6': { start: '14:30', end: '15:20' },
+  '7': { start: '15:30', end: '16:20' },
+};
+
+function getSchoolLevel(schulKind?: string): 'high' | 'middle' | 'elementary' | null {
+  if (!schulKind) return null;
+  if (schulKind.includes('고등')) return 'high';
+  if (schulKind.includes('중학') || schulKind.includes('중등')) return 'middle';
+  if (schulKind.includes('초등') || schulKind.includes('초교')) return 'elementary';
+  return 'high'; // 기본값
 }
 
 export const schoolScheduleKeys = {
@@ -38,6 +68,8 @@ export const schoolScheduleKeys = {
   events: (year: number, month?: number) =>
     [...schoolScheduleKeys.all, 'events', year, month] as const,
   search: (q: string) => [...schoolScheduleKeys.all, 'search', q] as const,
+  timetable: (dateStr: string, schulCode?: string) =>
+    [...schoolScheduleKeys.all, 'timetable', dateStr, schulCode] as const,
 };
 
 /** Hub에서 연결된 학교 정보 조회 */
@@ -126,5 +158,41 @@ export function useRefreshSchoolSchedule() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: schoolScheduleKeys.all });
     },
+  });
+}
+
+/**
+ * 특정 날짜의 시간표 조회
+ * - Hub @Public 엔드포인트 (atptCode, schulCode 필요)
+ * - grade + classNm으로 필터링
+ * @param dateStr YYYY-MM-DD 형식
+ */
+export function useGetDayTimetable(dateStr: string) {
+  const { data: linkedSchool } = useGetLinkedSchool();
+  const user = useAuthStore((state) => state.user);
+
+  const grade = user?.studentProfile?.grade != null ? String(user.studentProfile.grade) : undefined;
+  const classNm = user?.studentProfile?.classNm ?? undefined;
+  const schoolLevel = getSchoolLevel(linkedSchool?.schulKind);
+
+  const yyyymmdd = dateStr.replace(/-/g, '');
+
+  return useQuery({
+    queryKey: schoolScheduleKeys.timetable(dateStr, linkedSchool?.schulCode),
+    queryFn: async () => {
+      const res = await publicClient.get<TimetableItem[]>('/neis/timetable', {
+        params: {
+          atptCode: linkedSchool!.atptCode,
+          schulCode: linkedSchool!.schulCode,
+          date: yyyymmdd,
+          schoolLevel,
+          ...(grade && { grade }),
+          ...(classNm && { classNm }),
+        },
+      });
+      return res.data ?? [];
+    },
+    enabled: !!dateStr && !!linkedSchool?.atptCode && !!linkedSchool?.schulCode && !!schoolLevel,
+    staleTime: 1000 * 60 * 60 * 24, // 시간표는 하루 캐시
   });
 }

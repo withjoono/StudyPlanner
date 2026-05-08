@@ -35,6 +35,7 @@ import {
   useGetRoutines,
 } from '@/stores/server/planner';
 import type { DailyMission } from '@/stores/server/planner/planner-types';
+import { useGetDayTimetable, PERIOD_TIMES } from '@/stores/server/planner/school-schedule';
 import { getSubjectColor } from '@/types/planner';
 import type { Routine } from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
@@ -1024,6 +1025,10 @@ function MyMissionsPage() {
   const dateStr = selectedDate.toISOString().split('T')[0];
   const isToday = dateStr === new Date().toISOString().split('T')[0];
 
+  // 시간표 조회 (요일이 평일인 경우만)
+  const isWeekday = selectedDate.getDay() >= 1 && selectedDate.getDay() <= 5;
+  const { data: timetableItems } = useGetDayTimetable(isWeekday ? dateStr : '');
+
   // 선택한 날짜의 요일에 활성화된 루틴 필터링
   const dayRoutines = useMemo(() => {
     if (!routines) return [];
@@ -1430,6 +1435,37 @@ function MyMissionsPage() {
         {/* ═══════ 계획 탭 ═══════ */}
         {activeTab === 'plan' && (
           <div className="space-y-3">
+            {/* 오늘 시간표 (학교 연동 + 평일만) */}
+            {isWeekday && timetableItems && timetableItems.length > 0 && (
+              <div className="rounded-2xl border border-sky-100 bg-sky-50 p-3">
+                <div className="mb-2 flex items-center gap-1.5">
+                  <BookOpen className="h-3.5 w-3.5 text-sky-500" />
+                  <span className="text-xs font-semibold text-sky-700">오늘 시간표</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {timetableItems
+                    .sort((a, b) => Number(a.period) - Number(b.period))
+                    .map((item) => {
+                      const times = PERIOD_TIMES[item.period];
+                      return (
+                        <div
+                          key={item.period}
+                          className="flex items-center gap-1 rounded-lg border border-sky-200 bg-white px-2 py-1"
+                          title={times ? `${times.start} ~ ${times.end}` : ''}
+                        >
+                          <span className="text-[10px] font-bold text-sky-400">
+                            {item.period}교시
+                          </span>
+                          <span className="text-xs font-semibold text-gray-700">
+                            {item.subject}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
             {timelineItems.length > 0 ? (
               timelineItems.map((item) => {
                 if (item.type === 'routine') {

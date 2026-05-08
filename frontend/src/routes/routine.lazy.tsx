@@ -27,6 +27,7 @@ import {
   useGetSubjects,
   useGetPlans,
 } from '@/stores/server/planner';
+import { useGetDayTimetable, PERIOD_TIMES } from '@/stores/server/planner/school-schedule';
 import type { Routine, RoutineMajorCategory, LongTermPlan } from '@/types/planner';
 import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, getSubjectColor } from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
@@ -408,6 +409,21 @@ function WeeklyRoutineSummaryCard({
 // 주간 캘린더 컴포넌트
 // ============================================
 
+// 주간 시간표: 각 요일 날짜로 5개 쿼리 (월~금)
+function useTimetableForWeek(weekDays: Date[]) {
+  const weekdayDates = weekDays
+    .filter((d) => d.getDay() >= 1 && d.getDay() <= 5)
+    .map((d) => d.toISOString().split('T')[0]);
+
+  const mon = useGetDayTimetable(weekdayDates[0] ?? '');
+  const tue = useGetDayTimetable(weekdayDates[1] ?? '');
+  const wed = useGetDayTimetable(weekdayDates[2] ?? '');
+  const thu = useGetDayTimetable(weekdayDates[3] ?? '');
+  const fri = useGetDayTimetable(weekdayDates[4] ?? '');
+
+  return [mon.data, tue.data, wed.data, thu.data, fri.data];
+}
+
 function WeeklyCalendar({ routines }: { routines: Routine[] }) {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
 
@@ -464,6 +480,16 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
 
   const getRoutinesForDay = (dayIndex: number) => {
     return routines.filter((r) => r.days[dayIndex] && isRoutineActiveInWeek(r));
+  };
+
+  // 주간 시간표 (월~금 각 쿼리)
+  const weekdayTimetables = useTimetableForWeek(weekDays);
+  // weekDays[0]=일, weekDays[1]=월 ... weekDays[5]=금, weekDays[6]=토
+  // weekdayTimetables[0]=월, [1]=화, [2]=수, [3]=목, [4]=금
+  const getTimetableForDay = (dayIdx: number) => {
+    // dayIdx: 0=일,1=월,...,5=금,6=토
+    if (dayIdx < 1 || dayIdx > 5) return [];
+    return weekdayTimetables[dayIdx - 1] ?? [];
   };
 
   const now = new Date();
@@ -546,6 +572,7 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
               {weekDays.map((date, dayIdx) => {
                 const isToday = date.getTime() === today.getTime();
                 const dayRoutines = getRoutinesForDay(dayIdx);
+                const dayTimetable = getTimetableForDay(dayIdx);
 
                 return (
                   <div
@@ -570,6 +597,32 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                         <div className="bg-ultrasonic-500 absolute -left-1 -top-1 h-2.5 w-2.5 rounded-full" />
                       </div>
                     )}
+
+                    {/* 학교 시간표 블록 */}
+                    {dayTimetable
+                      .sort((a, b) => Number(a.period) - Number(b.period))
+                      .map((item) => {
+                        const times = PERIOD_TIMES[item.period];
+                        if (!times) return null;
+                        const [sh, sm] = times.start.split(':').map(Number);
+                        const [eh, em] = times.end.split(':').map(Number);
+                        const startMin = sh * 60 + sm;
+                        const endMin = eh * 60 + em;
+                        const top = (startMin / (24 * 60)) * 100;
+                        const height = Math.max(((endMin - startMin) / (24 * 60)) * 100, 1.5);
+                        return (
+                          <div
+                            key={`tt-${item.period}`}
+                            className="absolute left-0 right-0 overflow-hidden border-l-2 border-sky-400 bg-sky-100/70 px-0.5"
+                            style={{ top: `${top}%`, height: `${height}%`, minHeight: '18px' }}
+                            title={`${item.period}교시 ${item.subject} (${times.start}~${times.end})`}
+                          >
+                            <div className="truncate text-[9px] font-semibold leading-tight text-sky-700">
+                              {item.subject}
+                            </div>
+                          </div>
+                        );
+                      })}
 
                     {dayRoutines.map((routine) => {
                       const pos = getRoutinePosition(routine);

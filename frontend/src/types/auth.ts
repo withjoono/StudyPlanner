@@ -2,6 +2,16 @@
  * 인증 관련 타입 정의
  */
 
+// 학생 프로필 (Hub studentProfile)
+export interface StudentProfile {
+  grade?: number | string | null;
+  classNm?: string | null;
+  schoolLevel?: string | null; // 'high' | 'middle' | 'elementary'
+  neisAtptCode?: string | null;
+  neisSchulCode?: string | null;
+  schoolName?: string | null;
+}
+
 // 회원 정보
 export interface Member {
   id: string; // Hub varchar ID → SP ID (예: "sp_S26H208011")
@@ -15,6 +25,7 @@ export interface Member {
   providerType?: 'local' | 'naver' | 'google';
   createdAt?: string;
   updatedAt?: string;
+  studentProfile?: StudentProfile;
 }
 
 // 로그인 응답

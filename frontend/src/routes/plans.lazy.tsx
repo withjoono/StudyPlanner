@@ -963,9 +963,9 @@ function SchoolSetupDialog({
         {linkedSchool ? (
           <div className="space-y-4">
             <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-              <p className="text-xs font-medium text-green-600">{linkedSchool.atptNm}</p>
-              <p className="mt-0.5 text-base font-bold text-green-900">{linkedSchool.schulNm}</p>
-              <p className="mt-0.5 text-xs text-green-600">{linkedSchool.schulKnd}</p>
+              <p className="text-xs font-medium text-green-600">{linkedSchool.atptName}</p>
+              <p className="mt-0.5 text-base font-bold text-green-900">{linkedSchool.schulName}</p>
+              <p className="mt-0.5 text-xs text-green-600">{linkedSchool.schulKind}</p>
             </div>
             <div className="flex gap-2">
               <Button
@@ -1024,9 +1024,9 @@ function SchoolSetupDialog({
                   >
                     <School className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-800">{s.schulNm}</p>
+                      <p className="text-sm font-semibold text-gray-800">{s.schulName}</p>
                       <p className="mt-0.5 text-[11px] text-gray-500">
-                        {s.atptNm} · {s.schulKnd}
+                        {s.atptName} · {s.schulKind}
                         {s.address && ` · ${s.address}`}
                       </p>
                     </div>
@@ -1214,7 +1214,7 @@ function MonthlyCalendar({ plans }: { plans: LongTermPlan[] }) {
           >
             <School className="h-3 w-3" />
             {linkedSchool ? (
-              <span className="font-medium">{linkedSchool.schulNm}</span>
+              <span className="font-medium">{linkedSchool.schulName}</span>
             ) : (
               <span>학교 설정</span>
             )}
