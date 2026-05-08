@@ -17,20 +17,21 @@ jobs:
         with:
           node-version: 20
 
-      - name: Checkout geobuk-shared (local dep)
+      - name: Checkout geobuk-shared
         uses: actions/checkout@v4
         with:
           repository: withjoono/geobuk-shared
           path: .geobuk-temp
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build geobuk-shared and place at ../geobuk-shared
+      - name: Build and pack geobuk-shared
         run: |
           cd .geobuk-temp
           npm ci --ignore-scripts
           npm run build
+          npm pack
           mkdir -p $GITHUB_WORKSPACE/../geobuk-shared
-          cp -r dist package.json tailwind-preset.js $GITHUB_WORKSPACE/../geobuk-shared/
+          mv withjoono-geobuk-shared-*.tgz $GITHUB_WORKSPACE/../geobuk-shared/geobuk-shared.tgz
 
       - name: Install dependencies
         run: yarn install

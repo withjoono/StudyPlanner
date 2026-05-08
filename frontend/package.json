@@ -38,7 +38,7 @@
     "date-fns": "^3.6.0",
     "firebase": "^12.8.0",
     "framer-motion": "^11.3.17",
-    "geobuk-shared": "npm:@withjoono/geobuk-shared@^1.0.1",
+    "geobuk-shared": "file:../../geobuk-shared/geobuk-shared.tgz",
     "html2canvas": "^1.4.1",
     "humps": "^2.0.1",
     "lucide-react": "^0.417.0",
