@@ -25,15 +25,16 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        working-directory: frontend
+        run: npm install
 
       - name: Type Check (Strict)
         working-directory: frontend
-        run: yarn type-check
+        run: npm run type-check
 
       - name: Build
         working-directory: frontend
-        run: yarn build
+        run: npm run build
 
       - name: Deploy to Firebase Hosting
         working-directory: frontend
