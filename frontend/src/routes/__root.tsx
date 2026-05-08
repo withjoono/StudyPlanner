@@ -1,4 +1,4 @@
-import { createRootRoute, Outlet, Link, useNavigate, useRouterState } from '@tanstack/react-router';
+import { createRootRoute, Outlet, Link, useRouterState } from '@tanstack/react-router';
 import { Toaster, toast } from 'sonner';
 import { useAuthStore } from '@/stores/client/use-auth-store';
 
@@ -8,7 +8,6 @@ import { Bell, X, LayoutGrid, Users, LogOut, ChevronDown } from 'lucide-react';
 import { WonCircle } from '@/components/icons';
 import PromoPage from '@/components/PromoPage';
 import { useAcornBalance } from '@/stores/server/acorn';
-import { useMyBadges } from '@/stores/server/badge';
 import { Footer } from 'geobuk-shared/ui';
 
 // Hub URL
@@ -22,7 +21,6 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   const { user, isAuthenticated, clearAuth } = useAuthStore();
-  const navigate = useNavigate();
   const router = useRouterState();
   const ssoExchangeMutation = useSsoExchange();
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -43,9 +41,6 @@ function RootLayout() {
 
   // 도토리 잔액
   const { data: acornData } = useAcornBalance();
-
-  // 뱃지
-  const { data: badgeData } = useMyBadges();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -234,21 +229,6 @@ function RootLayout() {
                   </span>
                   <span>{acornData?.balance ?? 0}</span>
                 </div>
-              )}
-              {/* 🏅 뱃지 */}
-              {isAuthenticated && (
-                <Link
-                  to="/badges"
-                  className="relative flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-purple-50"
-                  title="뱃지 컬렉션"
-                >
-                  <span className="text-lg">🏅</span>
-                  {(badgeData?.newCount ?? 0) > 0 && (
-                    <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                      {badgeData!.newCount}
-                    </span>
-                  )}
-                </Link>
               )}
               {/* 결제 */}
               <a

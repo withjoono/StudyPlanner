@@ -9,7 +9,7 @@
  */
 
 import { createLazyFileRoute } from '@tanstack/react-router';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Flame,
   Trophy,
@@ -42,9 +42,6 @@ import { useAuthStore } from '@/stores/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { CelebrationModal, type CelebrationMilestone } from '@/components/share/CelebrationModal';
-import { StreakShareCard } from '@/components/share/ShareCard';
-import { useShareCard } from '@/hooks/useShareCard';
-import { useEarnAcorn } from '@/stores/server/acorn';
 
 export const Route = createLazyFileRoute('/growth')({
   component: GrowthPage,
@@ -771,9 +768,6 @@ function GrowthPage() {
 
   const { data: stats, isLoading: statsLoading } = useGetGrowthStats();
 
-  // 공유 관련
-  const streakCardRef = useRef<HTMLDivElement>(null);
-  const { share, isSharing } = useShareCard();
   const [celebration, setCelebration] = useState<CelebrationMilestone | null>(null);
   const [shownMilestones, setShownMilestones] = useState<Set<string>>(new Set());
 

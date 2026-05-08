@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useState, useRef } from 'react';
-import { X, Share2, Download } from 'lucide-react';
+import { X, Share2 } from 'lucide-react';
 import { StreakShareCard, WeeklyReportShareCard, MilestoneShareCard } from './ShareCard';
 import { useShareCard } from '@/hooks/useShareCard';
 

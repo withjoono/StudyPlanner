@@ -5,15 +5,11 @@
  */
 
 import {
-  CalendarDays,
   Target,
-  BarChart3,
   Users,
-  ChevronRight,
-  GraduationCap,
   Sparkles,
   CheckCircle,
-  BookOpen,
+  ChevronRight,
   ArrowRight,
   FlaskConical,
   Microscope,

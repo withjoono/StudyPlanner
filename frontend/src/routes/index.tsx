@@ -76,28 +76,14 @@ function Dashboard() {
   // 오늘의 루틴
   const todayRoutines = useMemo(() => {
     if (!routines) return [];
-    const dayMap: Record<string, number> = {
-      mon: 1,
-      tue: 2,
-      wed: 3,
-      thu: 4,
-      fri: 5,
-      sat: 6,
-      sun: 0,
-    };
     return routines
-      .filter((r: Routine) => {
-        if (!r.activeDays) return false;
-        return Object.entries(r.activeDays).some(
-          ([day, active]) => active && dayMap[day] === dayOfWeek,
-        );
-      })
+      .filter((r: Routine) => r.days?.[dayOfWeek] === true)
       .sort((a: Routine, b: Routine) => (a.startTime || '').localeCompare(b.startTime || ''));
   }, [routines, dayOfWeek]);
 
   // 통계
   const completedMissions = todayMissions.filter(
-    (m: DailyMission) => m.status === 'done' || (m.progress && m.progress >= 100),
+    (m: DailyMission) => m.status === 'completed' || (m.progress && m.progress >= 100),
   ).length;
   const totalMissions = todayMissions.length;
   const avgProgress =
@@ -136,7 +122,7 @@ function Dashboard() {
         time: m.startTime || '00:00',
         title: m.content || m.title || m.subject || '미션',
         subject: m.subject,
-        done: m.status === 'done' || prog >= 100,
+        done: m.status === 'completed' || prog >= 100,
         progress: prog,
       });
     });

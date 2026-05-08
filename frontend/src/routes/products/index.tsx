@@ -136,7 +136,7 @@ function ProductsPage() {
                   현재 사용 중
                 </Button>
               ) : (
-                <Link to={`/order/${product.id}`}>
+                <Link to="/order/$productId" params={{ productId: String(product.id) }}>
                   <Button
                     className={`w-full ${
                       product.recommended ? 'bg-indigo-600 hover:bg-indigo-700' : ''

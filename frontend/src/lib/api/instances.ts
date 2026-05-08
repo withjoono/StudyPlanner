@@ -7,7 +7,7 @@
  * - plannerClient: 플래너 전용 API - StudyPlanner 백엔드
  */
 
-import axios from 'axios';
+import axios, { type AxiosInstance } from 'axios';
 import { camelizeKeys, decamelizeKeys } from 'humps';
 import { env } from '@/lib/config/env';
 
@@ -53,7 +53,7 @@ export const plannerClient = axios.create({
 /**
  * 케이스 변환 인터셉터 설정 함수
  */
-const setupCaseConversion = (client: typeof axios) => {
+const setupCaseConversion = (client: AxiosInstance) => {
   // Request: camelCase → snake_case
   client.interceptors.request.use(
     (config) => {

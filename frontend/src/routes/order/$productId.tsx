@@ -4,7 +4,6 @@ import { toast } from 'sonner';
 import { Card } from 'geobuk-shared/ui';
 import { Button } from 'geobuk-shared/ui';
 import { Input } from 'geobuk-shared/ui';
-import { Label } from '@/components/ui/label';
 import { ProtectedRoute } from '@/components/auth';
 import {
   useGetStoreCode,

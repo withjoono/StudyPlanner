@@ -29,7 +29,11 @@ export function ProtectedRoute({
 
     // 토큰이 없으면 로그인 페이지로
     if (!hasAccessToken() || !isAuthenticated) {
-      navigate({ to: redirectTo, search: { redirect: window.location.pathname } });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (navigate as (opts: any) => void)({
+        to: redirectTo,
+        search: { redirect: window.location.pathname },
+      });
       return;
     }
 
@@ -92,7 +96,3 @@ export function useRedirectIfAuthenticated(redirectTo: string = '/') {
 
   return { isAuthenticated, isInitialized };
 }
-
-
-
-

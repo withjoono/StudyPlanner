@@ -49,7 +49,7 @@ export function useLoginWithEmail() {
     },
     onSuccess: async (data) => {
       // 토큰 저장
-      setTokens(data.accessToken, data.refreshToken, data.tokenExpiry);
+      setTokens(data.accessToken, data.refreshToken);
       setActiveServices(data.activeServices);
 
       // 사용자 정보 조회
@@ -75,7 +75,7 @@ export function useLoginWithSocial() {
       return response.data;
     },
     onSuccess: async (data) => {
-      setTokens(data.accessToken, data.refreshToken, data.tokenExpiry);
+      setTokens(data.accessToken, data.refreshToken);
       setActiveServices(data.activeServices);
 
       const meResponse = await authClient.get<Member>('/auth/me');
@@ -103,7 +103,7 @@ export function useRegisterWithEmail() {
       return response.data;
     },
     onSuccess: async (data) => {
-      setTokens(data.accessToken, data.refreshToken, data.tokenExpiry);
+      setTokens(data.accessToken, data.refreshToken);
       setActiveServices(data.activeServices);
 
       const meResponse = await authClient.get<Member>('/auth/me');
@@ -127,7 +127,7 @@ export function useRegisterWithSocial() {
       return response.data;
     },
     onSuccess: async (data) => {
-      setTokens(data.accessToken, data.refreshToken, data.tokenExpiry);
+      setTokens(data.accessToken, data.refreshToken);
       setActiveServices(data.activeServices);
 
       const meResponse = await authClient.get<Member>('/auth/me');
@@ -279,7 +279,7 @@ export function useSsoExchange() {
       return response.data;
     },
     onSuccess: async (data) => {
-      setTokens(data.accessToken, data.refreshToken, data.tokenExpiry);
+      setTokens(data.accessToken, data.refreshToken);
       setActiveServices(data.activeServices);
 
       const meResponse = await authClient.get<Member>('/auth/me');

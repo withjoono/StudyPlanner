@@ -28,9 +28,9 @@ const refreshAccessToken = async (): Promise<string | null> => {
       refreshToken,
     });
 
-    const { accessToken, refreshToken: newRefreshToken, tokenExpiry } = response.data;
+    const { accessToken, refreshToken: newRefreshToken } = response.data;
     if (accessToken) {
-      setTokens(accessToken, newRefreshToken || refreshToken, tokenExpiry);
+      setTokens(accessToken, newRefreshToken || refreshToken);
       return accessToken;
     }
 
@@ -98,7 +98,3 @@ export const authResponseErrorInterceptor = async (error: AxiosError) => {
 
   return Promise.reject(error);
 };
-
-
-
-

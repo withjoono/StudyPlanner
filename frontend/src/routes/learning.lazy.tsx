@@ -288,7 +288,7 @@ function PlannerLearningPage() {
   // 학습 아이템만 필터링
   const studyItems = useMemo(() => {
     if (!allItems) return [];
-    return allItems.filter((item) => item.primaryType === '학습');
+    return (allItems as PlannerItem[]).filter((item) => item.primaryType === '학습');
   }, [allItems]);
 
   // 과목별 그룹화

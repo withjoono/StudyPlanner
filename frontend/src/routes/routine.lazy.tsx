@@ -28,12 +28,7 @@ import {
   useGetPlans,
 } from '@/stores/server/planner';
 import type { Routine, RoutineMajorCategory, LongTermPlan } from '@/types/planner';
-import {
-  MAJOR_CATEGORY_LABELS,
-  MAJOR_CATEGORY_COLORS,
-  SUBJECT_COLORS,
-  getSubjectColor,
-} from '@/types/planner';
+import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, getSubjectColor } from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
 import { Card, CardContent } from 'geobuk-shared/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'geobuk-shared/ui';

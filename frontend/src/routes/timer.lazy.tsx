@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createLazyFileRoute } from '@tanstack/react-router';
-import { Play, Pause, RotateCcw, Coffee, Flame, Clock, Target, Zap } from 'lucide-react';
+import { Play, Pause, RotateCcw, Flame, Clock, Zap } from 'lucide-react';
 import { plannerClient } from '@/lib/api/instances';
 
 // ── 타이머 설정 ──
