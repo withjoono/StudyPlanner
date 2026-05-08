@@ -94,9 +94,9 @@ jobs:
           ./cloud-sql-proxy ts-back-nest-479305:asia-northeast3:geobuk-db --port 5432 &
           sleep 3
 
-      - name: Run database migrations
+      - name: Sync database schema
         working-directory: backend
-        run: npx prisma migrate deploy
+        run: npx prisma db push --accept-data-loss
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_MIGRATE }}
 
