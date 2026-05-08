@@ -31,7 +31,7 @@ jobs:
       - name: Build and pack geobuk-shared
         run: |
           cd .geobuk-temp
-          npm ci --ignore-scripts
+          npm install --ignore-scripts
           npm run build
           npm pack
           mkdir -p $GITHUB_WORKSPACE/../geobuk-shared
