@@ -64,35 +64,34 @@ export const authResponseErrorInterceptor = async (error: AxiosError) => {
     const errorData = error.response.data as { detailCode?: string; message?: string };
     const errorCode = errorData?.detailCode;
 
-    // 토큰 만료 → 갱신 시도
-    if (errorCode === ERROR_CODES.TOKEN_EXPIRED && !originalRequest?._retry) {
+    // 세션 만료 → 로그아웃 (갱신 시도 없음)
+    if (errorCode === ERROR_CODES.SESSION_EXPIRED) {
+      alert(errorData?.message || '세션이 만료되었습니다.');
+      handleLogout();
+      return Promise.reject(error);
+    }
+
+    // 유효하지 않은 토큰 → 로그아웃 (갱신 시도 없음)
+    if (errorCode === ERROR_CODES.INVALID_TOKEN) {
+      handleLogout();
+      return Promise.reject(error);
+    }
+
+    // 토큰 만료 또는 기타 401 (detailCode 없는 경우 포함) → 갱신 시도
+    // StudyPlanner 백엔드는 detailCode 없이 순수 401을 반환하므로 모든 401에 갱신 시도
+    if (!originalRequest?._retry) {
       if (originalRequest) {
         originalRequest._retry = true;
       }
 
       const newAccessToken = await refreshAccessToken();
       if (newAccessToken && originalRequest) {
-        // 새 토큰으로 원래 요청 재시도
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return publicClient.request(originalRequest);
       } else {
-        // 갱신 실패 → 로그아웃
         handleLogout();
         return Promise.reject(error);
       }
-    }
-
-    // 유효하지 않은 토큰 → 로그아웃
-    if (errorCode === ERROR_CODES.INVALID_TOKEN) {
-      handleLogout();
-      return Promise.reject(error);
-    }
-
-    // 세션 만료 → 로그아웃
-    if (errorCode === ERROR_CODES.SESSION_EXPIRED) {
-      alert(errorData?.message || '세션이 만료되었습니다.');
-      handleLogout();
-      return Promise.reject(error);
     }
   }
 
