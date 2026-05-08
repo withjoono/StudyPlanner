@@ -87,6 +87,19 @@ jobs:
         working-directory: backend
         run: npm run build
 
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -fsSL -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.1/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy ts-back-nest-479305:asia-northeast3:geobuk-db --port 5432 &
+          sleep 3
+
+      - name: Run database migrations
+        working-directory: backend
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_MIGRATE }}
+
       - name: Deploy to App Engine
         working-directory: backend
         run: gcloud app deploy app.yaml --project=ts-back-nest-479305 --quiet
