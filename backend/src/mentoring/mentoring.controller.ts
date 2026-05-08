@@ -10,12 +10,12 @@ import {
   Request,
   ParseIntPipe,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../common/jwt-auth.guard';
+import { AuthGuard } from '@nestjs/passport';
 import { MentoringService } from './mentoring.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 
 @Controller('mentoring')
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard('jwt'))
 export class MentoringController {
   constructor(private readonly svc: MentoringService) {}
 

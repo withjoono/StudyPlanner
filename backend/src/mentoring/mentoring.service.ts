@@ -103,7 +103,10 @@ export class MentoringService {
 
     // 인증사진
     const photos = await this.prisma.verificationPhoto.findMany({
-      where: { studentId: BigInt(studentId), createdAt: { gte: start, lte: end } },
+      where: {
+        missionResult: { studentId: BigInt(studentId) },
+        createdAt: { gte: start, lte: end },
+      },
       orderBy: { createdAt: 'desc' },
       take: 5,
       select: { id: true, photoUrl: true, createdAt: true },
@@ -141,9 +144,9 @@ export class MentoringService {
       reflections: reflections.map((r) => ({
         date: r.date,
         mood: r.mood,
-        goodPoints: r.goodPoints,
-        badPoints: r.badPoints,
-        tomorrowPlan: r.tomorrowPlan,
+        goodPoints: r.bestThing,
+        badPoints: r.worstThing,
+        tomorrowPlan: r.improvement,
       })),
       existingSession: existingSession ? this.serialize(existingSession) : null,
     });
