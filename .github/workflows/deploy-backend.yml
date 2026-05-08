@@ -101,6 +101,12 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_MIGRATE }}
 
+      - name: Seed kyokwa subject data
+        working-directory: backend
+        run: node prisma/seed-kyokwa.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_MIGRATE }}
+
       - name: Deploy to App Engine
         working-directory: backend
         run: gcloud app deploy app.yaml --project=ts-back-nest-479305 --quiet
