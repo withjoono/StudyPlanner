@@ -26,6 +26,22 @@ jobs:
         with:
           node-version: 20
 
+      - name: Checkout geobuk-shared
+        uses: actions/checkout@v4
+        with:
+          repository: withjoono/geobuk-shared
+          path: .geobuk-temp
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and pack geobuk-shared
+        run: |
+          cd .geobuk-temp
+          npm install --ignore-scripts
+          npm run build
+          npm pack
+          mkdir -p $GITHUB_WORKSPACE/../geobuk-shared
+          mv withjoono-geobuk-shared-*.tgz $GITHUB_WORKSPACE/../geobuk-shared/geobuk-shared.tgz
+
       - name: Generate app.yaml from secrets
         working-directory: backend
         run: |
@@ -64,6 +80,10 @@ jobs:
       - name: Install dependencies
         working-directory: backend
         run: npm install
+
+      - name: Build
+        working-directory: backend
+        run: npm run build
 
       - name: Deploy to App Engine
         working-directory: backend
