@@ -3,8 +3,6 @@
  * StudyPlanner에서 Hub(T Skool) 로그인 페이지로 리디렉트
  */
 
-import { env } from '@/lib/config/env';
-
 // Hub Frontend URL (환경 변수 또는 기본값)
 const HUB_URL =
   import.meta.env.VITE_HUB_URL ||
@@ -16,9 +14,9 @@ const HUB_URL =
  * @param returnPath - 로그인 후 돌아올 경로 (기본: /)
  */
 export function getHubLoginUrl(returnPath: string = '/'): string {
-  const frontUrl = env.frontUrl || window.location.origin;
-  const redirectUri = `${frontUrl}${returnPath}`;
-
+  // window.location.origin을 사용해 항상 현재 도메인으로 redirect
+  // (env.frontUrl은 빌드 시점 환경변수에 의존하므로 잘못된 값이 번들에 포함될 수 있음)
+  const redirectUri = `${window.location.origin}${returnPath}`;
   return `${HUB_URL}/auth/login?redirect=${encodeURIComponent(redirectUri)}`;
 }
 
@@ -27,9 +25,7 @@ export function getHubLoginUrl(returnPath: string = '/'): string {
  * @param returnPath - 회원가입 후 돌아올 경로 (기본: /)
  */
 export function getHubRegisterUrl(returnPath: string = '/'): string {
-  const frontUrl = env.frontUrl || window.location.origin;
-  const redirectUri = `${frontUrl}${returnPath}`;
-
+  const redirectUri = `${window.location.origin}${returnPath}`;
   return `${HUB_URL}/auth/register?redirect=${encodeURIComponent(redirectUri)}`;
 }
 
