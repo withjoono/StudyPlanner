@@ -16,21 +16,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: 'https://npm.pkg.github.com'
 
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm install
+      - name: Setup GitHub Packages auth
+        run: |
+          echo "@withjoono:registry=https://npm.pkg.github.com" >> ~/.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
       - name: Type Check (Strict)
         working-directory: frontend
-        run: npm run type-check
+        run: yarn type-check
 
       - name: Build
         working-directory: frontend
-        run: npm run build
+        run: yarn build
 
       - name: Deploy to Firebase Hosting
         working-directory: frontend
