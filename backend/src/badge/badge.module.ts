@@ -13,7 +13,10 @@ export class BadgeModule implements OnModuleInit {
   constructor(private readonly badgeService: BadgeService) {}
 
   async onModuleInit() {
-    // 서버 시작 시 뱃지 카탈로그 자동 시드
-    await this.badgeService.seedBadgeCatalog();
+    try {
+      await this.badgeService.seedBadgeCatalog();
+    } catch (e) {
+      console.warn('Badge catalog seed skipped (DB may not be ready):', e.message);
+    }
   }
 }
