@@ -38,7 +38,7 @@ coverage
 .env.development.local
 .env.test.local
 .env.production.local
-.env.production
+# .env.production is committed (VITE_ vars are public — they're in the JS bundle)
 
 # Deployment (contains secrets)
 app.yaml
