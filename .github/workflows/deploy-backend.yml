@@ -6,6 +6,7 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -24,6 +25,41 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Generate app.yaml from secrets
+        working-directory: backend
+        run: |
+          cat > app.yaml << 'YAML_EOF'
+          runtime: nodejs20
+          service: studyplanner-backend
+          entrypoint: node dist/main.js
+
+          instance_class: F2
+
+          env_variables:
+            NODE_ENV: "production"
+            PORT: "8080"
+          YAML_EOF
+          echo "    DATABASE_URL: \"$DATABASE_URL\"" >> app.yaml
+          echo "    AUTH_SECRET: \"$AUTH_SECRET\"" >> app.yaml
+          echo "    HUB_API_URL: \"https://ts-back-nest-479305.du.r.appspot.com\"" >> app.yaml
+          cat >> app.yaml << 'YAML_EOF'
+
+          beta_settings:
+            cloud_sql_instances: "ts-back-nest-479305:asia-northeast3:geobuk-db"
+
+          automatic_scaling:
+            min_instances: 0
+            max_instances: 2
+
+          handlers:
+            - url: /.*
+              script: auto
+              secure: always
+          YAML_EOF
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
 
       - name: Install dependencies
         working-directory: backend
