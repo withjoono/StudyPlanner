@@ -17,24 +17,31 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup GitHub Packages auth
+      - name: Checkout geobuk-shared (local dep)
+        uses: actions/checkout@v4
+        with:
+          repository: withjoono/geobuk-shared
+          path: .geobuk-temp
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build geobuk-shared and place at ../geobuk-shared
         run: |
-          echo "@withjoono:registry=https://npm.pkg.github.com" >> ~/.npmrc
-          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          cd .geobuk-temp
+          npm ci --ignore-scripts
+          npm run build
+          mkdir -p $GITHUB_WORKSPACE/../geobuk-shared
+          cp -r dist package.json tailwind-preset.js $GITHUB_WORKSPACE/../geobuk-shared/
 
       - name: Install dependencies
-        working-directory: frontend
-        run: npm install
+        run: yarn install --frozen-lockfile
 
       - name: Type Check (Strict)
         working-directory: frontend
-        run: npm run type-check
+        run: yarn type-check
 
       - name: Build
         working-directory: frontend
-        run: npm run build
+        run: yarn build
 
       - name: Deploy to Firebase Hosting
         working-directory: frontend
