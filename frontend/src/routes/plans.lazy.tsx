@@ -5,7 +5,7 @@
  */
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
   ChevronLeft,
@@ -908,9 +908,7 @@ function EditPlanDialog({ open, onOpenChange, plan, onSubmit, isLoading }: EditP
 // ============================================
 
 const LABEL_W = 80; // 과목 라벨 고정 너비(px)
-const MIN_MONTHS = 12; // 최소 표시 월 수 (화면 꽉 채움)
-const MONTH_MIN_PX = 72; // 월 컬럼 최소 너비 (스크롤 시)
-const SCROLL_PAD = 12; // 계획 앞뒤 여유 월 수 (전후 1년)
+const MONTH_MIN_PX = 72; // 월 컬럼 너비(px)
 
 function GanttTimeline({
   plans,
@@ -919,11 +917,43 @@ function GanttTimeline({
   plans: ExtendedLongTermPlan[];
   onPlanClick: (plan: ExtendedLongTermPlan) => void;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const datePlans = plans.filter((p) => p.startDate && p.endDate);
   const noDateCount = plans.length - datePlans.length;
+
+  // 고정 범위: 작년 1월 ~ 내년 12월 (항상 3년), 계획이 범위 밖이면 확장
+  const curYear = today.getFullYear();
+  let rangeStartDate = new Date(curYear - 1, 0, 1);
+  let rangeEndDate = new Date(curYear + 1, 11, 31, 23, 59, 59, 999);
+  if (datePlans.length > 0) {
+    const minTs = Math.min(...datePlans.map((p) => new Date(p.startDate!).getTime()));
+    const maxTs = Math.max(...datePlans.map((p) => new Date(p.endDate!).getTime()));
+    const planMin = new Date(minTs);
+    const planMax = new Date(maxTs);
+    if (planMin < rangeStartDate)
+      rangeStartDate = new Date(planMin.getFullYear(), planMin.getMonth(), 1);
+    if (planMax > rangeEndDate)
+      rangeEndDate = new Date(planMax.getFullYear(), planMax.getMonth() + 1, 0, 23, 59, 59, 999);
+  }
+  const rangeStart = rangeStartDate;
+  const rangeEnd = rangeEndDate;
+  const totalMs = rangeEnd.getTime() - rangeStart.getTime();
+
+  // 현재 월 인덱스 (자동 스크롤: 오늘 월이 왼쪽에 오도록)
+  const todayMonthIdx =
+    (today.getFullYear() - rangeStart.getFullYear()) * 12 +
+    (today.getMonth() - rangeStart.getMonth());
+
+  // 마운트 또는 계획 로드 시 현재 월로 스크롤
+  useEffect(() => {
+    if (scrollRef.current && datePlans.length > 0) {
+      scrollRef.current.scrollLeft = todayMonthIdx * MONTH_MIN_PX;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datePlans.length]);
 
   if (datePlans.length === 0) {
     return (
@@ -937,33 +967,7 @@ function GanttTimeline({
     );
   }
 
-  // ── 날짜 범위 계산 ──
-  const planStarts = datePlans.length
-    ? datePlans.map((p) => new Date(p.startDate!).getTime())
-    : [today.getTime()];
-  const planEnds = datePlans.length
-    ? datePlans.map((p) => new Date(p.endDate!).getTime())
-    : [today.getTime()];
-
-  // 계획의 월 경계 → 앞뒤 SCROLL_PAD개월 추가 (전후 1년)
-  const rawRs = new Date(Math.min(...planStarts));
-  const rawRe = new Date(Math.max(...planEnds));
-  const rs = new Date(rawRs.getFullYear(), rawRs.getMonth() - SCROLL_PAD, 1);
-  const re = new Date(rawRe.getFullYear(), rawRe.getMonth() + 1 + SCROLL_PAD, 0, 23, 59, 59, 999);
-
-  // 최소 MIN_MONTHS 보장
-  const countMonths = (a: Date, b: Date) =>
-    (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth() + 1;
-  while (countMonths(rs, re) < MIN_MONTHS) {
-    rs.setMonth(rs.getMonth() - 1);
-    if (countMonths(rs, re) < MIN_MONTHS) re.setMonth(re.getMonth() + 1);
-  }
-
-  const rangeStart = rs;
-  const rangeEnd = re;
-  const totalMs = rangeEnd.getTime() - rangeStart.getTime();
-
-  // 월 목록 — 년도 항상 표시
+  // 월 목록 — 년도 경계에만 년도 표시
   const months: { label: string; year: number; month: number }[] = [];
   const cur = new Date(rangeStart);
   let lastYear = -1;
@@ -991,6 +995,7 @@ function GanttTimeline({
     if (!subjectMap[key]) subjectMap[key] = [];
     subjectMap[key].push(p);
   });
+  const subjectEntries = Object.entries(subjectMap);
 
   // 날짜 → % (전체 범위 기준)
   const datePct = (d: Date) => ((d.getTime() - rangeStart.getTime()) / totalMs) * 100;
@@ -1009,55 +1014,64 @@ function GanttTimeline({
         )}
       </div>
 
-      {/*
-        가로 스크롤 래퍼.
-        내부 콘텐츠: min-width 100% (화면 꽉 채움) + 월이 많으면 자동으로 더 넓어져 스크롤.
-        각 월 컬럼은 flex-1(동일 비율) + min-width MONTH_MIN_PX.
-      */}
-      <div className="overflow-x-auto">
-        {/* min-width: 100% → 항상 컨테이너 꽉 참 */}
-        <div style={{ minWidth: '100%', width: `${numMonths * MONTH_MIN_PX + LABEL_W}px` }}>
-          {/* ── 월 헤더 행 ── */}
-          <div className="flex border-b border-gray-100">
-            <div style={{ width: `${LABEL_W}px`, flexShrink: 0 }} />
-            {months.map((m, i) => {
-              const isYearStart = m.month === 1 || i === 0;
-              return (
-                <div
-                  key={i}
-                  className={`flex flex-1 items-center px-1.5 ${isYearStart ? 'border-l-2 border-indigo-200 bg-indigo-50/40' : 'border-l border-gray-100'}`}
-                  style={{ minWidth: `${MONTH_MIN_PX}px`, height: '28px' }}
-                >
-                  <span
-                    className={`whitespace-nowrap text-[10px] font-semibold ${isYearStart ? 'text-indigo-500' : 'text-gray-400'}`}
-                  >
-                    {m.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* ── 과목별 행 ── */}
-          {Object.entries(subjectMap).map(([subject, subjectPlans]) => {
+      {/* 본문: 좌측 고정 라벨 + 우측 스크롤 타임라인 */}
+      <div className="flex">
+        {/* ── 좌측: 과목 라벨 (스크롤 외부, 항상 보임) ── */}
+        <div
+          className="z-10 shrink-0 bg-white"
+          style={{ width: `${LABEL_W}px`, boxShadow: '2px 0 4px rgba(0,0,0,0.04)' }}
+        >
+          {/* 헤더 행 높이 맞춤 */}
+          <div className="border-b border-gray-100" style={{ height: '28px' }} />
+          {/* 과목 라벨 목록 */}
+          {subjectEntries.map(([subject, subjectPlans]) => {
             const color = getSubjectColor(subject);
             const rowH = Math.max(36, subjectPlans.length * 28 + 8);
             return (
               <div
                 key={subject}
-                className="flex border-b border-gray-50 last:border-0"
-                style={{ height: `${rowH}px` }}
+                className="flex items-center border-b border-gray-50 px-3 text-[11px] font-bold last:border-0"
+                style={{ height: `${rowH}px`, color }}
               >
-                {/* 과목 라벨 */}
-                <div
-                  className="flex shrink-0 items-center px-3 text-[11px] font-bold"
-                  style={{ width: `${LABEL_W}px`, color }}
-                >
-                  {subject}
-                </div>
+                {subject}
+              </div>
+            );
+          })}
+        </div>
 
-                {/* 타임라인 바 영역: flex-1로 나머지 공간 전부 차지 */}
-                <div className="relative flex-1">
+        {/* ── 우측: 가로 스크롤 타임라인 ── */}
+        <div ref={scrollRef} className="flex-1 overflow-x-auto">
+          <div style={{ minWidth: '100%', width: `${numMonths * MONTH_MIN_PX}px` }}>
+            {/* 월 헤더 행 */}
+            <div className="flex border-b border-gray-100" style={{ height: '28px' }}>
+              {months.map((m, i) => {
+                const isYearStart = m.month === 1 || i === 0;
+                return (
+                  <div
+                    key={i}
+                    className={`flex flex-1 items-center px-1.5 ${isYearStart ? 'border-l-2 border-indigo-200 bg-indigo-50/40' : 'border-l border-gray-100'}`}
+                    style={{ minWidth: `${MONTH_MIN_PX}px`, height: '28px' }}
+                  >
+                    <span
+                      className={`whitespace-nowrap text-[10px] font-semibold ${isYearStart ? 'text-indigo-500' : 'text-gray-400'}`}
+                    >
+                      {m.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 과목별 타임라인 행 */}
+            {subjectEntries.map(([subject, subjectPlans]) => {
+              const color = getSubjectColor(subject);
+              const rowH = Math.max(36, subjectPlans.length * 28 + 8);
+              return (
+                <div
+                  key={subject}
+                  className="relative border-b border-gray-50 last:border-0"
+                  style={{ height: `${rowH}px` }}
+                >
                   {/* 월 구분선: 균등 % 간격 */}
                   {months.map((_, i) => (
                     <div
@@ -1133,9 +1147,9 @@ function GanttTimeline({
                     );
                   })}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
 
