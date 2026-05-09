@@ -908,8 +908,9 @@ function EditPlanDialog({ open, onOpenChange, plan, onSubmit, isLoading }: EditP
 // ============================================
 
 const LABEL_W = 80; // 과목 라벨 고정 너비(px)
-const MIN_MONTHS = 12; // 최소 표시 월 수 (화면을 꽉 채움)
-const MONTH_MIN_PX = 72; // 월 컬럼 최소 너비 (스크롤 시 기준)
+const MIN_MONTHS = 12; // 최소 표시 월 수 (화면 꽉 채움)
+const MONTH_MIN_PX = 72; // 월 컬럼 최소 너비 (스크롤 시)
+const SCROLL_PAD = 12; // 계획 앞뒤 여유 월 수 (전후 1년)
 
 function GanttTimeline({
   plans,
@@ -936,7 +937,7 @@ function GanttTimeline({
     );
   }
 
-  // ── 날짜 범위: 계획 범위 + 최소 MIN_MONTHS 보장, 오늘 포함 ──
+  // ── 날짜 범위 계산 ──
   const planStarts = datePlans.length
     ? datePlans.map((p) => new Date(p.startDate!).getTime())
     : [today.getTime()];
@@ -944,13 +945,13 @@ function GanttTimeline({
     ? datePlans.map((p) => new Date(p.endDate!).getTime())
     : [today.getTime()];
 
-  // 월 경계로 확장
-  let rs = new Date(new Date(Math.min(...planStarts)));
-  rs = new Date(rs.getFullYear(), rs.getMonth(), 1);
-  let re = new Date(new Date(Math.max(...planEnds)));
-  re = new Date(re.getFullYear(), re.getMonth() + 1, 0, 23, 59, 59, 999);
+  // 계획의 월 경계 → 앞뒤 SCROLL_PAD개월 추가 (전후 1년)
+  const rawRs = new Date(Math.min(...planStarts));
+  const rawRe = new Date(Math.max(...planEnds));
+  const rs = new Date(rawRs.getFullYear(), rawRs.getMonth() - SCROLL_PAD, 1);
+  const re = new Date(rawRe.getFullYear(), rawRe.getMonth() + 1 + SCROLL_PAD, 0, 23, 59, 59, 999);
 
-  // 최소 MIN_MONTHS 확보: 부족하면 앞뒤로 균등 확장
+  // 최소 MIN_MONTHS 보장
   const countMonths = (a: Date, b: Date) =>
     (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth() + 1;
   while (countMonths(rs, re) < MIN_MONTHS) {
@@ -962,13 +963,19 @@ function GanttTimeline({
   const rangeEnd = re;
   const totalMs = rangeEnd.getTime() - rangeStart.getTime();
 
-  // 월 목록
-  const months: string[] = [];
+  // 월 목록 — 년도 항상 표시
+  const months: { label: string; year: number; month: number }[] = [];
   const cur = new Date(rangeStart);
+  let lastYear = -1;
   while (cur <= rangeEnd) {
-    months.push(
-      `${cur.getFullYear() !== today.getFullYear() ? cur.getFullYear() + '/' : ''}${cur.getMonth() + 1}월`,
-    );
+    const y = cur.getFullYear();
+    const m = cur.getMonth() + 1;
+    months.push({
+      label: lastYear !== y ? `${y}년 ${m}월` : `${m}월`,
+      year: y,
+      month: m,
+    });
+    lastYear = y;
     cur.setMonth(cur.getMonth() + 1);
   }
   const numMonths = months.length;
@@ -1013,17 +1020,22 @@ function GanttTimeline({
           {/* ── 월 헤더 행 ── */}
           <div className="flex border-b border-gray-100">
             <div style={{ width: `${LABEL_W}px`, flexShrink: 0 }} />
-            {months.map((label, i) => (
-              <div
-                key={i}
-                className="flex flex-1 items-center border-l border-gray-100 px-1.5"
-                style={{ minWidth: `${MONTH_MIN_PX}px`, height: '28px' }}
-              >
-                <span className="whitespace-nowrap text-[10px] font-semibold text-gray-500">
-                  {label}
-                </span>
-              </div>
-            ))}
+            {months.map((m, i) => {
+              const isYearStart = m.month === 1 || i === 0;
+              return (
+                <div
+                  key={i}
+                  className={`flex flex-1 items-center px-1.5 ${isYearStart ? 'border-l-2 border-indigo-200 bg-indigo-50/40' : 'border-l border-gray-100'}`}
+                  style={{ minWidth: `${MONTH_MIN_PX}px`, height: '28px' }}
+                >
+                  <span
+                    className={`whitespace-nowrap text-[10px] font-semibold ${isYearStart ? 'text-indigo-500' : 'text-gray-400'}`}
+                  >
+                    {m.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
 
           {/* ── 과목별 행 ── */}
