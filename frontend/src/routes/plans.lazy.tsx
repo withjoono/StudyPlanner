@@ -22,9 +22,6 @@ import {
   BarChart3,
   Trash2,
   Pencil,
-  School,
-  Search,
-  RefreshCw,
   X,
 } from 'lucide-react';
 import {
@@ -38,20 +35,9 @@ import {
   useSearchMaterials,
   useSearchAladinMaterials,
 } from '@/stores/server/planner';
-import { useGetTutorBoardEvents } from '@/stores/server/planner/tutorboard';
-import {
-  useGetLinkedSchool,
-  useGetSchoolEvents,
-  useSearchSchools,
-  useLinkSchool,
-  useUnlinkSchool,
-  useRefreshSchoolSchedule,
-  type NeisSchoolInfo,
-} from '@/stores/server/planner/school-schedule';
 import type { ExtendedLongTermPlan } from '@/stores/server/planner/planner-types';
 import { getSubjectColor, type LongTermPlan } from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
-import { Card, CardContent } from 'geobuk-shared/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'geobuk-shared/ui';
 import { Input } from 'geobuk-shared/ui';
 import { Label } from '@/components/ui/label';
@@ -920,517 +906,6 @@ function EditPlanDialog({ open, onOpenChange, plan, onSubmit, isLoading }: EditP
 }
 
 // ============================================
-// 학교 설정 다이얼로그
-// ============================================
-
-function SchoolSetupDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
-  const [query, setQuery] = useState('');
-  const [debouncedQ, setDebouncedQ] = useState('');
-
-  const { data: linkedSchool } = useGetLinkedSchool();
-  const { data: results, isFetching } = useSearchSchools(debouncedQ);
-  const linkMutation = useLinkSchool();
-  const unlinkMutation = useUnlinkSchool();
-  const refreshMutation = useRefreshSchoolSchedule();
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(query), 400);
-    return () => clearTimeout(t);
-  }, [query]);
-
-  const handleLink = async (school: NeisSchoolInfo) => {
-    await linkMutation.mutateAsync(school);
-    onOpenChange(false);
-    setQuery('');
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
-            <School className="h-4 w-4 text-green-600" />
-            학교 일정 설정
-          </DialogTitle>
-        </DialogHeader>
-
-        {linkedSchool ? (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-              <p className="text-xs font-medium text-green-600">{linkedSchool.atptName}</p>
-              <p className="mt-0.5 text-base font-bold text-green-900">{linkedSchool.schulName}</p>
-              <p className="mt-0.5 text-xs text-green-600">{linkedSchool.schulKind}</p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => refreshMutation.mutate(new Date().getFullYear())}
-                disabled={refreshMutation.isPending}
-              >
-                {refreshMutation.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
-                일정 새로고침
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5 text-red-500 hover:text-red-600"
-                onClick={() => unlinkMutation.mutate()}
-                disabled={unlinkMutation.isPending}
-              >
-                <X className="h-3.5 w-3.5" />
-                연결 해제
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-gray-500">학교명을 입력해 NEIS에서 검색하세요.</p>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
-                placeholder="예: 강남고등학교"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-
-            <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-100">
-              {isFetching ? (
-                <div className="flex items-center justify-center py-6 text-sm text-gray-400">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  검색 중...
-                </div>
-              ) : results && results.length > 0 ? (
-                results.map((s) => (
-                  <button
-                    key={`${s.atptCode}-${s.schulCode}`}
-                    type="button"
-                    onClick={() => handleLink(s)}
-                    disabled={linkMutation.isPending}
-                    className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-green-50 disabled:opacity-60"
-                  >
-                    <School className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-800">{s.schulName}</p>
-                      <p className="mt-0.5 text-[11px] text-gray-500">
-                        {s.atptName} · {s.schulKind}
-                        {s.address && ` · ${s.address}`}
-                      </p>
-                    </div>
-                  </button>
-                ))
-              ) : debouncedQ.length >= 2 ? (
-                <p className="py-4 text-center text-sm text-gray-400">검색 결과가 없습니다</p>
-              ) : (
-                <p className="py-4 text-center text-sm text-gray-400">두 글자 이상 입력하세요</p>
-              )}
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ============================================
-// 월간 캘린더 컴포넌트
-// ============================================
-
-function MonthlyCalendar({ plans }: { plans: LongTermPlan[] }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [schoolSetupOpen, setSchoolSetupOpen] = useState(false);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // 튜터보드 일정 가져오기
-  const { data: tbEvents } = useGetTutorBoardEvents();
-
-  // 학교 일정 가져오기
-  const { data: linkedSchool } = useGetLinkedSchool();
-  const { data: schoolEvents } = useGetSchoolEvents(
-    currentDate.getFullYear(),
-    currentDate.getMonth() + 1,
-  );
-
-  // 날짜별 튜터보드 이벤트 필터링
-  const getTbEventsForDate = (date: Date) => {
-    if (!tbEvents) return [];
-    const dateStr = date.toISOString().split('T')[0];
-    const assignments = tbEvents.assignments.filter((a) => a.date && a.date.startsWith(dateStr));
-    const tests = tbEvents.tests.filter((t) => t.date && t.date.startsWith(dateStr));
-    return [...assignments, ...tests];
-  };
-
-  // 날짜별 학교 행사 필터링
-  const getSchoolEventsForDate = (date: Date) => {
-    if (!schoolEvents?.length) return [];
-    const dateStr = date.toISOString().split('T')[0];
-    return schoolEvents.filter((e) => e.date === dateStr);
-  };
-
-  const DAYS_KR = ['일', '월', '화', '수', '목', '금', '토'];
-
-  const navigate = (direction: 'prev' | 'next') => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
-    setCurrentDate(newDate);
-  };
-
-  const { weeks } = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const weeks: Date[][] = [];
-    let week: Date[] = [];
-
-    const startDay = firstDay.getDay();
-    for (let i = 0; i < startDay; i++) {
-      week.push(new Date(year, month, 1 - startDay + i));
-    }
-
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      week.push(new Date(year, month, day));
-      if (week.length === 7) {
-        weeks.push(week);
-        week = [];
-      }
-    }
-
-    if (week.length > 0) {
-      const remaining = 7 - week.length;
-      for (let i = 1; i <= remaining; i++) {
-        week.push(new Date(year, month + 1, i));
-      }
-      weeks.push(week);
-    }
-
-    return { weeks };
-  }, [currentDate]);
-
-  // Gantt 바: 이번 달 캘린더 그리드에 겹치는 장기계획 바 계산
-  const ganttBars = useMemo(() => {
-    if (!weeks.length) return [];
-    const firstCellDate = new Date(weeks[0][0]);
-    firstCellDate.setHours(0, 0, 0, 0);
-    const lastCellDate = new Date(weeks[weeks.length - 1][6]);
-    lastCellDate.setHours(23, 59, 59, 999);
-    const totalCells = weeks.length * 7;
-
-    return plans
-      .filter((plan) => {
-        if (!plan.startDate || !plan.endDate) return false;
-        const ps = new Date(plan.startDate);
-        const pe = new Date(plan.endDate);
-        ps.setHours(0, 0, 0, 0);
-        pe.setHours(23, 59, 59, 999);
-        return ps <= lastCellDate && pe >= firstCellDate;
-      })
-      .map((plan) => {
-        const ps = new Date(plan.startDate!);
-        const pe = new Date(plan.endDate!);
-        ps.setHours(0, 0, 0, 0);
-        pe.setHours(0, 0, 0, 0);
-
-        const visibleStart = ps >= firstCellDate ? ps : firstCellDate;
-        const visibleEnd = pe <= lastCellDate ? pe : lastCellDate;
-
-        const startIdx = Math.round(
-          (visibleStart.getTime() - firstCellDate.getTime()) / (1000 * 60 * 60 * 24),
-        );
-        const endIdx = Math.round(
-          (visibleEnd.getTime() - firstCellDate.getTime()) / (1000 * 60 * 60 * 24),
-        );
-
-        const clampedStart = Math.max(0, Math.min(startIdx, totalCells - 1));
-        const clampedEnd = Math.max(clampedStart, Math.min(endIdx, totalCells - 1));
-
-        const progress =
-          plan.totalAmount > 0 ? Math.round((plan.completedAmount / plan.totalAmount) * 100) : 0;
-
-        // 여러 주에 걸치는 바를 주(row) 별로 분할
-        const segments: {
-          row: number;
-          colStart: number;
-          colEnd: number;
-        }[] = [];
-
-        const startRow = Math.floor(clampedStart / 7);
-        const endRow = Math.floor(clampedEnd / 7);
-
-        for (let row = startRow; row <= endRow; row++) {
-          const rowStart = row * 7;
-          const rowEnd = row * 7 + 6;
-          const segColStart = Math.max(clampedStart, rowStart) - rowStart;
-          const segColEnd = Math.min(clampedEnd, rowEnd) - rowStart;
-          segments.push({ row, colStart: segColStart, colEnd: segColEnd });
-        }
-
-        return {
-          plan,
-          segments,
-          progress,
-          color: getSubjectColor(plan.subject || '기타'),
-          startsBeforeGrid: ps < firstCellDate,
-          endsAfterGrid: pe > lastCellDate,
-        };
-      });
-  }, [plans, weeks]);
-
-  return (
-    <Card className="mb-6">
-      <CardContent className="p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <button onClick={() => navigate('prev')} className="rounded-full p-1 hover:bg-gray-100">
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <h3 className="text-lg font-semibold">
-            {currentDate.getFullYear()}년 {currentDate.getMonth() + 1}월
-          </h3>
-          <button onClick={() => navigate('next')} className="rounded-full p-1 hover:bg-gray-100">
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* 학교 설정 + 범례 */}
-        <div className="mb-2 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setSchoolSetupOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs text-gray-600 transition hover:border-green-300 hover:bg-green-50 hover:text-green-700"
-          >
-            <School className="h-3 w-3" />
-            {linkedSchool ? (
-              <span className="font-medium">{linkedSchool.schulName}</span>
-            ) : (
-              <span>학교 설정</span>
-            )}
-          </button>
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            {linkedSchool && (
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-green-500"></span> 학교행사
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-orange-500"></span> 과제
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-red-500"></span> 시험
-            </span>
-          </div>
-        </div>
-        <SchoolSetupDialog open={schoolSetupOpen} onOpenChange={setSchoolSetupOpen} />
-
-        <div className="mb-2 grid grid-cols-7 text-center text-sm">
-          {DAYS_KR.map((day, i) => (
-            <div
-              key={day}
-              className={`py-1 font-medium ${
-                i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-600'
-              }`}
-            >
-              {day}
-            </div>
-          ))}
-        </div>
-
-        {/* 날짜 그리드 + Gantt 바 통합 */}
-        {weeks.map((week, weekIdx) => (
-          <div key={weekIdx} className="mb-1">
-            {/* 날짜 행 */}
-            <div className="grid grid-cols-7 gap-1">
-              {week.map((date, dayIdx) => {
-                const isToday = date.getTime() === today.getTime();
-                const isCurrentMonth = date.getMonth() === currentDate.getMonth();
-
-                return (
-                  <div
-                    key={dayIdx}
-                    className={`relative flex min-h-[36px] flex-col items-center rounded p-1 ${
-                      isToday
-                        ? 'bg-ultrasonic-500 text-white'
-                        : !isCurrentMonth
-                          ? 'bg-gray-50'
-                          : 'bg-white'
-                    }`}
-                  >
-                    <span
-                      className={`text-sm ${
-                        isToday
-                          ? 'font-bold text-white'
-                          : !isCurrentMonth
-                            ? 'text-gray-300'
-                            : dayIdx === 0
-                              ? 'text-red-500'
-                              : dayIdx === 6
-                                ? 'text-blue-500'
-                                : 'text-gray-700'
-                      }`}
-                    >
-                      {date.getDate()}
-                    </span>
-
-                    {/* 학교 행사 */}
-                    {isCurrentMonth &&
-                      getSchoolEventsForDate(date).map((event) => (
-                        <div
-                          key={`neis-${event.id}`}
-                          className={`group relative mt-0.5 w-full cursor-help truncate rounded border px-0.5 py-px text-[10px] font-medium ${
-                            event.isHoliday
-                              ? 'border-red-200 bg-red-50 text-red-600'
-                              : 'border-green-200 bg-green-50 text-green-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1">
-                            <span
-                              className={`inline-block h-1 w-1 rounded-full ${event.isHoliday ? 'bg-red-500' : 'bg-green-500'}`}
-                            />
-                            <span className="truncate">{event.eventName}</span>
-                          </div>
-                          <div className="pointer-events-none absolute left-0 top-full z-10 hidden w-max max-w-[180px] rounded-lg border bg-white p-2 text-gray-800 shadow-lg group-hover:block">
-                            <p className="text-xs font-bold">{event.eventName}</p>
-                            <p className="text-[10px] text-gray-400">{event.date}</p>
-                          </div>
-                        </div>
-                      ))}
-
-                    {/* 튜터보드 이벤트 (과제/시험) */}
-                    {isCurrentMonth &&
-                      getTbEventsForDate(date).map((event) => (
-                        <div
-                          key={`${event.type}-${event.id}`}
-                          className={`group relative mt-0.5 w-full cursor-help truncate rounded border px-0.5 py-px text-[10px] font-medium ${
-                            event.type === 'test'
-                              ? 'border-red-200 bg-red-50 text-red-700'
-                              : 'border-orange-200 bg-orange-50 text-orange-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1">
-                            <span
-                              className={`inline-block h-1 w-1 rounded-full ${event.type === 'test' ? 'bg-red-500' : 'bg-orange-500'}`}
-                            ></span>
-                            <span className="truncate">{event.title}</span>
-                          </div>
-                          <div className="pointer-events-none absolute left-0 top-full z-10 hidden w-max max-w-[200px] rounded-lg border bg-white p-2 text-gray-800 shadow-lg group-hover:block">
-                            <p className="text-xs font-bold">{event.title}</p>
-                            <p className="text-[10px] text-gray-500">{event.lessonTitle}</p>
-                            <p className="text-[10px] text-gray-400">{event.className}</p>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Gantt 바: 이 주(row)에 해당하는 세그먼트 */}
-            {ganttBars.some((b) => b.segments.some((s) => s.row === weekIdx)) && (
-              <div className="mt-0.5 space-y-0.5">
-                {ganttBars
-                  .filter((b) => b.segments.some((s) => s.row === weekIdx))
-                  .map((bar) => {
-                    const seg = bar.segments.find((s) => s.row === weekIdx)!;
-                    // CSS grid: col-start / col-end (1-indexed)
-                    const gridColumn = `${seg.colStart + 1} / ${seg.colEnd + 2}`;
-                    const isStart = bar.segments[0] === seg && !bar.startsBeforeGrid;
-                    const isEnd =
-                      bar.segments[bar.segments.length - 1] === seg && !bar.endsAfterGrid;
-
-                    return (
-                      <div key={bar.plan.id} className="grid grid-cols-7 gap-1">
-                        <div
-                          className={`group relative flex cursor-default items-center gap-1 overflow-hidden border-y border-r px-1.5 py-[3px] text-[10px] font-medium text-gray-700 transition-all hover:shadow-sm ${
-                            isStart && isEnd
-                              ? 'rounded-md border-l-0'
-                              : isStart
-                                ? 'rounded-l-md border-l-0'
-                                : isEnd
-                                  ? 'rounded-r-md'
-                                  : ''
-                          }`}
-                          style={{
-                            gridColumn,
-                            backgroundColor: `${bar.color}18`,
-                            borderColor: `${bar.color}30`,
-                            borderLeftWidth: isStart ? '3px' : undefined,
-                            borderLeftColor: isStart ? bar.color : undefined,
-                            borderLeftStyle: isStart ? 'solid' : undefined,
-                          }}
-                        >
-                          <span
-                            className="mr-0.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full"
-                            style={{ backgroundColor: bar.color }}
-                          />
-                          <span className="truncate">{bar.plan.title}</span>
-                          {bar.progress > 0 && (
-                            <span
-                              className="ml-auto flex-shrink-0 rounded px-0.5 text-[9px] font-semibold"
-                              style={{ color: bar.color }}
-                            >
-                              {bar.progress}%
-                            </span>
-                          )}
-
-                          {/* 호버 툴팁 */}
-                          <div className="pointer-events-none absolute left-0 top-full z-20 mt-1 hidden w-max max-w-[220px] rounded-lg border bg-white p-2.5 text-gray-800 shadow-xl group-hover:block">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className="inline-block h-2.5 w-2.5 rounded"
-                                style={{ backgroundColor: bar.color }}
-                              />
-                              <p className="text-xs font-bold">{bar.plan.title}</p>
-                            </div>
-                            <div className="mt-1.5 space-y-0.5">
-                              <p className="text-[10px] text-gray-500">
-                                과목:{' '}
-                                <span className="font-medium text-gray-700">
-                                  {bar.plan.subject || '기타'}
-                                </span>
-                              </p>
-                              <p className="text-[10px] text-gray-500">
-                                기간:{' '}
-                                {bar.plan.startDate
-                                  ? new Date(bar.plan.startDate).toLocaleDateString('ko-KR')
-                                  : '-'}{' '}
-                                ~{' '}
-                                {bar.plan.endDate
-                                  ? new Date(bar.plan.endDate).toLocaleDateString('ko-KR')
-                                  : '-'}
-                              </p>
-                              <p className="text-[10px] text-gray-500">
-                                진행: {bar.plan.completedAmount ?? 0} / {bar.plan.totalAmount ?? 0}{' '}
-                                ({bar.progress}%)
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ============================================
 // 간트 타임라인 컴포넌트
 // ============================================
 
@@ -1667,9 +1142,6 @@ function PlannerPlansPage() {
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentTarget, setCommentTarget] = useState<LongTermPlan | null>(null);
 
-  // 목록 보기 상태 (월별 / 과목별 / 타임라인)
-  const [listView, setListView] = useState<'month' | 'subject' | 'timeline'>('timeline');
-
   const handleCreatePlan = async (data: {
     planName: string;
     description: string;
@@ -1767,29 +1239,6 @@ function PlannerPlansPage() {
     return { total: plans.length, completed, inProgress, avgProgress };
   }, [plans]);
 
-  // 월별 그룹핑
-  const plansByMonth = useMemo(() => {
-    if (!plans) return [];
-    const groups: Record<string, ExtendedLongTermPlan[]> = {};
-    plans.forEach((plan) => {
-      const date = plan.startDate ? new Date(plan.startDate) : null;
-      const key = date
-        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-        : '9999-99';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(plan as ExtendedLongTermPlan);
-    });
-    return Object.entries(groups)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, groupPlans]) => ({
-        label:
-          key === '9999-99'
-            ? '기간 미지정'
-            : `${key.split('-')[0]}년 ${parseInt(key.split('-')[1])}월`,
-        plans: groupPlans,
-      }));
-  }, [plans]);
-
   // 과목별 그룹핑
   const plansBySubject = useMemo(() => {
     if (!plans) return [];
@@ -1883,11 +1332,18 @@ function PlannerPlansPage() {
         </div>
       </section>
 
-      {/* ═══════ 메인 콘텐츠 (캘린더 + 목록 통합) ═══════ */}
-      <div className="relative mx-auto -mt-10 max-w-2xl px-4 pb-24">
-        {/* ── 캘린더 (항상 표시) ── */}
-        <MonthlyCalendar plans={plans || []} />
+      {/* ═══════ 타임라인 (full-width) ═══════ */}
+      <div className="relative -mt-10 px-3 pb-4 sm:px-5">
+        {plans && (
+          <GanttTimeline
+            plans={plans}
+            onPlanClick={(plan) => guard(() => setEditTarget(plan as ExtendedLongTermPlan))}
+          />
+        )}
+      </div>
 
+      {/* ═══════ 과목별 계획 목록 ═══════ */}
+      <div className="mx-auto max-w-2xl px-4 pb-24">
         {/* ── 과목별 성취율 그래프 ── */}
         {plans && plans.length > 0 && (
           <div className="mb-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -1935,222 +1391,177 @@ function PlannerPlansPage() {
           </div>
         )}
 
-        {/* ── 계획 목록 헤더 + 보기 전환 ── */}
+        {/* ── 과목별 계획 목록 헤더 ── */}
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-700">계획 목록</h3>
-          <div className="flex overflow-hidden rounded-lg border border-gray-200 text-xs">
-            <button
-              onClick={() => setListView('timeline')}
-              className={`px-3 py-1.5 font-medium transition-colors ${
-                listView === 'timeline'
-                  ? 'bg-indigo-500 text-white'
-                  : 'bg-white text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              타임라인
-            </button>
-            <button
-              onClick={() => setListView('month')}
-              className={`border-l border-gray-200 px-3 py-1.5 font-medium transition-colors ${
-                listView === 'month'
-                  ? 'bg-indigo-500 text-white'
-                  : 'bg-white text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              월별
-            </button>
-            <button
-              onClick={() => setListView('subject')}
-              className={`border-l border-gray-200 px-3 py-1.5 font-medium transition-colors ${
-                listView === 'subject'
-                  ? 'bg-indigo-500 text-white'
-                  : 'bg-white text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              과목별
-            </button>
-          </div>
         </div>
 
-        {/* ── 타임라인 뷰 ── */}
-        {listView === 'timeline' && plans && (
-          <GanttTimeline
-            plans={plans}
-            onPlanClick={(plan) => guard(() => setEditTarget(plan as ExtendedLongTermPlan))}
-          />
-        )}
-
-        {/* ── 그룹별 계획 목록 ── */}
-        {listView !== 'timeline' && plans && plans.length > 0 ? (
+        {/* ── 과목별 그룹 ── */}
+        {plans && plans.length > 0 ? (
           <div className="space-y-5">
-            {(listView === 'month' ? plansByMonth : plansBySubject).map(
-              ({ label, plans: groupPlans }) => {
-                const groupCompleted = groupPlans.reduce((s, p) => s + (p.completedAmount || 0), 0);
-                const groupTotal = groupPlans.reduce((s, p) => s + (p.totalAmount || 0), 0);
-                const groupPct =
-                  groupTotal > 0 ? Math.round((groupCompleted / groupTotal) * 100) : 0;
+            {plansBySubject.map(({ label, plans: groupPlans }) => {
+              const groupCompleted = groupPlans.reduce((s, p) => s + (p.completedAmount || 0), 0);
+              const groupTotal = groupPlans.reduce((s, p) => s + (p.totalAmount || 0), 0);
+              const groupPct = groupTotal > 0 ? Math.round((groupCompleted / groupTotal) * 100) : 0;
 
-                return (
-                  <div key={label}>
-                    {/* 그룹 헤더 */}
-                    <div className="mb-2.5 flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-600">{label}</span>
-                      <div className="h-1 flex-1 overflow-hidden rounded-full bg-gray-100">
-                        <div
-                          className="h-full rounded-full bg-indigo-400 transition-all duration-500"
-                          style={{ width: `${groupPct}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-semibold text-indigo-600">{groupPct}%</span>
+              return (
+                <div key={label}>
+                  {/* 그룹 헤더 */}
+                  <div className="mb-2.5 flex items-center gap-2">
+                    <span className="text-xs font-bold text-gray-600">{label}</span>
+                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full bg-indigo-400 transition-all duration-500"
+                        style={{ width: `${groupPct}%` }}
+                      />
                     </div>
+                    <span className="text-[10px] font-semibold text-indigo-600">{groupPct}%</span>
+                  </div>
 
-                    {/* 플랜 카드들 */}
-                    <div className="space-y-2.5">
-                      {groupPlans.map((plan) => {
-                        const color = getSubjectColor(plan.subject || '기타');
-                        const progress =
-                          plan.totalAmount && plan.totalAmount > 0
-                            ? Math.round((plan.completedAmount / plan.totalAmount) * 100)
-                            : 0;
-                        const isCompleted = progress >= 100;
-                        const startDate = plan.startDate
-                          ? new Date(plan.startDate).toLocaleDateString('ko-KR')
-                          : '-';
-                        const endDate = plan.endDate
-                          ? new Date(plan.endDate).toLocaleDateString('ko-KR')
-                          : '-';
+                  {/* 플랜 카드들 */}
+                  <div className="space-y-2.5">
+                    {groupPlans.map((plan) => {
+                      const color = getSubjectColor(plan.subject || '기타');
+                      const progress =
+                        plan.totalAmount && plan.totalAmount > 0
+                          ? Math.round((plan.completedAmount / plan.totalAmount) * 100)
+                          : 0;
+                      const isCompleted = progress >= 100;
+                      const startDate = plan.startDate
+                        ? new Date(plan.startDate).toLocaleDateString('ko-KR')
+                        : '-';
+                      const endDate = plan.endDate
+                        ? new Date(plan.endDate).toLocaleDateString('ko-KR')
+                        : '-';
 
-                        return (
-                          <div
-                            key={plan.id}
-                            className="group rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
-                            style={{
-                              borderLeftWidth: '4px',
-                              borderLeftColor: isCompleted ? '#22c55e' : color,
-                            }}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div
-                                className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${
-                                  plan.type === 'lecture' ? 'bg-purple-50' : 'bg-blue-50'
-                                }`}
-                              >
-                                {plan.type === 'lecture' ? (
-                                  <MonitorPlay className="h-5 w-5 text-purple-500" />
-                                ) : (
-                                  <BookOpen className="h-5 w-5 text-blue-500" />
+                      return (
+                        <div
+                          key={plan.id}
+                          className="group rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                          style={{
+                            borderLeftWidth: '4px',
+                            borderLeftColor: isCompleted ? '#22c55e' : color,
+                          }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${
+                                plan.type === 'lecture' ? 'bg-purple-50' : 'bg-blue-50'
+                              }`}
+                            >
+                              {plan.type === 'lecture' ? (
+                                <MonitorPlay className="h-5 w-5 text-purple-500" />
+                              ) : (
+                                <BookOpen className="h-5 w-5 text-blue-500" />
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span
+                                  className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
+                                  style={{ backgroundColor: color }}
+                                >
+                                  {plan.subject || '미지정'}
+                                </span>
+                                <span className="text-[10px] text-gray-400">
+                                  {plan.type === 'lecture' ? '강의' : '교재'}
+                                </span>
+                                {plan.isDistributed && (
+                                  <span className="rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-medium text-green-600">
+                                    완료
+                                  </span>
                                 )}
                               </div>
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span
-                                    className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white"
-                                    style={{ backgroundColor: color }}
-                                  >
-                                    {plan.subject || '미지정'}
-                                  </span>
-                                  <span className="text-[10px] text-gray-400">
-                                    {plan.type === 'lecture' ? '강의' : '교재'}
-                                  </span>
-                                  {plan.isDistributed && (
-                                    <span className="rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-medium text-green-600">
-                                      완료
+                              <p className="mt-1 truncate text-sm font-medium text-gray-800">
+                                {plan.title}
+                              </p>
+                              <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
+                                <span>
+                                  {startDate} ~ {endDate}
+                                </span>
+                                {plan.weeklyTarget && (
+                                  <>
+                                    <span>·</span>
+                                    <span>
+                                      주 {plan.weeklyTarget}
+                                      {plan.type === 'lecture' ? '강' : 'p'}
                                     </span>
-                                  )}
-                                </div>
-                                <p className="mt-1 truncate text-sm font-medium text-gray-800">
-                                  {plan.title}
-                                </p>
-                                <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
-                                  <span>
-                                    {startDate} ~ {endDate}
-                                  </span>
-                                  {plan.weeklyTarget && (
-                                    <>
-                                      <span>·</span>
-                                      <span>
-                                        주 {plan.weeklyTarget}
-                                        {plan.type === 'lecture' ? '강' : 'p'}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                                <div className="mt-2">
-                                  <div className="mb-1 flex items-center justify-between text-[10px]">
-                                    <span className="text-gray-400">
-                                      {plan.completedAmount ?? 0} / {plan.totalAmount ?? 0}
-                                    </span>
-                                    <span className="font-bold" style={{ color }}>
-                                      {progress}%
-                                    </span>
-                                  </div>
-                                  <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
-                                    <div
-                                      className="h-full rounded-full transition-all duration-500"
-                                      style={{ width: `${progress}%`, backgroundColor: color }}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-shrink-0 flex-col items-center gap-1">
-                                <button
-                                  onClick={() => {
-                                    setCommentTarget(plan);
-                                    setCommentOpen(true);
-                                  }}
-                                  className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-indigo-50 hover:text-indigo-500"
-                                >
-                                  <MessageSquare className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => guard(() => setEditTarget(plan))}
-                                  className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-amber-50 hover:text-amber-500"
-                                  title="수정"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </button>
-                                {!plan.isDistributed && (
-                                  <button
-                                    onClick={() => guard(() => handleDistribute(plan))}
-                                    className="rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-100"
-                                  >
-                                    분배
-                                  </button>
+                                  </>
                                 )}
-                                <button
-                                  onClick={() => guard(() => handleDelete(plan.id))}
-                                  className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
+                              </div>
+                              <div className="mt-2">
+                                <div className="mb-1 flex items-center justify-between text-[10px]">
+                                  <span className="text-gray-400">
+                                    {plan.completedAmount ?? 0} / {plan.totalAmount ?? 0}
+                                  </span>
+                                  <span className="font-bold" style={{ color }}>
+                                    {progress}%
+                                  </span>
+                                </div>
+                                <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+                                  <div
+                                    className="h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${progress}%`, backgroundColor: color }}
+                                  />
+                                </div>
                               </div>
                             </div>
+
+                            <div className="flex flex-shrink-0 flex-col items-center gap-1">
+                              <button
+                                onClick={() => {
+                                  setCommentTarget(plan);
+                                  setCommentOpen(true);
+                                }}
+                                className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-indigo-50 hover:text-indigo-500"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => guard(() => setEditTarget(plan))}
+                                className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-amber-50 hover:text-amber-500"
+                                title="수정"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              {!plan.isDistributed && (
+                                <button
+                                  onClick={() => guard(() => handleDistribute(plan))}
+                                  className="rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-100"
+                                >
+                                  분배
+                                </button>
+                              )}
+                              <button
+                                onClick={() => guard(() => handleDelete(plan.id))}
+                                className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              },
-            )}
+                </div>
+              );
+            })}
           </div>
         ) : (
-          listView !== 'timeline' && (
-            <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
-              <BookOpen className="mb-3 h-12 w-12 text-gray-200" />
-              <p className="mb-1 text-sm font-medium text-gray-400">등록된 계획이 없습니다</p>
-              <p className="mb-4 text-xs text-gray-300">+ 버튼으로 계획을 추가하세요</p>
-              <button
-                onClick={() => guard(() => setIsPlanSetupOpen(true))}
-                className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                계획 추가하기
-              </button>
-            </div>
-          )
+          <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
+            <BookOpen className="mb-3 h-12 w-12 text-gray-200" />
+            <p className="mb-1 text-sm font-medium text-gray-400">등록된 계획이 없습니다</p>
+            <p className="mb-4 text-xs text-gray-300">+ 버튼으로 계획을 추가하세요</p>
+            <button
+              onClick={() => guard(() => setIsPlanSetupOpen(true))}
+              className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              계획 추가하기
+            </button>
+          </div>
         )}
       </div>
 
