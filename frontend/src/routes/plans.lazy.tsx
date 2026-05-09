@@ -1431,6 +1431,215 @@ function MonthlyCalendar({ plans }: { plans: LongTermPlan[] }) {
 }
 
 // ============================================
+// 간트 타임라인 컴포넌트
+// ============================================
+
+function GanttTimeline({
+  plans,
+  onPlanClick,
+}: {
+  plans: ExtendedLongTermPlan[];
+  onPlanClick: (plan: ExtendedLongTermPlan) => void;
+}) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const datePlans = plans.filter((p) => p.startDate && p.endDate);
+  const noDateCount = plans.length - datePlans.length;
+
+  if (datePlans.length === 0) {
+    return (
+      <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white px-4 py-10 text-center shadow-sm">
+        <Calendar className="mb-3 h-10 w-10 text-gray-200" />
+        <p className="text-sm font-medium text-gray-400">타임라인에 표시할 계획이 없어요</p>
+        <p className="mt-1 text-xs text-gray-300">
+          시작일과 종료일을 설정한 계획이 여기에 표시됩니다
+        </p>
+      </div>
+    );
+  }
+
+  // 전체 날짜 범위 (월 단위 경계로 확장)
+  const starts = datePlans.map((p) => new Date(p.startDate!).getTime());
+  const ends = datePlans.map((p) => new Date(p.endDate!).getTime());
+  const rawStart = new Date(Math.min(...starts));
+  const rawEnd = new Date(Math.max(...ends));
+  const rangeStart = new Date(rawStart.getFullYear(), rawStart.getMonth(), 1);
+  const rangeEnd = new Date(rawEnd.getFullYear(), rawEnd.getMonth() + 1, 0, 23, 59, 59, 999);
+  const totalMs = rangeEnd.getTime() - rangeStart.getTime();
+
+  // 오늘 위치 (%)
+  const todayPct = ((today.getTime() - rangeStart.getTime()) / totalMs) * 100;
+  const showToday = todayPct >= 0 && todayPct <= 100;
+
+  // 월 헤더
+  const months: { label: string; left: number }[] = [];
+  const cur = new Date(rangeStart);
+  while (cur <= rangeEnd) {
+    months.push({
+      label: `${cur.getFullYear() !== today.getFullYear() ? cur.getFullYear() + '/' : ''}${cur.getMonth() + 1}월`,
+      left: ((cur.getTime() - rangeStart.getTime()) / totalMs) * 100,
+    });
+    cur.setMonth(cur.getMonth() + 1);
+  }
+
+  // 과목별 그룹
+  const subjectMap: Record<string, ExtendedLongTermPlan[]> = {};
+  datePlans.forEach((p) => {
+    const key = p.subject || '기타';
+    if (!subjectMap[key]) subjectMap[key] = [];
+    subjectMap[key].push(p);
+  });
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      {/* 헤더 */}
+      <div className="flex items-center gap-2 border-b border-gray-50 px-4 py-3">
+        <BarChart3 className="h-4 w-4 text-indigo-500" />
+        <span className="text-sm font-bold text-gray-700">타임라인</span>
+        {showToday && (
+          <span className="ml-auto flex items-center gap-1 text-[10px] text-red-400">
+            <span className="inline-block h-2 w-px bg-red-400" />
+            오늘
+          </span>
+        )}
+      </div>
+
+      {/* 스크롤 영역 */}
+      <div className="overflow-x-auto">
+        <div style={{ minWidth: '560px' }}>
+          {/* 월 헤더 행 */}
+          <div className="relative ml-24 mr-3 h-7 border-b border-gray-100">
+            {months.map((m, i) => (
+              <div
+                key={i}
+                className="absolute flex h-full items-center border-l border-gray-100 pl-1.5"
+                style={{ left: `${m.left}%` }}
+              >
+                <span className="text-[9px] font-semibold text-gray-400">{m.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* 과목별 행 */}
+          <div className="py-1.5">
+            {Object.entries(subjectMap).map(([subject, subjectPlans]) => {
+              const color = getSubjectColor(subject);
+              return (
+                <div
+                  key={subject}
+                  className="group flex min-h-[44px] items-center border-b border-gray-50 last:border-0"
+                >
+                  {/* 과목 라벨 */}
+                  <div
+                    className="w-24 shrink-0 px-3 text-[11px] font-bold leading-tight"
+                    style={{ color }}
+                  >
+                    {subject}
+                  </div>
+
+                  {/* 타임라인 영역 */}
+                  <div className="relative mr-3 flex-1 py-1.5">
+                    {/* 월 구분선 */}
+                    {months.map((m, i) => (
+                      <div
+                        key={i}
+                        className="absolute inset-y-0 w-px bg-gray-100"
+                        style={{ left: `${m.left}%` }}
+                      />
+                    ))}
+
+                    {/* 오늘 마커 */}
+                    {showToday && (
+                      <div
+                        className="absolute inset-y-0 z-10 w-px bg-red-400/70"
+                        style={{ left: `${todayPct}%` }}
+                      >
+                        <div className="absolute -top-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-400" />
+                      </div>
+                    )}
+
+                    {/* 계획 막대들 */}
+                    {subjectPlans.map((plan, idx) => {
+                      const ps = new Date(plan.startDate!).getTime();
+                      const pe = new Date(plan.endDate!).getTime();
+                      const left = ((ps - rangeStart.getTime()) / totalMs) * 100;
+                      const width = Math.max(0.8, ((pe - ps) / totalMs) * 100);
+                      const progress =
+                        plan.totalAmount > 0
+                          ? Math.min(
+                              100,
+                              Math.round((plan.completedAmount / plan.totalAmount) * 100),
+                            )
+                          : 0;
+                      const isCompleted = progress >= 100;
+                      const barTop = idx * 26;
+
+                      return (
+                        <div
+                          key={plan.id}
+                          className="absolute cursor-pointer"
+                          style={{
+                            left: `${left}%`,
+                            width: `${width}%`,
+                            top: `${barTop}px`,
+                            height: '20px',
+                          }}
+                          title={`${plan.title} · ${plan.subject} · ${progress}%\n${new Date(plan.startDate!).toLocaleDateString('ko-KR')} ~ ${new Date(plan.endDate!).toLocaleDateString('ko-KR')}`}
+                          onClick={() => onPlanClick(plan)}
+                        >
+                          {/* 배경 트랙 */}
+                          <div
+                            className="absolute inset-0 rounded-full opacity-20"
+                            style={{ backgroundColor: color }}
+                          />
+                          {/* 진행률 채움 */}
+                          <div
+                            className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+                            style={{
+                              width: `${progress}%`,
+                              backgroundColor: color,
+                              opacity: isCompleted ? 1 : 0.75,
+                            }}
+                          />
+                          {/* 텍스트 (폭이 충분할 때만) */}
+                          {width > 8 && (
+                            <div className="absolute inset-0 flex items-center overflow-hidden px-2">
+                              <span className="truncate text-[9px] font-bold leading-none text-white drop-shadow">
+                                {plan.title}
+                              </span>
+                              <span className="ml-auto shrink-0 text-[9px] font-bold text-white/90 drop-shadow">
+                                {progress}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* 행 높이를 계획 수에 맞게 */}
+                    <div style={{ height: `${subjectPlans.length * 26}px` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 날짜 없는 계획 안내 */}
+      {noDateCount > 0 && (
+        <div className="border-t border-gray-50 px-4 py-2">
+          <p className="text-[10px] text-gray-400">
+            기간 미설정 계획 {noDateCount}개는 타임라인에 표시되지 않습니다
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================
 // 메인 페이지 컴포넌트
 // ============================================
 
@@ -1453,8 +1662,8 @@ function PlannerPlansPage() {
   const [commentOpen, setCommentOpen] = useState(false);
   const [commentTarget, setCommentTarget] = useState<LongTermPlan | null>(null);
 
-  // 목록 보기 상태 (월별 / 과목별)
-  const [listView, setListView] = useState<'month' | 'subject'>('month');
+  // 목록 보기 상태 (월별 / 과목별 / 타임라인)
+  const [listView, setListView] = useState<'month' | 'subject' | 'timeline'>('timeline');
 
   const handleCreatePlan = async (data: {
     planName: string;
@@ -1726,8 +1935,18 @@ function PlannerPlansPage() {
           <h3 className="text-sm font-bold text-gray-700">계획 목록</h3>
           <div className="flex overflow-hidden rounded-lg border border-gray-200 text-xs">
             <button
-              onClick={() => setListView('month')}
+              onClick={() => setListView('timeline')}
               className={`px-3 py-1.5 font-medium transition-colors ${
+                listView === 'timeline'
+                  ? 'bg-indigo-500 text-white'
+                  : 'bg-white text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              타임라인
+            </button>
+            <button
+              onClick={() => setListView('month')}
+              className={`border-l border-gray-200 px-3 py-1.5 font-medium transition-colors ${
                 listView === 'month'
                   ? 'bg-indigo-500 text-white'
                   : 'bg-white text-gray-500 hover:bg-gray-50'
@@ -1748,8 +1967,16 @@ function PlannerPlansPage() {
           </div>
         </div>
 
+        {/* ── 타임라인 뷰 ── */}
+        {listView === 'timeline' && plans && (
+          <GanttTimeline
+            plans={plans}
+            onPlanClick={(plan) => guard(() => setEditTarget(plan as ExtendedLongTermPlan))}
+          />
+        )}
+
         {/* ── 그룹별 계획 목록 ── */}
-        {plans && plans.length > 0 ? (
+        {listView !== 'timeline' && plans && plans.length > 0 ? (
           <div className="space-y-5">
             {(listView === 'month' ? plansByMonth : plansBySubject).map(
               ({ label, plans: groupPlans }) => {
@@ -1905,18 +2132,20 @@ function PlannerPlansPage() {
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
-            <BookOpen className="mb-3 h-12 w-12 text-gray-200" />
-            <p className="mb-1 text-sm font-medium text-gray-400">등록된 계획이 없습니다</p>
-            <p className="mb-4 text-xs text-gray-300">+ 버튼으로 계획을 추가하세요</p>
-            <button
-              onClick={() => guard(() => setIsPlanSetupOpen(true))}
-              className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              계획 추가하기
-            </button>
-          </div>
+          listView !== 'timeline' && (
+            <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
+              <BookOpen className="mb-3 h-12 w-12 text-gray-200" />
+              <p className="mb-1 text-sm font-medium text-gray-400">등록된 계획이 없습니다</p>
+              <p className="mb-4 text-xs text-gray-300">+ 버튼으로 계획을 추가하세요</p>
+              <button
+                onClick={() => guard(() => setIsPlanSetupOpen(true))}
+                className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                계획 추가하기
+              </button>
+            </div>
+          )
         )}
       </div>
 
