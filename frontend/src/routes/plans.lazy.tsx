@@ -9,7 +9,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
   ChevronLeft,
-  ChevronRight,
   Plus,
   Loader2,
   BookOpen,
@@ -22,7 +21,6 @@ import {
   BarChart3,
   Trash2,
   Pencil,
-  X,
 } from 'lucide-react';
 import {
   useGetPlans,
