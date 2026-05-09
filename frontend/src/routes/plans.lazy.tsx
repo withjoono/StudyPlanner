@@ -908,7 +908,8 @@ function EditPlanDialog({ open, onOpenChange, plan, onSubmit, isLoading }: EditP
 // ============================================
 
 const LABEL_W = 80; // 과목 라벨 고정 너비(px)
-const MONTH_W = 140; // 월 컬럼 고정 너비(px) — 균등 분할
+const MIN_MONTHS = 12; // 최소 표시 월 수 (화면을 꽉 채움)
+const MONTH_MIN_PX = 72; // 월 컬럼 최소 너비 (스크롤 시 기준)
 
 function GanttTimeline({
   plans,
@@ -935,36 +936,46 @@ function GanttTimeline({
     );
   }
 
-  // 전체 날짜 범위 (월 단위 경계로 확장)
-  const starts = datePlans.map((p) => new Date(p.startDate!).getTime());
-  const ends = datePlans.map((p) => new Date(p.endDate!).getTime());
-  const rawStart = new Date(Math.min(...starts));
-  const rawEnd = new Date(Math.max(...ends));
-  const rangeStart = new Date(rawStart.getFullYear(), rawStart.getMonth(), 1);
-  const rangeEnd = new Date(rawEnd.getFullYear(), rawEnd.getMonth() + 1, 0, 23, 59, 59, 999);
-  const totalMs = rangeEnd.getTime() - rangeStart.getTime();
+  // ── 날짜 범위: 계획 범위 + 최소 MIN_MONTHS 보장, 오늘 포함 ──
+  const planStarts = datePlans.length
+    ? datePlans.map((p) => new Date(p.startDate!).getTime())
+    : [today.getTime()];
+  const planEnds = datePlans.length
+    ? datePlans.map((p) => new Date(p.endDate!).getTime())
+    : [today.getTime()];
 
-  // 월 목록 생성
-  const months: { label: string; monthStart: Date }[] = [];
-  const cur = new Date(rangeStart);
-  while (cur <= rangeEnd) {
-    months.push({
-      label: `${cur.getFullYear() !== today.getFullYear() ? cur.getFullYear() + '/' : ''}${cur.getMonth() + 1}월`,
-      monthStart: new Date(cur),
-    });
-    cur.setMonth(cur.getMonth() + 1);
+  // 월 경계로 확장
+  let rs = new Date(new Date(Math.min(...planStarts)));
+  rs = new Date(rs.getFullYear(), rs.getMonth(), 1);
+  let re = new Date(new Date(Math.max(...planEnds)));
+  re = new Date(re.getFullYear(), re.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  // 최소 MIN_MONTHS 확보: 부족하면 앞뒤로 균등 확장
+  const countMonths = (a: Date, b: Date) =>
+    (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth() + 1;
+  while (countMonths(rs, re) < MIN_MONTHS) {
+    rs.setMonth(rs.getMonth() - 1);
+    if (countMonths(rs, re) < MIN_MONTHS) re.setMonth(re.getMonth() + 1);
   }
 
+  const rangeStart = rs;
+  const rangeEnd = re;
+  const totalMs = rangeEnd.getTime() - rangeStart.getTime();
+
+  // 월 목록
+  const months: string[] = [];
+  const cur = new Date(rangeStart);
+  while (cur <= rangeEnd) {
+    months.push(
+      `${cur.getFullYear() !== today.getFullYear() ? cur.getFullYear() + '/' : ''}${cur.getMonth() + 1}월`,
+    );
+    cur.setMonth(cur.getMonth() + 1);
+  }
   const numMonths = months.length;
-  const timelineW = numMonths * MONTH_W; // 타임라인 영역 총 픽셀 너비
-  const totalW = LABEL_W + timelineW; // 전체 row 너비
 
-  // 날짜 → px 변환 (타임라인 내 절대 픽셀)
-  const dateToPx = (d: Date) => ((d.getTime() - rangeStart.getTime()) / totalMs) * timelineW;
-
-  // 오늘 마커
-  const todayPx = dateToPx(today);
-  const showToday = todayPx >= 0 && todayPx <= timelineW;
+  // 오늘 위치 (%)
+  const todayPct = ((today.getTime() - rangeStart.getTime()) / totalMs) * 100;
+  const showToday = todayPct >= 0 && todayPct <= 100;
 
   // 과목별 그룹
   const subjectMap: Record<string, ExtendedLongTermPlan[]> = {};
@@ -973,6 +984,9 @@ function GanttTimeline({
     if (!subjectMap[key]) subjectMap[key] = [];
     subjectMap[key].push(p);
   });
+
+  // 날짜 → % (전체 범위 기준)
+  const datePct = (d: Date) => ((d.getTime() - rangeStart.getTime()) / totalMs) * 100;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -988,21 +1002,26 @@ function GanttTimeline({
         )}
       </div>
 
-      {/* 가로 스크롤 영역 */}
+      {/*
+        가로 스크롤 래퍼.
+        내부 콘텐츠: min-width 100% (화면 꽉 채움) + 월이 많으면 자동으로 더 넓어져 스크롤.
+        각 월 컬럼은 flex-1(동일 비율) + min-width MONTH_MIN_PX.
+      */}
       <div className="overflow-x-auto">
-        <div style={{ width: `${totalW}px` }}>
+        {/* min-width: 100% → 항상 컨테이너 꽉 참 */}
+        <div style={{ minWidth: '100%', width: `${numMonths * MONTH_MIN_PX + LABEL_W}px` }}>
           {/* ── 월 헤더 행 ── */}
           <div className="flex border-b border-gray-100">
-            {/* 라벨 영역 빈 칸 */}
             <div style={{ width: `${LABEL_W}px`, flexShrink: 0 }} />
-            {/* 월 컬럼 */}
-            {months.map((m, i) => (
+            {months.map((label, i) => (
               <div
                 key={i}
-                className="flex items-center border-l border-gray-100 px-2"
-                style={{ width: `${MONTH_W}px`, flexShrink: 0, height: '28px' }}
+                className="flex flex-1 items-center border-l border-gray-100 px-1.5"
+                style={{ minWidth: `${MONTH_MIN_PX}px`, height: '28px' }}
               >
-                <span className="text-[10px] font-semibold text-gray-500">{m.label}</span>
+                <span className="whitespace-nowrap text-[10px] font-semibold text-gray-500">
+                  {label}
+                </span>
               </div>
             ))}
           </div>
@@ -1025,14 +1044,14 @@ function GanttTimeline({
                   {subject}
                 </div>
 
-                {/* 타임라인 바 영역 */}
-                <div className="relative" style={{ width: `${timelineW}px` }}>
-                  {/* 월 구분선 */}
+                {/* 타임라인 바 영역: flex-1로 나머지 공간 전부 차지 */}
+                <div className="relative flex-1">
+                  {/* 월 구분선: 균등 % 간격 */}
                   {months.map((_, i) => (
                     <div
                       key={i}
                       className="absolute inset-y-0 w-px bg-gray-100"
-                      style={{ left: `${i * MONTH_W}px` }}
+                      style={{ left: `${(i / numMonths) * 100}%` }}
                     />
                   ))}
 
@@ -1040,7 +1059,7 @@ function GanttTimeline({
                   {showToday && (
                     <div
                       className="pointer-events-none absolute inset-y-0 z-10 w-px bg-red-400/70"
-                      style={{ left: `${todayPx}px` }}
+                      style={{ left: `${todayPct}%` }}
                     >
                       <div className="absolute -top-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-400" />
                     </div>
@@ -1050,23 +1069,22 @@ function GanttTimeline({
                   {subjectPlans.map((plan, idx) => {
                     const ps = new Date(plan.startDate!);
                     const pe = new Date(plan.endDate!);
-                    const barLeft = dateToPx(ps);
-                    const barW = Math.max(4, dateToPx(pe) - barLeft);
+                    const barLeft = datePct(ps);
+                    const barW = Math.max(0.5, datePct(pe) - barLeft);
                     const progress =
                       plan.totalAmount > 0
                         ? Math.min(100, Math.round((plan.completedAmount / plan.totalAmount) * 100))
                         : 0;
                     const isCompleted = progress >= 100;
                     const barTop = 4 + idx * 28;
-                    const showText = barW > 40;
 
                     return (
                       <div
                         key={plan.id}
                         className="group/bar absolute cursor-pointer"
                         style={{
-                          left: `${barLeft}px`,
-                          width: `${barW}px`,
+                          left: `${barLeft}%`,
+                          width: `${barW}%`,
                           top: `${barTop}px`,
                           height: '24px',
                           zIndex: 20,
@@ -1074,12 +1092,10 @@ function GanttTimeline({
                         title={`${plan.title} · ${plan.subject} · ${progress}%  클릭하여 수정`}
                         onClick={() => onPlanClick(plan)}
                       >
-                        {/* 배경 트랙 */}
                         <div
                           className="absolute inset-0 rounded-full opacity-20 transition-opacity group-hover/bar:opacity-35"
                           style={{ backgroundColor: color }}
                         />
-                        {/* 진행률 채움 */}
                         <div
                           className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
                           style={{
@@ -1088,12 +1104,10 @@ function GanttTimeline({
                             opacity: isCompleted ? 1 : 0.75,
                           }}
                         />
-                        {/* 호버 시 수정 아이콘 */}
                         <div className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-full pr-1.5 opacity-0 transition-opacity group-hover/bar:opacity-100">
                           <Pencil className="h-2.5 w-2.5 text-white drop-shadow" />
                         </div>
-                        {/* 텍스트 */}
-                        {showText && (
+                        {barW > 6 && (
                           <div className="absolute inset-0 flex items-center overflow-hidden px-2">
                             <span className="truncate text-[9px] font-bold leading-none text-white drop-shadow">
                               {plan.title}
@@ -1113,7 +1127,6 @@ function GanttTimeline({
         </div>
       </div>
 
-      {/* 날짜 없는 계획 안내 */}
       {noDateCount > 0 && (
         <div className="border-t border-gray-50 px-4 py-2">
           <p className="text-[10px] text-gray-400">
