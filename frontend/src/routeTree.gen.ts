@@ -147,7 +147,7 @@ export interface FileRoutesByFullPath {
   '/join/$code': typeof JoinCodeLazyRoute;
   '/mentoring/ai': typeof MentoringAiLazyRoute;
   '/mentoring/human': typeof MentoringHumanLazyRoute;
-  '/products': typeof ProductsIndexRoute;
+  '/products/': typeof ProductsIndexRoute;
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
@@ -213,7 +213,7 @@ export interface FileRouteTypes {
     | '/join/$code'
     | '/mentoring/ai'
     | '/mentoring/human'
-    | '/products';
+    | '/products/';
   fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
@@ -289,6 +289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TimerLazyRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/teacher': {
+      id: '/teacher';
+      path: '/teacher';
+      fullPath: '/teacher';
+      preLoaderRoute: typeof TeacherLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/routine': {
       id: '/routine';
       path: '/routine';
@@ -331,13 +338,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GrowthLazyRouteImport;
       parentRoute: typeof rootRouteImport;
     };
-    '/teacher': {
-      id: '/teacher';
-      path: '/teacher';
-      fullPath: '/teacher';
-      preLoaderRoute: typeof TeacherLazyRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
     '/connections': {
       id: '/connections';
       path: '/connections';
@@ -362,7 +362,7 @@ declare module '@tanstack/react-router' {
     '/products/': {
       id: '/products/';
       path: '/products';
-      fullPath: '/products';
+      fullPath: '/products/';
       preLoaderRoute: typeof ProductsIndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
