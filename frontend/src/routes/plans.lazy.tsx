@@ -1552,7 +1552,7 @@ function GanttTimeline({
                     {/* 오늘 마커 */}
                     {showToday && (
                       <div
-                        className="absolute inset-y-0 z-10 w-px bg-red-400/70"
+                        className="pointer-events-none absolute inset-y-0 z-10 w-px bg-red-400/70"
                         style={{ left: `${todayPct}%` }}
                       >
                         <div className="absolute -top-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-400" />
@@ -1573,24 +1573,25 @@ function GanttTimeline({
                             )
                           : 0;
                       const isCompleted = progress >= 100;
-                      const barTop = idx * 26;
+                      const barTop = idx * 28;
 
                       return (
                         <div
                           key={plan.id}
-                          className="absolute cursor-pointer"
+                          className="group/bar absolute cursor-pointer"
                           style={{
                             left: `${left}%`,
                             width: `${width}%`,
                             top: `${barTop}px`,
-                            height: '20px',
+                            height: '24px',
+                            zIndex: 20,
                           }}
-                          title={`${plan.title} · ${plan.subject} · ${progress}%\n${new Date(plan.startDate!).toLocaleDateString('ko-KR')} ~ ${new Date(plan.endDate!).toLocaleDateString('ko-KR')}`}
+                          title={`${plan.title} · ${plan.subject} · ${progress}%  클릭하여 수정`}
                           onClick={() => onPlanClick(plan)}
                         >
                           {/* 배경 트랙 */}
                           <div
-                            className="absolute inset-0 rounded-full opacity-20"
+                            className="absolute inset-0 rounded-full opacity-20 transition-opacity group-hover/bar:opacity-35"
                             style={{ backgroundColor: color }}
                           />
                           {/* 진행률 채움 */}
@@ -1602,6 +1603,10 @@ function GanttTimeline({
                               opacity: isCompleted ? 1 : 0.75,
                             }}
                           />
+                          {/* 호버 시 수정 아이콘 오버레이 */}
+                          <div className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-full pr-1 opacity-0 transition-opacity group-hover/bar:opacity-100">
+                            <Pencil className="h-2.5 w-2.5 text-white drop-shadow" />
+                          </div>
                           {/* 텍스트 (폭이 충분할 때만) */}
                           {width > 8 && (
                             <div className="absolute inset-0 flex items-center overflow-hidden px-2">
@@ -1618,7 +1623,7 @@ function GanttTimeline({
                     })}
 
                     {/* 행 높이를 계획 수에 맞게 */}
-                    <div style={{ height: `${subjectPlans.length * 26}px` }} />
+                    <div style={{ height: `${subjectPlans.length * 28}px` }} />
                   </div>
                 </div>
               );
