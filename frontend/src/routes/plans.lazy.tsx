@@ -907,6 +907,9 @@ function EditPlanDialog({ open, onOpenChange, plan, onSubmit, isLoading }: EditP
 // 간트 타임라인 컴포넌트
 // ============================================
 
+const LABEL_W = 80; // 과목 라벨 고정 너비(px)
+const MONTH_W = 140; // 월 컬럼 고정 너비(px) — 균등 분할
+
 function GanttTimeline({
   plans,
   onPlanClick,
@@ -941,20 +944,27 @@ function GanttTimeline({
   const rangeEnd = new Date(rawEnd.getFullYear(), rawEnd.getMonth() + 1, 0, 23, 59, 59, 999);
   const totalMs = rangeEnd.getTime() - rangeStart.getTime();
 
-  // 오늘 위치 (%)
-  const todayPct = ((today.getTime() - rangeStart.getTime()) / totalMs) * 100;
-  const showToday = todayPct >= 0 && todayPct <= 100;
-
-  // 월 헤더
-  const months: { label: string; left: number }[] = [];
+  // 월 목록 생성
+  const months: { label: string; monthStart: Date }[] = [];
   const cur = new Date(rangeStart);
   while (cur <= rangeEnd) {
     months.push({
       label: `${cur.getFullYear() !== today.getFullYear() ? cur.getFullYear() + '/' : ''}${cur.getMonth() + 1}월`,
-      left: ((cur.getTime() - rangeStart.getTime()) / totalMs) * 100,
+      monthStart: new Date(cur),
     });
     cur.setMonth(cur.getMonth() + 1);
   }
+
+  const numMonths = months.length;
+  const timelineW = numMonths * MONTH_W; // 타임라인 영역 총 픽셀 너비
+  const totalW = LABEL_W + timelineW; // 전체 row 너비
+
+  // 날짜 → px 변환 (타임라인 내 절대 픽셀)
+  const dateToPx = (d: Date) => ((d.getTime() - rangeStart.getTime()) / totalMs) * timelineW;
+
+  // 오늘 마커
+  const todayPx = dateToPx(today);
+  const showToday = todayPx >= 0 && todayPx <= timelineW;
 
   // 과목별 그룹
   const subjectMap: Record<string, ExtendedLongTermPlan[]> = {};
@@ -966,7 +976,7 @@ function GanttTimeline({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-      {/* 헤더 */}
+      {/* 타이틀 바 */}
       <div className="flex items-center gap-2 border-b border-gray-50 px-4 py-3">
         <BarChart3 className="h-4 w-4 text-indigo-500" />
         <span className="text-sm font-bold text-gray-700">타임라인</span>
@@ -978,130 +988,128 @@ function GanttTimeline({
         )}
       </div>
 
-      {/* 스크롤 영역 */}
+      {/* 가로 스크롤 영역 */}
       <div className="overflow-x-auto">
-        <div style={{ minWidth: '560px' }}>
-          {/* 월 헤더 행 */}
-          <div className="relative ml-24 mr-3 h-7 border-b border-gray-100">
+        <div style={{ width: `${totalW}px` }}>
+          {/* ── 월 헤더 행 ── */}
+          <div className="flex border-b border-gray-100">
+            {/* 라벨 영역 빈 칸 */}
+            <div style={{ width: `${LABEL_W}px`, flexShrink: 0 }} />
+            {/* 월 컬럼 */}
             {months.map((m, i) => (
               <div
                 key={i}
-                className="absolute flex h-full items-center border-l border-gray-100 pl-1.5"
-                style={{ left: `${m.left}%` }}
+                className="flex items-center border-l border-gray-100 px-2"
+                style={{ width: `${MONTH_W}px`, flexShrink: 0, height: '28px' }}
               >
-                <span className="text-[9px] font-semibold text-gray-400">{m.label}</span>
+                <span className="text-[10px] font-semibold text-gray-500">{m.label}</span>
               </div>
             ))}
           </div>
 
-          {/* 과목별 행 */}
-          <div className="py-1.5">
-            {Object.entries(subjectMap).map(([subject, subjectPlans]) => {
-              const color = getSubjectColor(subject);
-              return (
+          {/* ── 과목별 행 ── */}
+          {Object.entries(subjectMap).map(([subject, subjectPlans]) => {
+            const color = getSubjectColor(subject);
+            const rowH = Math.max(36, subjectPlans.length * 28 + 8);
+            return (
+              <div
+                key={subject}
+                className="flex border-b border-gray-50 last:border-0"
+                style={{ height: `${rowH}px` }}
+              >
+                {/* 과목 라벨 */}
                 <div
-                  key={subject}
-                  className="group flex min-h-[44px] items-center border-b border-gray-50 last:border-0"
+                  className="flex shrink-0 items-center px-3 text-[11px] font-bold"
+                  style={{ width: `${LABEL_W}px`, color }}
                 >
-                  {/* 과목 라벨 */}
-                  <div
-                    className="w-24 shrink-0 px-3 text-[11px] font-bold leading-tight"
-                    style={{ color }}
-                  >
-                    {subject}
-                  </div>
-
-                  {/* 타임라인 영역 */}
-                  <div className="relative mr-3 flex-1 py-1.5">
-                    {/* 월 구분선 */}
-                    {months.map((m, i) => (
-                      <div
-                        key={i}
-                        className="absolute inset-y-0 w-px bg-gray-100"
-                        style={{ left: `${m.left}%` }}
-                      />
-                    ))}
-
-                    {/* 오늘 마커 */}
-                    {showToday && (
-                      <div
-                        className="pointer-events-none absolute inset-y-0 z-10 w-px bg-red-400/70"
-                        style={{ left: `${todayPct}%` }}
-                      >
-                        <div className="absolute -top-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-400" />
-                      </div>
-                    )}
-
-                    {/* 계획 막대들 */}
-                    {subjectPlans.map((plan, idx) => {
-                      const ps = new Date(plan.startDate!).getTime();
-                      const pe = new Date(plan.endDate!).getTime();
-                      const left = ((ps - rangeStart.getTime()) / totalMs) * 100;
-                      const width = Math.max(0.8, ((pe - ps) / totalMs) * 100);
-                      const progress =
-                        plan.totalAmount > 0
-                          ? Math.min(
-                              100,
-                              Math.round((plan.completedAmount / plan.totalAmount) * 100),
-                            )
-                          : 0;
-                      const isCompleted = progress >= 100;
-                      const barTop = idx * 28;
-
-                      return (
-                        <div
-                          key={plan.id}
-                          className="group/bar absolute cursor-pointer"
-                          style={{
-                            left: `${left}%`,
-                            width: `${width}%`,
-                            top: `${barTop}px`,
-                            height: '24px',
-                            zIndex: 20,
-                          }}
-                          title={`${plan.title} · ${plan.subject} · ${progress}%  클릭하여 수정`}
-                          onClick={() => onPlanClick(plan)}
-                        >
-                          {/* 배경 트랙 */}
-                          <div
-                            className="absolute inset-0 rounded-full opacity-20 transition-opacity group-hover/bar:opacity-35"
-                            style={{ backgroundColor: color }}
-                          />
-                          {/* 진행률 채움 */}
-                          <div
-                            className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-                            style={{
-                              width: `${progress}%`,
-                              backgroundColor: color,
-                              opacity: isCompleted ? 1 : 0.75,
-                            }}
-                          />
-                          {/* 호버 시 수정 아이콘 오버레이 */}
-                          <div className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-full pr-1 opacity-0 transition-opacity group-hover/bar:opacity-100">
-                            <Pencil className="h-2.5 w-2.5 text-white drop-shadow" />
-                          </div>
-                          {/* 텍스트 (폭이 충분할 때만) */}
-                          {width > 8 && (
-                            <div className="absolute inset-0 flex items-center overflow-hidden px-2">
-                              <span className="truncate text-[9px] font-bold leading-none text-white drop-shadow">
-                                {plan.title}
-                              </span>
-                              <span className="ml-auto shrink-0 text-[9px] font-bold text-white/90 drop-shadow">
-                                {progress}%
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {/* 행 높이를 계획 수에 맞게 */}
-                    <div style={{ height: `${subjectPlans.length * 28}px` }} />
-                  </div>
+                  {subject}
                 </div>
-              );
-            })}
-          </div>
+
+                {/* 타임라인 바 영역 */}
+                <div className="relative" style={{ width: `${timelineW}px` }}>
+                  {/* 월 구분선 */}
+                  {months.map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute inset-y-0 w-px bg-gray-100"
+                      style={{ left: `${i * MONTH_W}px` }}
+                    />
+                  ))}
+
+                  {/* 오늘 마커 */}
+                  {showToday && (
+                    <div
+                      className="pointer-events-none absolute inset-y-0 z-10 w-px bg-red-400/70"
+                      style={{ left: `${todayPx}px` }}
+                    >
+                      <div className="absolute -top-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-400" />
+                    </div>
+                  )}
+
+                  {/* 계획 막대들 */}
+                  {subjectPlans.map((plan, idx) => {
+                    const ps = new Date(plan.startDate!);
+                    const pe = new Date(plan.endDate!);
+                    const barLeft = dateToPx(ps);
+                    const barW = Math.max(4, dateToPx(pe) - barLeft);
+                    const progress =
+                      plan.totalAmount > 0
+                        ? Math.min(100, Math.round((plan.completedAmount / plan.totalAmount) * 100))
+                        : 0;
+                    const isCompleted = progress >= 100;
+                    const barTop = 4 + idx * 28;
+                    const showText = barW > 40;
+
+                    return (
+                      <div
+                        key={plan.id}
+                        className="group/bar absolute cursor-pointer"
+                        style={{
+                          left: `${barLeft}px`,
+                          width: `${barW}px`,
+                          top: `${barTop}px`,
+                          height: '24px',
+                          zIndex: 20,
+                        }}
+                        title={`${plan.title} · ${plan.subject} · ${progress}%  클릭하여 수정`}
+                        onClick={() => onPlanClick(plan)}
+                      >
+                        {/* 배경 트랙 */}
+                        <div
+                          className="absolute inset-0 rounded-full opacity-20 transition-opacity group-hover/bar:opacity-35"
+                          style={{ backgroundColor: color }}
+                        />
+                        {/* 진행률 채움 */}
+                        <div
+                          className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+                          style={{
+                            width: `${progress}%`,
+                            backgroundColor: color,
+                            opacity: isCompleted ? 1 : 0.75,
+                          }}
+                        />
+                        {/* 호버 시 수정 아이콘 */}
+                        <div className="absolute inset-0 flex items-center justify-end overflow-hidden rounded-full pr-1.5 opacity-0 transition-opacity group-hover/bar:opacity-100">
+                          <Pencil className="h-2.5 w-2.5 text-white drop-shadow" />
+                        </div>
+                        {/* 텍스트 */}
+                        {showText && (
+                          <div className="absolute inset-0 flex items-center overflow-hidden px-2">
+                            <span className="truncate text-[9px] font-bold leading-none text-white drop-shadow">
+                              {plan.title}
+                            </span>
+                            <span className="ml-auto shrink-0 text-[9px] font-bold text-white/90 drop-shadow">
+                              {progress}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
