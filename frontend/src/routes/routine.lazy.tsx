@@ -430,7 +430,14 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const HOURS = Array.from({ length: 24 }, (_, i) => i);
+  const START_HOUR = 6;
+  const END_HOUR = 24;
+  const RANGE_MINS = (END_HOUR - START_HOUR) * 60;
+  const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR);
+
+  const toTopPct = (minutes: number) =>
+    ((Math.max(START_HOUR * 60, Math.min(END_HOUR * 60, minutes)) - START_HOUR * 60) / RANGE_MINS) *
+    100;
 
   const navigate = (direction: 'prev' | 'next') => {
     const newStart = new Date(weekStart);
@@ -460,8 +467,11 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
   const getRoutinePosition = (routine: Routine) => {
     const startMinutes = timeToMinutes(routine.startTime);
     const endMinutes = timeToMinutes(routine.endTime);
-    const top = (startMinutes / (24 * 60)) * 100;
-    const height = ((endMinutes - startMinutes) / (24 * 60)) * 100;
+    const top = toTopPct(startMinutes);
+    const height =
+      ((Math.min(END_HOUR * 60, endMinutes) - Math.max(START_HOUR * 60, startMinutes)) /
+        RANGE_MINS) *
+      100;
     return { top, height: Math.max(height, 2) };
   };
 
@@ -494,7 +504,7 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
 
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentPosition = (currentMinutes / (24 * 60)) * 100;
+  const currentPosition = toTopPct(currentMinutes);
 
   return (
     <>
@@ -521,12 +531,15 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
             {/* 시간 라벨 (왼쪽) */}
             <div className="w-10 flex-shrink-0">
               <div className="h-12" />
-              <div className="relative h-[480px]">
+              <div className="relative h-[380px]">
                 {HOURS.filter((h) => h % 2 === 0).map((hour) => (
                   <div
                     key={hour}
                     className="absolute left-0 right-0 pr-2 text-right text-xs text-gray-400"
-                    style={{ top: `${(hour / 24) * 100}%`, transform: 'translateY(-50%)' }}
+                    style={{
+                      top: `${((hour - START_HOUR) / (END_HOUR - START_HOUR)) * 100}%`,
+                      transform: 'translateY(-50%)',
+                    }}
                   >
                     {hour.toString().padStart(2, '0')}
                   </div>
@@ -577,7 +590,7 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                 return (
                   <div
                     key={`timeline-${dayIdx}`}
-                    className={`relative h-[480px] border-l border-gray-200 ${
+                    className={`relative h-[380px] border-l border-gray-200 ${
                       isToday ? 'bg-ultrasonic-50' : 'bg-gray-50'
                     }`}
                   >
@@ -585,7 +598,9 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                       <div
                         key={hour}
                         className="absolute left-0 right-0 border-t border-gray-100"
-                        style={{ top: `${(hour / 24) * 100}%` }}
+                        style={{
+                          top: `${((hour - START_HOUR) / (END_HOUR - START_HOUR)) * 100}%`,
+                        }}
                       />
                     ))}
 
@@ -608,8 +623,8 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                         const [eh, em] = times.end.split(':').map(Number);
                         const startMin = sh * 60 + sm;
                         const endMin = eh * 60 + em;
-                        const top = (startMin / (24 * 60)) * 100;
-                        const height = Math.max(((endMin - startMin) / (24 * 60)) * 100, 1.5);
+                        const top = toTopPct(startMin);
+                        const height = Math.max(((endMin - startMin) / RANGE_MINS) * 100, 1.5);
                         return (
                           <div
                             key={`tt-${item.period}`}
@@ -657,12 +672,15 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
             {/* 시간 라벨 (오른쪽) */}
             <div className="w-10 flex-shrink-0">
               <div className="h-12" />
-              <div className="relative h-[480px]">
+              <div className="relative h-[380px]">
                 {HOURS.filter((h) => h % 2 === 0).map((hour) => (
                   <div
                     key={hour}
                     className="absolute left-0 right-0 pl-2 text-xs text-gray-400"
-                    style={{ top: `${(hour / 24) * 100}%`, transform: 'translateY(-50%)' }}
+                    style={{
+                      top: `${((hour - START_HOUR) / (END_HOUR - START_HOUR)) * 100}%`,
+                      transform: 'translateY(-50%)',
+                    }}
                   >
                     {hour.toString().padStart(2, '0')}
                   </div>
@@ -1402,10 +1420,14 @@ function PlannerRoutinePage() {
         </div>
       </section>
 
-      {/* ═══════ 캘린더 (전체 너비) ═══════ */}
-      <div className="relative -mt-10 space-y-4 px-2 pb-4">
-        <WeeklyMissionSection />
+      {/* ═══════ 캘린더 (max-w-4xl 중앙 정렬) ═══════ */}
+      <div className="relative mx-auto -mt-10 max-w-4xl px-4 pb-4">
         <WeeklyCalendar routines={routines || []} />
+      </div>
+
+      {/* ═══════ 주간 미션 ═══════ */}
+      <div className="mx-auto max-w-2xl px-4 pb-4">
+        <WeeklyMissionSection />
       </div>
 
       {/* ═══════ 루틴 목록 ═══════ */}
