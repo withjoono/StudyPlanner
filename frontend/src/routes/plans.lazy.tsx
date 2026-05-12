@@ -908,7 +908,8 @@ function EditPlanDialog({ open, onOpenChange, plan, onSubmit, isLoading }: EditP
 // ============================================
 
 const LABEL_W = 80; // 과목 라벨 고정 너비(px)
-const MONTH_MIN_PX = 72; // 월 컬럼 너비(px)
+const MONTH_MIN_PX = 72; // 월 컬럼 최소 너비(px)
+const VISIBLE_MONTHS = 8; // 기본 뷰: 5월~12월 (8개월) 화면 꽉 채움
 
 function GanttTimeline({
   plans,
@@ -918,8 +919,21 @@ function GanttTimeline({
   onPlanClick: (plan: ExtendedLongTermPlan) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  // 컨테이너 너비 측정 (ResizeObserver)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setContainerWidth(el.clientWidth);
+    const ro = new ResizeObserver((entries) => {
+      if (entries[0]) setContainerWidth(entries[0].contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const datePlans = plans.filter((p) => p.startDate && p.endDate);
   const noDateCount = plans.length - datePlans.length;
@@ -942,18 +956,19 @@ function GanttTimeline({
   const rangeEnd = rangeEndDate;
   const totalMs = rangeEnd.getTime() - rangeStart.getTime();
 
-  // 현재 월 인덱스 (자동 스크롤: 오늘 월이 왼쪽에 오도록)
-  const todayMonthIdx =
-    (today.getFullYear() - rangeStart.getFullYear()) * 12 +
-    (today.getMonth() - rangeStart.getMonth());
+  // 5월~12월(8개월)이 뷰포트를 꽉 채우도록 월 너비 계산
+  const monthPx = containerWidth > 0 ? containerWidth / VISIBLE_MONTHS : MONTH_MIN_PX;
 
-  // 마운트 또는 계획 로드 시 현재 월로 스크롤
+  // 올해 5월 인덱스 (0-based: rangeStart 기준)
+  const mayMonthIdx = (curYear - rangeStart.getFullYear()) * 12 + 4; // 4 = May
+
+  // 마운트·계획 로드·컨테이너 크기 확정 시 → 올해 5월로 스크롤
   useEffect(() => {
-    if (scrollRef.current && datePlans.length > 0) {
-      scrollRef.current.scrollLeft = todayMonthIdx * MONTH_MIN_PX;
+    if (scrollRef.current && containerWidth > 0) {
+      scrollRef.current.scrollLeft = mayMonthIdx * monthPx;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datePlans.length]);
+  }, [containerWidth, datePlans.length]);
 
   if (datePlans.length === 0) {
     return (
@@ -1041,7 +1056,7 @@ function GanttTimeline({
 
         {/* ── 우측: 가로 스크롤 타임라인 ── */}
         <div ref={scrollRef} className="flex-1 overflow-x-auto">
-          <div style={{ minWidth: '100%', width: `${numMonths * MONTH_MIN_PX}px` }}>
+          <div style={{ minWidth: '100%', width: `${numMonths * monthPx}px` }}>
             {/* 월 헤더 행 */}
             <div className="flex border-b border-gray-100" style={{ height: '28px' }}>
               {months.map((m, i) => {
@@ -1050,7 +1065,7 @@ function GanttTimeline({
                   <div
                     key={i}
                     className={`flex flex-1 items-center px-1.5 ${isYearStart ? 'border-l-2 border-indigo-200 bg-indigo-50/40' : 'border-l border-gray-100'}`}
-                    style={{ minWidth: `${MONTH_MIN_PX}px`, height: '28px' }}
+                    style={{ minWidth: `${monthPx}px`, height: '28px' }}
                   >
                     <span
                       className={`whitespace-nowrap text-[10px] font-semibold ${isYearStart ? 'text-indigo-500' : 'text-gray-400'}`}
