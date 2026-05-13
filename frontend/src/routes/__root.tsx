@@ -4,11 +4,10 @@ import { useAuthStore } from '@/stores/client/use-auth-store';
 
 import { useSsoExchange } from '@/stores/server/auth';
 import { useEffect, useRef, useState } from 'react';
-import { Bell, X, LayoutGrid, Users, LogOut, ChevronDown } from 'lucide-react';
-import { WonCircle } from '@/components/icons';
+import { X, LayoutGrid, ChevronDown, Timer } from 'lucide-react';
 import PromoPage from '@/components/PromoPage';
 import { useAcornBalance } from '@/stores/server/acorn';
-import { Footer } from 'geobuk-shared/ui';
+import { Footer, UtilityNav } from 'geobuk-shared/ui';
 
 // Hub URL
 const HUB_URL =
@@ -25,9 +24,7 @@ function RootLayout() {
   const ssoExchangeMutation = useSsoExchange();
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [myclassDropdownOpen, setMyclassDropdownOpen] = useState(false);
-  const userDropdownRef = useRef<HTMLDivElement>(null);
   const myclassDropdownRef = useRef<HTMLDivElement>(null);
   const [isSSOLoading, setIsSSOLoading] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -41,18 +38,6 @@ function RootLayout() {
 
   // 도토리 잔액
   const { data: acornData } = useAcornBalance();
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (userDropdownRef.current && !userDropdownRef.current.contains(e.target as Node)) {
-        setUserDropdownOpen(false);
-      }
-    };
-    if (userDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [userDropdownOpen]);
 
   // 드롭다운 외부 클릭 감지 (마이 클래스)
   useEffect(() => {
@@ -202,113 +187,34 @@ function RootLayout() {
               </div>
             </div>
 
-            {/* 오른쪽: 아이콘 버튼 + 사용자 정보 */}
+            {/* 오른쪽: 타이머 + UtilityNav */}
             <div className="flex items-center gap-1">
-              {/* 타이머 (이모콘) */}
+              {/* 타이머 */}
               <Link
                 to="/timer"
-                className="relative flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-indigo-50"
+                className="relative flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
                 title="타이머"
               >
-                <span className="text-lg" role="img" aria-label="타이머">
-                  ⏱️
-                </span>
-              </Link>
-              {/* 🌰 도토리 잔액 */}
-              {isAuthenticated && (
-                <div
-                  className="flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold transition-colors hover:bg-amber-50"
-                  title={`도토리 ${acornData?.balance ?? 0}개`}
-                  style={{
-                    background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                    color: '#92400e',
-                  }}
-                >
-                  <span className="text-base" role="img" aria-label="도토리">
-                    🌰
-                  </span>
-                  <span>{acornData?.balance ?? 0}</span>
-                </div>
-              )}
-              {/* 결제 */}
-              <a
-                href={`${HUB_URL}/products`}
-                className="text-primary hover:bg-primary/10 relative flex h-9 w-9 items-center justify-center rounded-full transition-colors"
-                title="결제"
-              >
-                <WonCircle className="h-5 w-5" />
-              </a>
-              {/* 알림 */}
-              <button
-                className="relative flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                title="알림"
-              >
-                <Bell className="h-5 w-5" />
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
-              </button>
-              {/* 계정연동 */}
-              <Link
-                to="/connections"
-                className="relative flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                title="계정연동"
-              >
-                <Users className="h-5 w-5" />
+                <Timer className="h-5 w-5" />
               </Link>
 
-              {/* 구분선 */}
-              <div className="mx-1 h-5 w-px bg-gray-200" />
-
-              {/* 사용자 정보 / 로그인 버튼 */}
-              {isAuthenticated && user ? (
-                <div className="relative" ref={userDropdownRef}>
-                  <button
-                    onClick={() => setUserDropdownOpen((v) => !v)}
-                    className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                  >
-                    <span>{user.userName} 님</span>
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`}
-                    />
-                  </button>
-                  {userDropdownOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                      <a
-                        href={`${HUB_URL}/users/profile`}
-                        className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        마이페이지
-                      </a>
-                      <a
-                        href={`${HUB_URL}/users/payment`}
-                        className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        결제내역
-                      </a>
-                      <div className="my-1 border-t border-gray-100" />
-                      <button
-                        onClick={() => {
-                          setUserDropdownOpen(false);
-                          clearAuth();
-                          window.location.href = HUB_URL;
-                        }}
-                        className="flex w-full items-center px-4 py-2 text-sm text-red-500 hover:bg-red-50"
-                      >
-                        <LogOut className="mr-2 h-4 w-4" />
-                        로그아웃
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <a
-                  href={`${HUB_URL}/login?redirect=${encodeURIComponent(window.location.href)}`}
-                  className="rounded-full bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-                >
-                  로그인
-                </a>
-              )}
+              <UtilityNav
+                isLoggedIn={isAuthenticated}
+                user={user ? { nickname: user.userName } : undefined}
+                acornBalance={acornData?.balance ?? 0}
+                onLogout={() => {
+                  clearAuth();
+                  window.location.href = HUB_URL;
+                }}
+                urls={{
+                  products: `${HUB_URL}/products`,
+                  notifications: `${HUB_URL}/notifications`,
+                  accountLinkage: '/connections',
+                  login: `${HUB_URL}/login?redirect=${encodeURIComponent(window.location.href)}`,
+                  profile: `${HUB_URL}/users/profile`,
+                  payment: `${HUB_URL}/users/payment`,
+                }}
+              />
 
               {/* 모바일 햄버거 */}
               <button
