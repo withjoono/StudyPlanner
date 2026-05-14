@@ -27,7 +27,14 @@ import {
   useGetSubjects,
   useGetPlans,
 } from '@/stores/server/planner';
-import { useGetDayTimetable, PERIOD_TIMES } from '@/stores/server/planner/school-schedule';
+import {
+  useGetDayTimetable,
+  PERIOD_TIMES,
+  useGetLinkedSchool,
+  useGetSchoolEvents,
+  useSearchSchools,
+  useLinkSchool,
+} from '@/stores/server/planner/school-schedule';
 import type { Routine, RoutineMajorCategory, LongTermPlan } from '@/types/planner';
 import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, getSubjectColor } from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
@@ -424,8 +431,96 @@ function useTimetableForWeek(weekDays: Date[]) {
   return [mon.data, tue.data, wed.data, thu.data, fri.data];
 }
 
+// 해당 주의 방학 날짜 집합 반환 (isHoliday: true 인 날짜들)
+function useSchoolEventsForWeek(weekStart: Date, weekEnd: Date): Set<string> {
+  const sy = weekStart.getFullYear();
+  const sm = weekStart.getMonth() + 1;
+  const ey = weekEnd.getFullYear();
+  const em = weekEnd.getMonth() + 1;
+  const r1 = useGetSchoolEvents(sy, sm);
+  const r2 = useGetSchoolEvents(ey, em);
+  return useMemo(() => {
+    const all = [...(r1.data ?? []), ...(sm !== em ? (r2.data ?? []) : [])];
+    return new Set(all.filter((e) => e.isHoliday).map((e) => e.date));
+  }, [r1.data, r2.data, sm, em]);
+}
+
+// ============================================
+// 학교 연결 다이얼로그
+// ============================================
+
+function SchoolLinkDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const { data: schools, isLoading: isSearching } = useSearchSchools(query);
+  const linkMutation = useLinkSchool();
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle>학교 연결</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <p className="text-sm text-gray-500">
+            학교를 연결하면 주간 캘린더에 시간표가 자동으로 표시됩니다.
+          </p>
+          <Input
+            placeholder="학교명 입력 (2글자 이상)"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            autoFocus
+          />
+          {isSearching && (
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              검색 중...
+            </div>
+          )}
+          {schools && schools.length > 0 && (
+            <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200">
+              {schools.map((school) => (
+                <button
+                  key={school.schulCode}
+                  type="button"
+                  disabled={linkMutation.isPending}
+                  onClick={() =>
+                    linkMutation.mutate(school, { onSuccess: () => onOpenChange(false) })
+                  }
+                  className="flex w-full items-start gap-2.5 border-b border-gray-100 px-3 py-2.5 text-left last:border-0 hover:bg-sky-50 disabled:opacity-50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-gray-800">{school.schulName}</div>
+                    <div className="text-xs text-gray-400">
+                      {school.schulKind}
+                      {school.address ? ` · ${school.address}` : ''}
+                    </div>
+                  </div>
+                  {linkMutation.isPending && (
+                    <Loader2 className="mt-0.5 h-4 w-4 animate-spin text-sky-500" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+          {schools?.length === 0 && query.length >= 2 && !isSearching && (
+            <p className="text-center text-sm text-gray-400">검색 결과가 없습니다</p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function WeeklyCalendar({ routines }: { routines: Routine[] }) {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
+  const [schoolLinkOpen, setSchoolLinkOpen] = useState(false);
+  const { data: linkedSchool, isLoading: isSchoolLoading } = useGetLinkedSchool();
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -496,6 +591,7 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
   const weekdayTimetables = useTimetableForWeek(weekDays);
   // weekDays[0]=일, weekDays[1]=월 ... weekDays[5]=금, weekDays[6]=토
   // weekdayTimetables[0]=월, [1]=화, [2]=수, [3]=목, [4]=금
+  const holidayDates = useSchoolEventsForWeek(weekStart, weekEnd);
   const getTimetableForDay = (dayIdx: number) => {
     // dayIdx: 0=일,1=월,...,5=금,6=토
     if (dayIdx < 1 || dayIdx > 5) return [];
@@ -586,6 +682,7 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                 const isToday = date.getTime() === today.getTime();
                 const dayRoutines = getRoutinesForDay(dayIdx);
                 const dayTimetable = getTimetableForDay(dayIdx);
+                const isHoliday = linkedSchool != null && holidayDates.has(formatDateStr(date));
 
                 return (
                   <div
@@ -613,31 +710,41 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                       </div>
                     )}
 
+                    {/* 방학 배경 */}
+                    {isHoliday && dayIdx >= 1 && dayIdx <= 5 && (
+                      <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-3">
+                        <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[8px] font-semibold text-amber-400">
+                          방학
+                        </span>
+                      </div>
+                    )}
+
                     {/* 학교 시간표 블록 */}
-                    {dayTimetable
-                      .sort((a, b) => Number(a.period) - Number(b.period))
-                      .map((item) => {
-                        const times = PERIOD_TIMES[item.period];
-                        if (!times) return null;
-                        const [sh, sm] = times.start.split(':').map(Number);
-                        const [eh, em] = times.end.split(':').map(Number);
-                        const startMin = sh * 60 + sm;
-                        const endMin = eh * 60 + em;
-                        const top = toTopPct(startMin);
-                        const height = Math.max(((endMin - startMin) / RANGE_MINS) * 100, 1.5);
-                        return (
-                          <div
-                            key={`tt-${item.period}`}
-                            className="absolute left-0 right-0 overflow-hidden border-l-2 border-sky-400 bg-sky-100/70 px-0.5"
-                            style={{ top: `${top}%`, height: `${height}%`, minHeight: '18px' }}
-                            title={`${item.period}교시 ${item.subject} (${times.start}~${times.end})`}
-                          >
-                            <div className="truncate text-[9px] font-semibold leading-tight text-sky-700">
-                              {item.subject}
+                    {!isHoliday &&
+                      dayTimetable
+                        .sort((a, b) => Number(a.period) - Number(b.period))
+                        .map((item) => {
+                          const times = PERIOD_TIMES[item.period];
+                          if (!times) return null;
+                          const [sh, sm] = times.start.split(':').map(Number);
+                          const [eh, em] = times.end.split(':').map(Number);
+                          const startMin = sh * 60 + sm;
+                          const endMin = eh * 60 + em;
+                          const top = toTopPct(startMin);
+                          const height = Math.max(((endMin - startMin) / RANGE_MINS) * 100, 1.5);
+                          return (
+                            <div
+                              key={`tt-${item.period}`}
+                              className="absolute left-0 right-0 overflow-hidden border-l-2 border-sky-400 bg-sky-100/70 px-0.5"
+                              style={{ top: `${top}%`, height: `${height}%`, minHeight: '18px' }}
+                              title={`${item.period}교시 ${item.subject} (${times.start}~${times.end})`}
+                            >
+                              <div className="truncate text-[9px] font-semibold leading-tight text-sky-700">
+                                {item.subject}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
 
                     {dayRoutines.map((routine) => {
                       const pos = getRoutinePosition(routine);
@@ -690,7 +797,7 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
           </div>
 
           {/* 범례 */}
-          <div className="mt-4 flex flex-wrap items-center gap-4 border-t pt-3">
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-3">
             {Object.entries(MAJOR_CATEGORY_LABELS).map(([key, label]) => (
               <div key={key} className="flex items-center gap-1.5 text-xs text-gray-600">
                 <div
@@ -699,9 +806,37 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                 <span>{label}</span>
               </div>
             ))}
+            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+              <div className="h-3 w-3 rounded border-l-2 border-sky-400 bg-sky-100" />
+              <span>학교 시간표</span>
+            </div>
+            {/* 학교 연결 상태 */}
+            <div className="ml-auto">
+              {isSchoolLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-300" />
+              ) : linkedSchool ? (
+                <button
+                  onClick={() => setSchoolLinkOpen(true)}
+                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+                  title="학교 변경"
+                >
+                  <span>🏫</span>
+                  <span>{linkedSchool.schulName}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setSchoolLinkOpen(true)}
+                  className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 hover:bg-sky-100"
+                >
+                  🏫 학교 연결하기
+                </button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      <SchoolLinkDialog open={schoolLinkOpen} onOpenChange={setSchoolLinkOpen} />
     </>
   );
 }
