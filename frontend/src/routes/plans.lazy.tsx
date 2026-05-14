@@ -40,6 +40,7 @@ import {
   useGetLinkedSchool,
   type SchoolEvent,
 } from '@/stores/server/planner/school-schedule';
+import { SchoolLinkDialog } from '@/components/planner/SchoolLinkDialog';
 import { Button } from 'geobuk-shared/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'geobuk-shared/ui';
 import { Input } from 'geobuk-shared/ui';
@@ -925,6 +926,7 @@ function GanttTimeline({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [schoolLinkOpen, setSchoolLinkOpen] = useState(false);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -1062,11 +1064,29 @@ function GanttTimeline({
         <BarChart3 className="h-4 w-4 text-indigo-500" />
         <span className="text-sm font-bold text-gray-700">타임라인</span>
         {showToday && (
-          <span className="ml-auto flex items-center gap-1 text-[10px] text-red-400">
+          <span className="flex items-center gap-1 text-[10px] text-red-400">
             <span className="inline-block h-2 w-px bg-red-400" />
             오늘
           </span>
         )}
+        <div className="ml-auto">
+          {linkedSchool ? (
+            <button
+              onClick={() => setSchoolLinkOpen(true)}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
+              title="학교 변경"
+            >
+              🏫 {linkedSchool.schulName}
+            </button>
+          ) : (
+            <button
+              onClick={() => setSchoolLinkOpen(true)}
+              className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 hover:bg-sky-100"
+            >
+              🏫 학교 연결하기
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 본문: 좌측 고정 라벨 + 우측 스크롤 타임라인 */}
@@ -1280,6 +1300,8 @@ function GanttTimeline({
           </p>
         </div>
       )}
+
+      <SchoolLinkDialog open={schoolLinkOpen} onOpenChange={setSchoolLinkOpen} />
     </div>
   );
 }

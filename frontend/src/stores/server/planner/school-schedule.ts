@@ -90,10 +90,14 @@ export function useGetSchoolEvents(year: number, month?: number) {
   return useQuery({
     queryKey: schoolScheduleKeys.events(year, month),
     queryFn: async () => {
-      const res = await authClient.get<SchoolEvent[]>('/neis/schedule', {
+      const res = await authClient.get('/neis/schedule', {
         params: { year, month },
       });
-      return Array.isArray(res.data) ? res.data : [];
+      const raw = res.data;
+      if (Array.isArray(raw)) return raw as SchoolEvent[];
+      if (raw && Array.isArray(raw.data)) return raw.data as SchoolEvent[];
+      if (raw && Array.isArray(raw.events)) return raw.events as SchoolEvent[];
+      return [] as SchoolEvent[];
     },
     enabled: !!linkedSchool,
     staleTime: 1000 * 60 * 60, // 1시간
