@@ -612,7 +612,7 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                     </span>
                     {nonHolidayEvts.length > 0 && (
                       <span
-                        className={`mt-0.5 max-w-full truncate px-0.5 text-center text-[7px] font-semibold leading-none ${isToday ? 'text-yellow-200' : 'text-indigo-500'}`}
+                        className={`mt-0.5 max-w-full truncate rounded px-1 py-0.5 text-center text-[9px] font-bold leading-none ${isToday ? 'bg-yellow-300/20 text-yellow-200' : 'bg-indigo-100 text-indigo-600'}`}
                         title={nonHolidayEvts.map((e) => e.eventName).join(', ')}
                       >
                         {nonHolidayEvts[0].eventName}
@@ -667,6 +667,28 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                         </span>
                       </div>
                     )}
+
+                    {/* 비방학 학교 행사 배너 */}
+                    {!isHoliday &&
+                      linkedSchool &&
+                      (() => {
+                        const evts =
+                          schoolEventsMap.get(formatDateStr(date))?.filter((e) => !e.isHoliday) ??
+                          [];
+                        return evts.length > 0 ? (
+                          <div className="absolute left-0 right-0 top-0 z-20 border-b border-indigo-200 bg-indigo-50/90 px-0.5 py-0.5">
+                            {evts.map((ev, i) => (
+                              <div
+                                key={i}
+                                className="truncate text-[8px] font-bold text-indigo-600"
+                                title={ev.eventName}
+                              >
+                                📅 {ev.eventName}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
 
                     {/* 학교 시간표 블록 */}
                     {!isHoliday &&

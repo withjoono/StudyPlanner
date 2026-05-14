@@ -1010,7 +1010,7 @@ function GanttTimeline({
   );
 
   const showSchoolRow = !!linkedSchool && allSchoolEvents.length > 0;
-  const SCHOOL_ROW_H = 28;
+  const SCHOOL_ROW_H = 32;
 
   if (datePlans.length === 0) {
     return (
@@ -1177,13 +1177,17 @@ function GanttTimeline({
                   return (
                     <div
                       key={i}
-                      className="absolute inset-y-0 bg-amber-100/80"
+                      className="absolute inset-y-0 flex items-center overflow-hidden bg-amber-100/80 px-1"
                       style={{ left: `${left}%`, width: `${width}%` }}
                       title={range.name}
-                    />
+                    >
+                      <span className="truncate text-[8px] font-bold text-amber-600">
+                        {range.name}
+                      </span>
+                    </div>
                   );
                 })}
-                {/* 비방학 학교 행사 마커 */}
+                {/* 비방학 학교 행사 — 이름 블록 */}
                 {nonHolidayEvents.map((ev, i) => {
                   const d = new Date(ev.date);
                   if (d < rangeStart || d > rangeEnd) return null;
@@ -1191,11 +1195,13 @@ function GanttTimeline({
                   return (
                     <div
                       key={i}
-                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
+                      className="absolute top-1/2 z-10 -translate-y-1/2"
                       style={{ left: `${left}%` }}
                       title={ev.eventName}
                     >
-                      <div className="h-2 w-2 rounded-full bg-indigo-400" />
+                      <div className="max-w-[72px] overflow-hidden text-ellipsis whitespace-nowrap rounded bg-indigo-500 px-1 py-0.5 text-[8px] font-bold text-white shadow-sm">
+                        {ev.eventName}
+                      </div>
                     </div>
                   );
                 })}

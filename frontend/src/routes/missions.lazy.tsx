@@ -1496,19 +1496,30 @@ function MyMissionsPage() {
                 </button>
               </div>
             )}
-            {/* 학교 행사 배너 */}
+            {/* 학교 행사 카드 */}
             {todaySchoolEvents.length > 0 && (
-              <div
-                className={`rounded-2xl border p-3 ${todaySchoolEvents.some((e) => e.isHoliday) ? 'border-amber-100 bg-amber-50' : 'border-indigo-100 bg-indigo-50'}`}
-              >
-                <div className="flex flex-wrap gap-1.5">
+              <div className="overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-sm">
+                <div className="flex items-center gap-2 border-b border-indigo-50 bg-indigo-50 px-4 py-2">
+                  <span className="text-sm">🏫</span>
+                  <span className="text-xs font-bold text-indigo-700">학교 일정</span>
+                </div>
+                <div className="divide-y divide-gray-50">
                   {todaySchoolEvents.map((ev) => (
-                    <span
-                      key={ev.id}
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${ev.isHoliday ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}
-                    >
-                      {ev.eventName}
-                    </span>
+                    <div key={ev.id} className="flex items-center gap-3 px-4 py-3">
+                      <div
+                        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-lg ${ev.isHoliday ? 'bg-amber-100' : 'bg-indigo-100'}`}
+                      >
+                        {ev.isHoliday ? '🎉' : '📅'}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-gray-800">{ev.eventName}</p>
+                        <p
+                          className={`text-xs ${ev.isHoliday ? 'text-amber-500' : 'text-indigo-400'}`}
+                        >
+                          {ev.isHoliday ? '방학 · 학교 행사' : '학교 행사'}
+                        </p>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
