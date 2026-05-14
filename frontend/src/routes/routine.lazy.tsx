@@ -34,6 +34,7 @@ import {
   useGetSchoolEvents,
   useSearchSchools,
   useLinkSchool,
+  type SchoolEvent,
 } from '@/stores/server/planner/school-schedule';
 import type { Routine, RoutineMajorCategory, LongTermPlan } from '@/types/planner';
 import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, getSubjectColor } from '@/types/planner';
@@ -431,8 +432,8 @@ function useTimetableForWeek(weekDays: Date[]) {
   return [mon.data, tue.data, wed.data, thu.data, fri.data];
 }
 
-// 해당 주의 방학 날짜 집합 반환 (isHoliday: true 인 날짜들)
-function useSchoolEventsForWeek(weekStart: Date, weekEnd: Date): Set<string> {
+// 해당 주의 학교 행사 맵 반환 (날짜 → 행사 목록)
+function useSchoolEventsForWeek(weekStart: Date, weekEnd: Date): Map<string, SchoolEvent[]> {
   const sy = weekStart.getFullYear();
   const sm = weekStart.getMonth() + 1;
   const ey = weekEnd.getFullYear();
@@ -441,7 +442,12 @@ function useSchoolEventsForWeek(weekStart: Date, weekEnd: Date): Set<string> {
   const r2 = useGetSchoolEvents(ey, em);
   return useMemo(() => {
     const all = [...(r1.data ?? []), ...(sm !== em ? (r2.data ?? []) : [])];
-    return new Set(all.filter((e) => e.isHoliday).map((e) => e.date));
+    const map = new Map<string, SchoolEvent[]>();
+    all.forEach((e) => {
+      const list = map.get(e.date) ?? [];
+      map.set(e.date, [...list, e]);
+    });
+    return map;
   }, [r1.data, r2.data, sm, em]);
 }
 
@@ -591,7 +597,7 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
   const weekdayTimetables = useTimetableForWeek(weekDays);
   // weekDays[0]=일, weekDays[1]=월 ... weekDays[5]=금, weekDays[6]=토
   // weekdayTimetables[0]=월, [1]=화, [2]=수, [3]=목, [4]=금
-  const holidayDates = useSchoolEventsForWeek(weekStart, weekEnd);
+  const schoolEventsMap = useSchoolEventsForWeek(weekStart, weekEnd);
   const getTimetableForDay = (dayIdx: number) => {
     // dayIdx: 0=일,1=월,...,5=금,6=토
     if (dayIdx < 1 || dayIdx > 5) return [];
@@ -648,6 +654,10 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
               {/* 요일 헤더 */}
               {weekDays.map((date, idx) => {
                 const isToday = date.getTime() === today.getTime();
+                const dayEvts = linkedSchool
+                  ? (schoolEventsMap.get(formatDateStr(date)) ?? [])
+                  : [];
+                const nonHolidayEvts = dayEvts.filter((e) => !e.isHoliday);
                 return (
                   <div
                     key={`header-${idx}`}
@@ -673,6 +683,15 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                     >
                       {date.getDate()}
                     </span>
+                    {nonHolidayEvts.length > 0 && (
+                      <span
+                        className={`mt-0.5 max-w-full truncate px-0.5 text-center text-[7px] font-semibold leading-none ${isToday ? 'text-yellow-200' : 'text-indigo-500'}`}
+                        title={nonHolidayEvts.map((e) => e.eventName).join(', ')}
+                      >
+                        {nonHolidayEvts[0].eventName}
+                        {nonHolidayEvts.length > 1 ? ` +${nonHolidayEvts.length - 1}` : ''}
+                      </span>
+                    )}
                   </div>
                 );
               })}
@@ -682,7 +701,9 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                 const isToday = date.getTime() === today.getTime();
                 const dayRoutines = getRoutinesForDay(dayIdx);
                 const dayTimetable = getTimetableForDay(dayIdx);
-                const isHoliday = linkedSchool != null && holidayDates.has(formatDateStr(date));
+                const isHoliday =
+                  linkedSchool != null &&
+                  (schoolEventsMap.get(formatDateStr(date))?.some((e) => e.isHoliday) ?? false);
 
                 return (
                   <div
@@ -714,7 +735,8 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                     {isHoliday && dayIdx >= 1 && dayIdx <= 5 && (
                       <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-3">
                         <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[8px] font-semibold text-amber-400">
-                          방학
+                          {schoolEventsMap.get(formatDateStr(date))?.find((e) => e.isHoliday)
+                            ?.eventName ?? '방학'}
                         </span>
                       </div>
                     )}

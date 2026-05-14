@@ -35,6 +35,11 @@ import {
 } from '@/stores/server/planner';
 import type { ExtendedLongTermPlan } from '@/stores/server/planner/planner-types';
 import { getSubjectColor, type LongTermPlan } from '@/types/planner';
+import {
+  useGetSchoolEvents,
+  useGetLinkedSchool,
+  type SchoolEvent,
+} from '@/stores/server/planner/school-schedule';
 import { Button } from 'geobuk-shared/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'geobuk-shared/ui';
 import { Input } from 'geobuk-shared/ui';
@@ -940,6 +945,15 @@ function GanttTimeline({
 
   // 고정 범위: 작년 1월 ~ 내년 12월 (항상 3년), 계획이 범위 밖이면 확장
   const curYear = today.getFullYear();
+
+  // 학교 행사 (3년치)
+  const { data: linkedSchool } = useGetLinkedSchool();
+  const { data: prevYearEvents } = useGetSchoolEvents(curYear - 1);
+  const { data: curYearEvents } = useGetSchoolEvents(curYear);
+  const { data: nextYearEvents } = useGetSchoolEvents(curYear + 1);
+  const allSchoolEvents = useMemo<SchoolEvent[]>(() => {
+    return [...(prevYearEvents ?? []), ...(curYearEvents ?? []), ...(nextYearEvents ?? [])];
+  }, [prevYearEvents, curYearEvents, nextYearEvents]);
   let rangeStartDate = new Date(curYear - 1, 0, 1);
   let rangeEndDate = new Date(curYear + 1, 11, 31, 23, 59, 59, 999);
   if (datePlans.length > 0) {
@@ -969,6 +983,32 @@ function GanttTimeline({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerWidth, datePlans.length]);
+
+  // 방학 구간 계산 (연도+이름으로 그룹화, 항상 호출해야 hooks 순서 일정)
+  const vacationRanges = useMemo(() => {
+    const byKey = new Map<string, { dates: Date[]; name: string }>();
+    allSchoolEvents
+      .filter((e) => e.isHoliday)
+      .forEach((e) => {
+        const d = new Date(e.date);
+        const key = `${d.getFullYear()}-${e.eventName}`;
+        const entry = byKey.get(key) ?? { dates: [], name: e.eventName };
+        entry.dates.push(d);
+        byKey.set(key, entry);
+      });
+    return Array.from(byKey.values()).map(({ name, dates }) => {
+      dates.sort((a, b) => a.getTime() - b.getTime());
+      return { name, start: dates[0], end: dates[dates.length - 1] };
+    });
+  }, [allSchoolEvents]);
+
+  const nonHolidayEvents = useMemo(
+    () => allSchoolEvents.filter((e) => !e.isHoliday),
+    [allSchoolEvents],
+  );
+
+  const showSchoolRow = !!linkedSchool && allSchoolEvents.length > 0;
+  const SCHOOL_ROW_H = 28;
 
   if (datePlans.length === 0) {
     return (
@@ -1038,6 +1078,15 @@ function GanttTimeline({
         >
           {/* 헤더 행 높이 맞춤 */}
           <div className="border-b border-gray-100" style={{ height: '28px' }} />
+          {/* 학교 일정 라벨 */}
+          {showSchoolRow && (
+            <div
+              className="flex items-center border-b border-gray-100 px-3 text-[10px] font-bold text-amber-500"
+              style={{ height: `${SCHOOL_ROW_H}px` }}
+            >
+              학교일정
+            </div>
+          )}
           {/* 과목 라벨 목록 */}
           {subjectEntries.map(([subject, subjectPlans]) => {
             const color = getSubjectColor(subject);
@@ -1076,6 +1125,62 @@ function GanttTimeline({
                 );
               })}
             </div>
+
+            {/* 학교 일정 행 */}
+            {showSchoolRow && (
+              <div
+                className="relative border-b border-gray-100"
+                style={{ height: `${SCHOOL_ROW_H}px` }}
+              >
+                {/* 월 구분선 */}
+                {months.map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute inset-y-0 w-px bg-gray-100"
+                    style={{ left: `${(i / numMonths) * 100}%` }}
+                  />
+                ))}
+                {/* 오늘 마커 */}
+                {showToday && (
+                  <div
+                    className="pointer-events-none absolute inset-y-0 z-10 w-px bg-red-400/70"
+                    style={{ left: `${todayPct}%` }}
+                  />
+                )}
+                {/* 방학 구간 오버레이 */}
+                {vacationRanges.map((range, i) => {
+                  const s = range.start.getTime() < rangeStart.getTime() ? rangeStart : range.start;
+                  const e = range.end.getTime() > rangeEnd.getTime() ? rangeEnd : range.end;
+                  if (s > e) return null;
+                  const left = datePct(s);
+                  const width = Math.max(0.3, datePct(e) - left);
+                  return (
+                    <div
+                      key={i}
+                      className="absolute inset-y-0 bg-amber-100/80"
+                      style={{ left: `${left}%`, width: `${width}%` }}
+                      title={range.name}
+                    />
+                  );
+                })}
+                {/* 비방학 학교 행사 마커 */}
+                {nonHolidayEvents.map((ev, i) => {
+                  const d = new Date(ev.date);
+                  if (d < rangeStart || d > rangeEnd) return null;
+                  const left = datePct(d);
+                  return (
+                    <div
+                      key={i}
+                      className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
+                      style={{ left: `${left}%` }}
+                      title={ev.eventName}
+                    >
+                      <div className="h-2 w-2 rounded-full bg-indigo-400" />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* 과목별 타임라인 행 */}
             {subjectEntries.map(([subject, subjectPlans]) => {

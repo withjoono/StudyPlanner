@@ -35,7 +35,14 @@ import {
   useGetRoutines,
 } from '@/stores/server/planner';
 import type { DailyMission } from '@/stores/server/planner/planner-types';
-import { useGetDayTimetable, PERIOD_TIMES } from '@/stores/server/planner/school-schedule';
+import {
+  useGetDayTimetable,
+  PERIOD_TIMES,
+  useGetSchoolEvents,
+  useGetLinkedSchool,
+  type SchoolEvent,
+  type TimetableItem,
+} from '@/stores/server/planner/school-schedule';
 import { getSubjectColor } from '@/types/planner';
 import type { Routine } from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
@@ -1029,6 +1036,16 @@ function MyMissionsPage() {
   const isWeekday = selectedDate.getDay() >= 1 && selectedDate.getDay() <= 5;
   const { data: timetableItems } = useGetDayTimetable(isWeekday ? dateStr : '');
 
+  // 학교 행사 조회
+  const { data: linkedSchool } = useGetLinkedSchool();
+  const { data: schoolEventsData } = useGetSchoolEvents(
+    selectedDate.getFullYear(),
+    selectedDate.getMonth() + 1,
+  );
+  const todaySchoolEvents = useMemo<SchoolEvent[]>(() => {
+    return (schoolEventsData ?? []).filter((e) => e.date === dateStr);
+  }, [schoolEventsData, dateStr]);
+
   // 선택한 날짜의 요일에 활성화된 루틴 필터링
   const dayRoutines = useMemo(() => {
     if (!routines) return [];
@@ -1050,21 +1067,49 @@ function MyMissionsPage() {
     });
   }, [missions, dateStr]);
 
-  // 루틴 + 미션 통합 타임라인 (시간순 정렬)
-  type TimelineItem = { type: 'routine'; data: Routine } | { type: 'mission'; data: DailyMission };
+  // 루틴 + 미션 + 시간표 통합 타임라인 (시간순 정렬)
+  type TimelineItem =
+    | { type: 'routine'; data: Routine }
+    | { type: 'mission'; data: DailyMission }
+    | { type: 'timetable'; data: TimetableItem; startTime: string; endTime: string };
 
   const timelineItems = useMemo<TimelineItem[]>(() => {
     const items: TimelineItem[] = [
       ...dayRoutines.map((r) => ({ type: 'routine' as const, data: r })),
       ...dayMissions.map((m) => ({ type: 'mission' as const, data: m })),
     ];
+    // 시간표 추가 (평일, 학교 연동, 방학 아닌 날)
+    const isSchoolDay = isWeekday && !!linkedSchool && !todaySchoolEvents.some((e) => e.isHoliday);
+    if (isSchoolDay && timetableItems && timetableItems.length > 0) {
+      timetableItems.forEach((tt) => {
+        const times = PERIOD_TIMES[tt.period];
+        if (times) {
+          items.push({
+            type: 'timetable' as const,
+            data: tt,
+            startTime: times.start,
+            endTime: times.end,
+          });
+        }
+      });
+    }
     items.sort((a, b) => {
-      const aTime = a.type === 'routine' ? a.data.startTime : a.data.startTime || '99:99';
-      const bTime = b.type === 'routine' ? b.data.startTime : b.data.startTime || '99:99';
+      const aTime =
+        a.type === 'routine'
+          ? a.data.startTime
+          : a.type === 'timetable'
+            ? a.startTime
+            : a.data.startTime || '99:99';
+      const bTime =
+        b.type === 'routine'
+          ? b.data.startTime
+          : b.type === 'timetable'
+            ? b.startTime
+            : b.data.startTime || '99:99';
       return aTime.localeCompare(bTime);
     });
     return items;
-  }, [dayRoutines, dayMissions]);
+  }, [dayRoutines, dayMissions, isWeekday, linkedSchool, todaySchoolEvents, timetableItems]);
 
   // 날짜 이동
   const navigateDate = (dir: 'prev' | 'next') => {
@@ -1435,33 +1480,20 @@ function MyMissionsPage() {
         {/* ═══════ 계획 탭 ═══════ */}
         {activeTab === 'plan' && (
           <div className="space-y-3">
-            {/* 오늘 시간표 (학교 연동 + 평일만) */}
-            {isWeekday && timetableItems && timetableItems.length > 0 && (
-              <div className="rounded-2xl border border-sky-100 bg-sky-50 p-3">
-                <div className="mb-2 flex items-center gap-1.5">
-                  <BookOpen className="h-3.5 w-3.5 text-sky-500" />
-                  <span className="text-xs font-semibold text-sky-700">오늘 시간표</span>
-                </div>
+            {/* 학교 행사 배너 */}
+            {todaySchoolEvents.length > 0 && (
+              <div
+                className={`rounded-2xl border p-3 ${todaySchoolEvents.some((e) => e.isHoliday) ? 'border-amber-100 bg-amber-50' : 'border-indigo-100 bg-indigo-50'}`}
+              >
                 <div className="flex flex-wrap gap-1.5">
-                  {timetableItems
-                    .sort((a, b) => Number(a.period) - Number(b.period))
-                    .map((item) => {
-                      const times = PERIOD_TIMES[item.period];
-                      return (
-                        <div
-                          key={item.period}
-                          className="flex items-center gap-1 rounded-lg border border-sky-200 bg-white px-2 py-1"
-                          title={times ? `${times.start} ~ ${times.end}` : ''}
-                        >
-                          <span className="text-[10px] font-bold text-sky-400">
-                            {item.period}교시
-                          </span>
-                          <span className="text-xs font-semibold text-gray-700">
-                            {item.subject}
-                          </span>
-                        </div>
-                      );
-                    })}
+                  {todaySchoolEvents.map((ev) => (
+                    <span
+                      key={ev.id}
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${ev.isHoliday ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'}`}
+                    >
+                      {ev.eventName}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
@@ -1538,6 +1570,34 @@ function MyMissionsPage() {
                       >
                         ✓ 결과
                       </button>
+                    </div>
+                  );
+                }
+
+                // 시간표 카드
+                if (item.type === 'timetable') {
+                  const tt = item.data;
+                  return (
+                    <div
+                      key={`plan-timetable-${tt.period}`}
+                      className="flex items-center gap-3 rounded-2xl border border-sky-100 bg-sky-50 p-4 shadow-sm"
+                    >
+                      <div className="flex h-10 w-16 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-sky-100">
+                        <span className="text-xs font-bold text-sky-600">{item.startTime}</span>
+                        <span className="text-[9px] text-sky-400">{item.endTime}</span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="rounded-md bg-sky-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                            {tt.period}교시
+                          </span>
+                          <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[9px] font-medium text-sky-500">
+                            시간표
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-gray-800">{tt.subject}</p>
+                        {tt.teacher && <p className="text-xs text-gray-400">{tt.teacher}</p>}
+                      </div>
                     </div>
                   );
                 }
