@@ -93,7 +93,7 @@ export function useGetSchoolEvents(year: number, month?: number) {
       const res = await authClient.get<SchoolEvent[]>('/neis/schedule', {
         params: { year, month },
       });
-      return res.data ?? [];
+      return Array.isArray(res.data) ? res.data : [];
     },
     enabled: !!linkedSchool,
     staleTime: 1000 * 60 * 60, // 1시간
