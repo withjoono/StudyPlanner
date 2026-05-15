@@ -34,7 +34,7 @@ import {
   useGetSchoolEvents,
   type SchoolEvent,
 } from '@/stores/server/planner/school-schedule';
-import { SchoolLinkDialog } from '@/components/planner/SchoolLinkDialog';
+import { env } from '@/lib/config/env';
 import type { Routine, RoutineMajorCategory, LongTermPlan } from '@/types/planner';
 import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, getSubjectColor } from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
@@ -452,7 +452,6 @@ function useSchoolEventsForWeek(weekStart: Date, weekEnd: Date): Map<string, Sch
 
 function WeeklyCalendar({ routines }: { routines: Routine[] }) {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
-  const [schoolLinkOpen, setSchoolLinkOpen] = useState(false);
   const { data: linkedSchool, isLoading: isSchoolLoading } = useGetLinkedSchool();
 
   const today = new Date();
@@ -786,28 +785,24 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
               {isSchoolLoading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-300" />
               ) : linkedSchool ? (
-                <button
-                  onClick={() => setSchoolLinkOpen(true)}
-                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
-                  title="학교 변경"
-                >
+                <span className="flex items-center gap-1 text-xs text-gray-400">
                   <span>🏫</span>
                   <span>{linkedSchool.schulName}</span>
-                </button>
+                </span>
               ) : (
-                <button
-                  onClick={() => setSchoolLinkOpen(true)}
+                <a
+                  href={`${env.hubFrontUrl}/users/profile`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 hover:bg-sky-100"
                 >
                   🏫 학교 연결하기
-                </button>
+                </a>
               )}
             </div>
           </div>
         </CardContent>
       </Card>
-
-      <SchoolLinkDialog open={schoolLinkOpen} onOpenChange={setSchoolLinkOpen} />
     </>
   );
 }

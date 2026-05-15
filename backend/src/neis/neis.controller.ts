@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Query, Body, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { NeisService } from './neis.service';
@@ -9,36 +9,18 @@ import { NeisService } from './neis.service';
 export class NeisController {
   constructor(private readonly neisService: NeisService) {}
 
-  @Get('schools')
-  @ApiOperation({ summary: '학교 검색 (NEIS API)' })
-  async searchSchools(@Query('q') q: string) {
-    if (!q || q.length < 2) return [];
-    return this.neisService.searchSchools(q);
-  }
-
-  @Get('my-school')
-  @ApiOperation({ summary: '연결된 학교 조회' })
-  async getLinkedSchool(@Req() req: any) {
-    return this.neisService.getLinkedSchool(req.user.sub);
-  }
-
-  @Post('my-school')
-  @ApiOperation({ summary: '학교 연결 저장' })
-  async linkSchool(@Req() req: any, @Body() body: any) {
-    return this.neisService.linkSchool(req.user.sub, body);
-  }
-
-  @Delete('my-school')
-  @ApiOperation({ summary: '학교 연결 해제' })
-  async unlinkSchool(@Req() req: any) {
-    return this.neisService.unlinkSchool(req.user.sub);
-  }
-
   @Get('schedule')
-  @ApiOperation({ summary: '학교 행사 일정 조회 (월별 캐시)' })
-  async getSchedule(@Req() req: any, @Query('year') year: string, @Query('month') month?: string) {
+  @ApiOperation({ summary: '학교 행사 일정 조회 (atptCode·schulCode 기반, DB 캐시)' })
+  async getSchedule(
+    @Query('atpt_code') atptCode: string,
+    @Query('schul_code') schulCode: string,
+    @Query('year') year: string,
+    @Query('month') month?: string,
+  ) {
+    if (!atptCode || !schulCode || !year) return [];
     return this.neisService.getSchedule(
-      req.user.sub,
+      atptCode,
+      schulCode,
       parseInt(year),
       month ? parseInt(month) : undefined,
     );
@@ -46,19 +28,31 @@ export class NeisController {
 
   @Post('schedule/refresh')
   @ApiOperation({ summary: '학교 행사 강제 새로고침' })
-  async refreshSchedule(@Req() req: any, @Body() body: any) {
-    const year = body.year || body.year;
-    return this.neisService.refreshSchedule(req.user.sub, parseInt(year));
+  async refreshSchedule(@Body() body: any) {
+    const atptCode = body.atptCode || body.atpt_code;
+    const schulCode = body.schulCode || body.schul_code;
+    const year = parseInt(body.year);
+    if (!atptCode || !schulCode || !year) return [];
+
+    // 캐시 삭제 후 재조회
+    const school = await this.neisService['findOrCreateSchool'](atptCode, schulCode);
+    await this.neisService['prisma'].neisSchedule.deleteMany({
+      where: { schoolId: school, year },
+    });
+    return this.neisService.getSchedule(atptCode, schulCode, year);
   }
 
   @Get('timetable')
-  @ApiOperation({ summary: '시간표 조회' })
+  @ApiOperation({ summary: '시간표 조회 (studentProfile의 school_level·grade 기반)' })
   async getTimetable(
-    @Req() req: any,
+    @Query('atpt_code') atptCode: string,
+    @Query('schul_code') schulCode: string,
     @Query('date') date: string,
+    @Query('school_level') schoolLevel?: string,
     @Query('grade') grade?: string,
     @Query('class_nm') classNm?: string,
   ) {
-    return this.neisService.getTimetable(req.user.sub, date, grade, classNm);
+    if (!atptCode || !schulCode || !date) return [];
+    return this.neisService.getTimetable(atptCode, schulCode, date, schoolLevel, grade, classNm);
   }
 }

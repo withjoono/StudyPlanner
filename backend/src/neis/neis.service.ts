@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
@@ -19,111 +19,20 @@ export class NeisService {
     this.apiKey = this.config.get<string>('NEIS_API_KEY') || '';
   }
 
-  private async getStudent(userId: string) {
-    const student = await this.prisma.student.findUnique({
-      where: { userId },
-      include: { neisSchool: true },
-    });
-    if (!student) throw new NotFoundException('학생 정보를 찾을 수 없습니다.');
-    return student;
-  }
-
-  async searchSchools(q: string) {
-    try {
-      const { data } = await firstValueFrom(
-        this.http.get(`${NEIS_BASE}/schoolInfo`, {
-          params: { KEY: this.apiKey, Type: 'json', SCHUL_NM: q, pSize: 20 },
-        }),
-      );
-      const rows: any[] = data?.schoolInfo?.[1]?.row ?? [];
-      return rows.map((r) => ({
-        atptCode: r.ATPT_OFCDC_SC_CODE,
-        atptName: r.ATPT_OFCDC_SC_NM,
-        schulCode: r.SD_SCHUL_CODE,
-        schulName: r.SCHUL_NM,
-        schulKind: r.SCHUL_KND_SC_NM,
-        address: r.ORG_RDNMA || null,
-      }));
-    } catch (e) {
-      this.logger.error('NEIS school search error', e?.message);
-      return [];
-    }
-  }
-
-  async getLinkedSchool(userId: string) {
-    const student = await this.getStudent(userId);
-    if (!student.neisSchool) return null;
-    const s = student.neisSchool;
-    return {
-      atptCode: s.atptCode,
-      atptName: s.atptName,
-      schulCode: s.schulCode,
-      schulName: s.schulName,
-      schulKind: s.schulKind,
-      address: s.address,
-    };
-  }
-
-  async linkSchool(
-    userId: string,
-    body: {
-      atptCode?: string;
-      atpt_code?: string;
-      atptName?: string;
-      atpt_name?: string;
-      schulCode?: string;
-      schul_code?: string;
-      schulName?: string;
-      schul_name?: string;
-      schulKind?: string;
-      schul_kind?: string;
-      address?: string | null;
-    },
-  ) {
-    const atptCode = body.atptCode || body.atpt_code || '';
-    const atptName = body.atptName || body.atpt_name || '';
-    const schulCode = body.schulCode || body.schul_code || '';
-    const schulName = body.schulName || body.schul_name || '';
-    const schulKind = body.schulKind || body.schul_kind || '';
-    const address = body.address || null;
-
-    const student = await this.getStudent(userId);
-
+  /** atptCode+schulCode 기준으로 NeisSchool 캐시 레코드 찾거나 생성 */
+  private async findOrCreateSchool(atptCode: string, schulCode: string): Promise<number> {
     const school = await this.prisma.neisSchool.upsert({
       where: { atptCode_schulCode: { atptCode, schulCode } },
-      create: { atptCode, atptName, schulCode, schulName, schulKind, address },
-      update: { schulName, atptName, address },
+      create: { atptCode, atptName: '', schulCode, schulName: '', schulKind: '' },
+      update: {},
     });
-
-    await this.prisma.student.update({
-      where: { id: student.id },
-      data: { neisSchoolId: school.id },
-    });
-
-    return {
-      atptCode: school.atptCode,
-      atptName: school.atptName,
-      schulCode: school.schulCode,
-      schulName: school.schulName,
-      schulKind: school.schulKind,
-      address: school.address,
-    };
+    return school.id;
   }
 
-  async unlinkSchool(userId: string) {
-    const student = await this.getStudent(userId);
-    await this.prisma.student.update({
-      where: { id: student.id },
-      data: { neisSchoolId: null },
-    });
-  }
-
-  async getSchedule(userId: string, year: number, month?: number) {
-    const student = await this.getStudent(userId);
-    if (!student.neisSchool) return [];
-
-    const school = student.neisSchool;
-    const where: any = { schoolId: school.id, year };
+  /** 학교 행사 일정 조회 (DB 캐시 → NEIS API) */
+  async getSchedule(atptCode: string, schulCode: string, year: number, month?: number) {
+    const schoolId = await this.findOrCreateSchool(atptCode, schulCode);
+    const where: any = { schoolId, year };
     if (month) where.month = month;
 
     const cached = await this.prisma.neisSchedule.findMany({
@@ -140,28 +49,7 @@ export class NeisService {
       }));
     }
 
-    return this.fetchAndCacheSchedule(school.id, school.atptCode, school.schulCode, year, month);
-  }
-
-  async refreshSchedule(userId: string, year: number) {
-    const student = await this.getStudent(userId);
-    if (!student.neisSchool) return [];
-
-    const school = student.neisSchool;
-    await this.prisma.neisSchedule.deleteMany({ where: { schoolId: school.id, year } });
-
-    const results: any[] = [];
-    for (let m = 1; m <= 12; m++) {
-      const events = await this.fetchAndCacheSchedule(
-        school.id,
-        school.atptCode,
-        school.schulCode,
-        year,
-        m,
-      );
-      results.push(...events);
-    }
-    return results;
+    return this.fetchAndCacheSchedule(schoolId, atptCode, schulCode, year, month);
   }
 
   private async fetchAndCacheSchedule(
@@ -224,18 +112,18 @@ export class NeisService {
     }
   }
 
-  async getTimetable(userId: string, date: string, gradeOverride?: string, classNm?: string) {
-    const student = await this.getStudent(userId);
-    if (!student.neisSchool) return [];
+  /** 시간표 조회 (NEIS API 직접 호출) */
+  async getTimetable(
+    atptCode: string,
+    schulCode: string,
+    date: string, // YYYYMMDD
+    schoolLevel?: string,
+    grade?: string,
+    classNm?: string,
+  ) {
+    if (!schoolLevel || !grade) return [];
 
-    const school = student.neisSchool;
-    const grade = gradeOverride || student.grade;
-    if (!grade) return [];
-
-    const schoolLevel = this.getSchoolLevel(school.schulKind);
     const endpoint = this.getTimetableEndpoint(schoolLevel);
-
-    // date is YYYYMMDD
     const month = parseInt(date.substring(4, 6));
     const year = parseInt(date.substring(0, 4));
     let sem: string;
@@ -255,8 +143,8 @@ export class NeisService {
       const params: Record<string, string> = {
         KEY: this.apiKey,
         Type: 'json',
-        ATPT_OFCDC_SC_CODE: school.atptCode,
-        SD_SCHUL_CODE: school.schulCode,
+        ATPT_OFCDC_SC_CODE: atptCode,
+        SD_SCHUL_CODE: schulCode,
         AY: String(ay),
         SEM: sem,
         ALL_TI_YMD: date,
@@ -283,16 +171,10 @@ export class NeisService {
     }
   }
 
-  private getSchoolLevel(schulKind: string): 'high' | 'middle' | 'elementary' {
-    if (schulKind.includes('고등')) return 'high';
-    if (schulKind.includes('중학') || schulKind.includes('중등')) return 'middle';
-    if (schulKind.includes('초등') || schulKind.includes('초교')) return 'elementary';
-    return 'high';
-  }
-
-  private getTimetableEndpoint(level: 'high' | 'middle' | 'elementary'): string {
-    if (level === 'high') return 'hisTimetable';
-    if (level === 'middle') return 'misTimetable';
+  private getTimetableEndpoint(schoolLevel: string): string {
+    if (schoolLevel === 'high' || schoolLevel.includes('고등')) return 'hisTimetable';
+    if (schoolLevel === 'middle' || schoolLevel.includes('중학') || schoolLevel.includes('중등'))
+      return 'misTimetable';
     return 'elsTimetable';
   }
 }

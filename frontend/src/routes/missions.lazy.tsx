@@ -43,7 +43,7 @@ import {
   type SchoolEvent,
   type TimetableItem,
 } from '@/stores/server/planner/school-schedule';
-import { SchoolLinkDialog } from '@/components/planner/SchoolLinkDialog';
+import { env } from '@/lib/config/env';
 import { getSubjectColor } from '@/types/planner';
 import type { Routine } from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
@@ -1029,7 +1029,6 @@ function MyMissionsPage() {
 
   // 탭 상태 (계획/결과/분석)
   const [activeTab, setActiveTab] = useState<'plan' | 'result' | 'analysis'>('plan');
-  const [schoolLinkOpen, setSchoolLinkOpen] = useState(false);
 
   const dateStr = selectedDate.toISOString().split('T')[0];
   const isToday = dateStr === new Date().toISOString().split('T')[0];
@@ -1488,12 +1487,14 @@ function MyMissionsPage() {
                 <p className="text-xs text-sky-600">
                   학교를 연결하면 시간표와 학교 행사가 표시됩니다
                 </p>
-                <button
-                  onClick={() => setSchoolLinkOpen(true)}
+                <a
+                  href={`${env.hubFrontUrl}/users/profile`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="ml-3 flex-shrink-0 rounded-full border border-sky-200 bg-white px-3 py-1 text-xs font-medium text-sky-600 hover:bg-sky-100"
                 >
                   🏫 연결하기
-                </button>
+                </a>
               </div>
             )}
             {/* 학교 행사 카드 */}
@@ -1947,8 +1948,6 @@ function MyMissionsPage() {
         onOpenChange={setRoutineSheetOpen}
         onConvertToMission={handleConvertRoutineToMission}
       />
-
-      <SchoolLinkDialog open={schoolLinkOpen} onOpenChange={setSchoolLinkOpen} />
     </div>
   );
 }

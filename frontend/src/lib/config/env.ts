@@ -12,6 +12,7 @@ interface EnvConfig {
   // 백엔드 API URL
   apiUrl: string; // StudyPlanner 백엔드 (플래너 전용)
   apiUrlHub: string; // Hub 통합 백엔드 (인증, 결제, 회원)
+  hubFrontUrl: string; // Hub 프론트엔드 (프로필 수정 등 이동용)
 
   // 소셜 로그인
   naverLoginClientId: string;
@@ -52,6 +53,9 @@ export const env: EnvConfig = {
   // 백엔드 API URL (환경변수 우선, 없으면 개발: 프록시 / 프로덕션: localhost 폴백)
   apiUrl: getApiUrl('VITE_API_URL', '/api', 'http://localhost:4004'),
   apiUrlHub: getApiUrl('VITE_API_URL_HUB', '/api-main', 'http://localhost:4000'),
+  hubFrontUrl:
+    (import.meta.env.VITE_HUB_URL as string) ||
+    (import.meta.env.PROD ? 'https://tskool.kr' : 'http://localhost:5173'),
 
   // 소셜 로그인
   naverLoginClientId: getEnvVar('VITE_NAVER_LOGIN_CLIENT_ID'),

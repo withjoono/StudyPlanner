@@ -40,7 +40,7 @@ import {
   useGetLinkedSchool,
   type SchoolEvent,
 } from '@/stores/server/planner/school-schedule';
-import { SchoolLinkDialog } from '@/components/planner/SchoolLinkDialog';
+import { env } from '@/lib/config/env';
 import { Button } from 'geobuk-shared/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'geobuk-shared/ui';
 import { Input } from 'geobuk-shared/ui';
@@ -926,7 +926,6 @@ function GanttTimeline({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [schoolLinkOpen, setSchoolLinkOpen] = useState(false);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -1071,20 +1070,18 @@ function GanttTimeline({
         )}
         <div className="ml-auto">
           {linkedSchool ? (
-            <button
-              onClick={() => setSchoolLinkOpen(true)}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
-              title="학교 변경"
-            >
+            <span className="flex items-center gap-1 text-xs text-gray-400">
               🏫 {linkedSchool.schulName}
-            </button>
+            </span>
           ) : (
-            <button
-              onClick={() => setSchoolLinkOpen(true)}
+            <a
+              href={`${env.hubFrontUrl}/users/profile`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 hover:bg-sky-100"
             >
               🏫 학교 연결하기
-            </button>
+            </a>
           )}
         </div>
       </div>
@@ -1306,8 +1303,6 @@ function GanttTimeline({
           </p>
         </div>
       )}
-
-      <SchoolLinkDialog open={schoolLinkOpen} onOpenChange={setSchoolLinkOpen} />
     </div>
   );
 }
