@@ -7,8 +7,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { authClient, publicClient } from '@/lib/api/instances';
-import { useAuthStore } from '@/stores/client/use-auth-store';
+import { plannerClient } from '@/lib/api/instances';
 
 export interface NeisSchoolInfo {
   atptCode: string;
@@ -54,14 +53,6 @@ export const PERIOD_TIMES: Record<string, { start: string; end: string }> = {
   '7': { start: '15:30', end: '16:20' },
 };
 
-function getSchoolLevel(schulKind?: string): 'high' | 'middle' | 'elementary' | null {
-  if (!schulKind) return null;
-  if (schulKind.includes('고등')) return 'high';
-  if (schulKind.includes('중학') || schulKind.includes('중등')) return 'middle';
-  if (schulKind.includes('초등') || schulKind.includes('초교')) return 'elementary';
-  return 'high'; // 기본값
-}
-
 export const schoolScheduleKeys = {
   all: ['schoolSchedule'] as const,
   mySchool: () => [...schoolScheduleKeys.all, 'mySchool'] as const,
@@ -72,25 +63,25 @@ export const schoolScheduleKeys = {
     [...schoolScheduleKeys.all, 'timetable', dateStr, schulCode] as const,
 };
 
-/** Hub에서 연결된 학교 정보 조회 */
+/** StudyPlanner 백엔드에서 연결된 학교 정보 조회 */
 export function useGetLinkedSchool() {
   return useQuery({
     queryKey: schoolScheduleKeys.mySchool(),
     queryFn: async () => {
-      const res = await authClient.get<LinkedSchool | null>('/neis/my-school');
+      const res = await plannerClient.get<LinkedSchool | null>('/neis/my-school');
       return res.data;
     },
   });
 }
 
-/** Hub에서 학교 행사 일정 조회 (월별 캐시) */
+/** StudyPlanner 백엔드에서 학교 행사 일정 조회 (월별 캐시) */
 export function useGetSchoolEvents(year: number, month?: number) {
   const { data: linkedSchool } = useGetLinkedSchool();
 
   return useQuery({
     queryKey: schoolScheduleKeys.events(year, month),
     queryFn: async () => {
-      const res = await authClient.get('/neis/schedule', {
+      const res = await plannerClient.get('/neis/schedule', {
         params: { year, month },
       });
       const raw = res.data;
@@ -100,17 +91,17 @@ export function useGetSchoolEvents(year: number, month?: number) {
       return [] as SchoolEvent[];
     },
     enabled: !!linkedSchool,
-    staleTime: 1000 * 60 * 60, // 1시간
+    staleTime: 1000 * 60 * 60,
   });
 }
 
-/** Hub NEIS API로 학교 검색 */
+/** StudyPlanner 백엔드 → NEIS API 학교 검색 */
 export function useSearchSchools(q: string) {
   return useQuery({
     queryKey: schoolScheduleKeys.search(q),
     queryFn: async () => {
       if (!q.trim() || q.length < 2) return [];
-      const res = await authClient.get<NeisSchoolInfo[]>('/neis/schools', {
+      const res = await plannerClient.get<NeisSchoolInfo[]>('/neis/schools', {
         params: { q },
       });
       return res.data ?? [];
@@ -120,13 +111,13 @@ export function useSearchSchools(q: string) {
   });
 }
 
-/** Hub에 학교 연결 저장 */
+/** StudyPlanner 백엔드에 학교 연결 저장 */
 export function useLinkSchool() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (school: NeisSchoolInfo) => {
-      const res = await authClient.post<LinkedSchool>('/neis/my-school', school);
+      const res = await plannerClient.post<LinkedSchool>('/neis/my-school', school);
       return res.data;
     },
     onSuccess: () => {
@@ -136,13 +127,13 @@ export function useLinkSchool() {
   });
 }
 
-/** Hub에서 학교 연결 해제 */
+/** StudyPlanner 백엔드에서 학교 연결 해제 */
 export function useUnlinkSchool() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async () => {
-      await authClient.delete('/neis/my-school');
+      await plannerClient.delete('/neis/my-school');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: schoolScheduleKeys.mySchool() });
@@ -151,13 +142,13 @@ export function useUnlinkSchool() {
   });
 }
 
-/** Hub에서 학교 일정 강제 새로고침 (NEIS 재조회) */
+/** StudyPlanner 백엔드 → NEIS 학교 일정 강제 새로고침 */
 export function useRefreshSchoolSchedule() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (year: number) => {
-      await authClient.post('/neis/schedule/refresh', { year });
+      await plannerClient.post('/neis/schedule/refresh', { year });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: schoolScheduleKeys.all });
@@ -167,36 +158,23 @@ export function useRefreshSchoolSchedule() {
 
 /**
  * 특정 날짜의 시간표 조회
- * - Hub @Public 엔드포인트 (atptCode, schulCode 필요)
- * - grade + classNm으로 필터링
+ * - StudyPlanner 백엔드가 JWT로 학교/학년 정보를 DB에서 조회
  * @param dateStr YYYY-MM-DD 형식
  */
 export function useGetDayTimetable(dateStr: string) {
   const { data: linkedSchool } = useGetLinkedSchool();
-  const user = useAuthStore((state) => state.user);
-
-  const grade = user?.studentProfile?.grade != null ? String(user.studentProfile.grade) : undefined;
-  const classNm = user?.studentProfile?.classNm ?? undefined;
-  const schoolLevel = getSchoolLevel(linkedSchool?.schulKind);
 
   const yyyymmdd = dateStr.replace(/-/g, '');
 
   return useQuery({
     queryKey: schoolScheduleKeys.timetable(dateStr, linkedSchool?.schulCode),
     queryFn: async () => {
-      const res = await publicClient.get<TimetableItem[]>('/neis/timetable', {
-        params: {
-          atptCode: linkedSchool!.atptCode,
-          schulCode: linkedSchool!.schulCode,
-          date: yyyymmdd,
-          schoolLevel,
-          ...(grade && { grade }),
-          ...(classNm && { classNm }),
-        },
+      const res = await plannerClient.get<TimetableItem[]>('/neis/timetable', {
+        params: { date: yyyymmdd },
       });
       return res.data ?? [];
     },
-    enabled: !!dateStr && !!linkedSchool?.atptCode && !!linkedSchool?.schulCode && !!schoolLevel,
-    staleTime: 1000 * 60 * 60 * 24, // 시간표는 하루 캐시
+    enabled: !!dateStr && !!linkedSchool,
+    staleTime: 1000 * 60 * 60 * 24,
   });
 }

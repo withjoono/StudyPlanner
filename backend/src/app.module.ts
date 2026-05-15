@@ -20,6 +20,7 @@ import { AcornModule } from './acorn/acorn.module';
 import { MyClassModule } from './myclass/myclass.module';
 import { BadgeModule } from './badge/badge.module';
 import { MentoringModule } from './mentoring/mentoring.module';
+import { NeisModule } from './neis/neis.module';
 
 @Module({
   imports: [
@@ -72,6 +73,9 @@ import { MentoringModule } from './mentoring/mentoring.module';
 
     // 멘토링 (선생님 주간 검사 + 학생 피드백 수신함)
     MentoringModule,
+
+    // NEIS 학교 일정/시간표 연동
+    NeisModule,
   ],
 })
 export class AppModule {}

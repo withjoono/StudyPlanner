@@ -209,10 +209,47 @@ model Student {
   studyRoomsOwned   StudyRoom[]          @relation("RoomOwner")
   studyRoomMemberships StudyRoomMember[]
   badges            StudentBadge[]
+  neisSchoolId      Int?                 @map("neis_school_id")
+  neisSchool        NeisSchool?          @relation(fields: [neisSchoolId], references: [id], onDelete: SetNull)
 
   @@index([studentCode], name: "idx_student_code")
   @@index([year], name: "idx_student_year")
   @@map("student")
+}
+
+/// NEIS 연결된 학교 정보 (학교별 캐시)
+model NeisSchool {
+  id        Int      @id @default(autoincrement())
+  atptCode  String   @map("atpt_code") @db.VarChar(10)
+  atptName  String   @map("atpt_name") @db.VarChar(50)
+  schulCode String   @map("schul_code") @db.VarChar(20)
+  schulName String   @map("schul_name") @db.VarChar(100)
+  schulKind String   @map("schul_kind") @db.VarChar(20)
+  address   String?  @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  schedules NeisSchedule[]
+  students  Student[]
+
+  @@unique([atptCode, schulCode])
+  @@map("neis_school")
+}
+
+/// NEIS 학교 행사 일정 (월별 DB 캐시)
+model NeisSchedule {
+  id        Int        @id @default(autoincrement())
+  schoolId  Int        @map("school_id")
+  school    NeisSchool @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  eventDate String     @map("event_date") @db.VarChar(10)
+  eventName String     @map("event_name") @db.VarChar(200)
+  isHoliday Boolean    @map("is_holiday")
+  year      Int
+  month     Int
+
+  @@unique([schoolId, eventDate, eventName])
+  @@index([schoolId, year, month])
+  @@map("neis_schedule")
 }
 
 /// 주간 루틴
