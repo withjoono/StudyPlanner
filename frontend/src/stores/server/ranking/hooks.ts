@@ -59,3 +59,28 @@ export function useMyRankSummary() {
     staleTime: 60_000,
   });
 }
+
+/**
+ * Hub 반(internal API · service token 기반) 리더보드.
+ * - 백엔드가 Hub `/api/internal/groups/:id/members`를 호출해 SP DailyScore와 join
+ * - 닉네임은 Hub 응답값이 사용됨 (학생 이름이 아닌 표시명)
+ */
+export function useHubGroupLeaderboard(
+  groupId: string | null | undefined,
+  period: 'daily' | 'weekly' | 'monthly' = 'weekly',
+  date?: string,
+) {
+  return useQuery<LeaderboardResponse>({
+    queryKey: ['ranking', 'hub-group', groupId, period, date],
+    queryFn: async () => {
+      const params: Record<string, string> = { period };
+      if (date) params.date = date;
+      const { data } = await plannerClient.get(`/ranking/hub-groups/${groupId}/leaderboard`, {
+        params,
+      });
+      return data;
+    },
+    enabled: !!groupId,
+    staleTime: 60_000,
+  });
+}

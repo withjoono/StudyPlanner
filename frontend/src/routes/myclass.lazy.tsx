@@ -40,6 +40,7 @@ import {
   type MyClassRoom,
   type LeaderboardEntry,
 } from '@/stores/server/myclass';
+import { useHubGroupLeaderboard, useLeaderboard } from '@/stores/server/ranking';
 
 export const Route = createLazyFileRoute('/myclass')({
   component: MyClassPage,
@@ -90,6 +91,9 @@ function MyClassPage() {
           <Plus className="h-4 w-4" />새 클래스 만들기
         </button>
       </div>
+
+      {/* Hub 학습 그룹 리더보드 (target_univ / teacher / student_study) */}
+      <HubGroupLeaderboardSection />
 
       {/* 초대 코드 입력 */}
       <div className="mb-6 overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 p-4">
@@ -780,6 +784,119 @@ function CreateClassModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ─────────── Hub 학습 그룹 리더보드 (Phase 1 통합) ───────────
+
+function HubGroupLeaderboardSection() {
+  const { data: rankingData, isLoading: isGroupsLoading } = useLeaderboard('weekly');
+  const hubGroups = (rankingData?.availableGroups ?? []).filter(
+    (g) => g.id !== 'teacher' && !g.id.startsWith('mc-'),
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const activeGroupId = selectedId ?? hubGroups[0]?.id ?? null;
+  const { data: leaderboard, isLoading: isLbLoading } = useHubGroupLeaderboard(
+    activeGroupId,
+    'weekly',
+  );
+
+  if (isGroupsLoading) {
+    return (
+      <div className="mb-6 h-24 animate-pulse rounded-2xl border border-gray-100 bg-white shadow-sm" />
+    );
+  }
+  if (hubGroups.length === 0) return null;
+
+  return (
+    <div className="mb-6 overflow-hidden rounded-2xl border border-sky-100 bg-white shadow-sm">
+      <div className="flex items-center gap-2 border-b border-sky-50 bg-gradient-to-r from-sky-50 to-cyan-50 px-4 py-3">
+        <BarChart2 className="h-4 w-4 text-sky-600" />
+        <span className="text-sm font-bold text-sky-700">Hub 학습 그룹 리더보드</span>
+        <span className="ml-auto text-[10px] text-sky-500">이번 주</span>
+      </div>
+
+      {/* 그룹 선택 칩 */}
+      <div className="flex flex-wrap gap-2 border-b border-gray-50 px-4 py-3">
+        {hubGroups.map((g) => {
+          const isActive = g.id === activeGroupId;
+          return (
+            <button
+              key={g.id}
+              type="button"
+              onClick={() => setSelectedId(g.id)}
+              className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${
+                isActive
+                  ? 'bg-sky-500 text-white'
+                  : 'border border-sky-200 bg-white text-sky-700 hover:bg-sky-50'
+              }`}
+            >
+              {g.name}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 리더보드 본문 */}
+      <div className="px-4 py-3">
+        {isLbLoading ? (
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-8 animate-pulse rounded bg-gray-100" />
+            ))}
+          </div>
+        ) : !leaderboard || leaderboard.leaderboard.length === 0 ? (
+          <p className="py-4 text-center text-xs text-gray-400">
+            아직 이 그룹의 학습 데이터가 없습니다.
+          </p>
+        ) : (
+          <ol className="space-y-1">
+            {leaderboard.leaderboard.slice(0, 10).map((e) => {
+              const isMe = leaderboard.myRank === e.rank;
+              return (
+                <li
+                  key={e.studentId}
+                  className={`flex items-center gap-3 rounded-lg px-2 py-1.5 ${
+                    isMe ? 'bg-sky-50' : ''
+                  }`}
+                >
+                  <span
+                    className={`w-6 text-center text-xs font-bold ${
+                      e.rank === 1
+                        ? 'text-amber-500'
+                        : e.rank === 2
+                          ? 'text-gray-400'
+                          : e.rank === 3
+                            ? 'text-orange-400'
+                            : 'text-gray-500'
+                    }`}
+                  >
+                    {e.rank}
+                  </span>
+                  <span className="flex-1 truncate text-sm text-gray-800">
+                    {e.name}
+                    {isMe && <span className="ml-1 text-[10px] text-sky-500">(나)</span>}
+                  </span>
+                  <span className="text-xs font-semibold text-gray-700">
+                    {e.totalScore.toLocaleString()}점
+                  </span>
+                  <span className="text-[10px] text-gray-400">
+                    <Clock className="mr-0.5 inline h-3 w-3" />
+                    {Math.round(e.studyMinutes / 60)}h
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+        {leaderboard && leaderboard.totalMembers > 0 && (
+          <div className="mt-3 flex items-center justify-between border-t border-gray-50 pt-2 text-[10px] text-gray-400">
+            <span>{leaderboard.totalMembers}명 참여 중</span>
+            {leaderboard.myRank && <span>내 순위 #{leaderboard.myRank}</span>}
+          </div>
+        )}
       </div>
     </div>
   );
