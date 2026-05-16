@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RankingService } from './ranking.service';
@@ -33,5 +33,26 @@ export class RankingController {
   async getMyStats(@Req() req: any) {
     const userId = req.user?.sub || req.user?.userId;
     return this.rankingService.getMyRankSummary(String(userId));
+  }
+
+  @Get('hub-groups/:groupId/leaderboard')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Hub 반(internal API) 기준 학습 랭킹 리더보드',
+    description: 'Hub /api/internal/groups/:id/members로 멤버를 조회한 뒤 SP DailyScore를 집계',
+  })
+  async getHubGroupLeaderboard(
+    @Req() req: any,
+    @Param('groupId') groupId: string,
+    @Query() query: LeaderboardQueryDto,
+  ) {
+    const hubUserId = req.user?.sub || req.user?.userId;
+    return this.rankingService.getInternalHubLeaderboard(
+      groupId,
+      hubUserId ? String(hubUserId) : undefined,
+      query.period || 'weekly',
+      query.date,
+    );
   }
 }

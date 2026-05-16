@@ -59,6 +59,9 @@ jobs:
             printf '  DATABASE_URL: "%s"\n' "$DATABASE_URL"
             printf '  AUTH_SECRET: "%s"\n' "$AUTH_SECRET"
             echo '  HUB_API_URL: "https://ts-back-nest-479305.du.r.appspot.com"'
+            echo '  HUB_BASE_URL: "https://ts-back-nest-479305.du.r.appspot.com"'
+            echo '  HUB_SERVICE_ID: "studyplanner"'
+            printf '  HUB_SERVICE_TOKEN: "%s"\n' "$HUB_SERVICE_TOKEN"
             printf '  NEIS_API_KEY: "%s"\n' "$NEIS_API_KEY"
             echo ''
             echo 'beta_settings:'
@@ -77,6 +80,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           NEIS_API_KEY: ${{ secrets.NEIS_API_KEY }}
+          HUB_SERVICE_TOKEN: ${{ secrets.HUB_SERVICE_TOKEN }}
 
       - name: Install dependencies
         working-directory: backend

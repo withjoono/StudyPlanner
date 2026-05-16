@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
+import { HubServiceClient } from '../hub-client';
 
 interface LeaderboardEntry {
   rank: number;
@@ -28,7 +29,10 @@ export class RankingService {
   private readonly logger = new Logger(RankingService.name);
   private readonly hubApiUrl = process.env.HUB_API_URL || 'http://localhost:4000';
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly hubServiceClient: HubServiceClient,
+  ) {}
 
   /**
    * 학생 기준: 자신이 속한 그룹의 리더보드 (선생님 반 + Hub 자동 편성 반)
@@ -217,6 +221,58 @@ export class RankingService {
       this.logger.error(`Hub 그룹 멤버 조회 실패: ${(error as Error).message}`);
       return this.getEmptyLeaderboard(period, date);
     }
+  }
+
+  /**
+   * Hub internal API(service token) 기반 반 리더보드.
+   * - HubServiceClient.getGroupMembers → SP DB의 DailyScore 집계
+   * - 닉네임은 Hub 멤버 응답을 사용 (학생 이름이 아닌 Hub 표시명)
+   * - 호출자의 user JWT는 멤버 가시성 검증에 사용하지 않음 (Hub 측이 X-Service-Id 화이트리스트로 검증)
+   */
+  async getInternalHubLeaderboard(
+    groupId: string,
+    currentHubUserId?: string,
+    period: 'daily' | 'weekly' | 'monthly' = 'weekly',
+    date?: string,
+  ): Promise<LeaderboardResponse> {
+    let members;
+    try {
+      members = await this.hubServiceClient.getGroupMembers(groupId);
+    } catch (error) {
+      this.logger.error(`Hub internal 멤버 조회 실패: ${(error as Error).message}`);
+      return this.getEmptyLeaderboard(period, date);
+    }
+
+    if (members.length === 0) {
+      return this.getEmptyLeaderboard(period, date);
+    }
+
+    const hubUserIds = members.map((m) => m.hubUserId);
+    const nicknameByHubId = new Map(members.map((m) => [m.hubUserId, m.nickname]));
+
+    const spStudentsRaw = await this.prisma.student.findMany({
+      where: { userId: { in: hubUserIds } },
+      select: { id: true, userId: true, grade: true },
+    });
+    const spStudents = spStudentsRaw.filter(
+      (s): s is typeof s & { userId: string } => s.userId !== null,
+    );
+
+    if (spStudents.length === 0) {
+      return this.getEmptyLeaderboard(period, date);
+    }
+
+    const students = spStudents.map((s) => ({
+      id: Number(s.id),
+      name: nicknameByHubId.get(s.userId) || '학생',
+      grade: s.grade,
+    }));
+
+    const currentStudentId = currentHubUserId
+      ? Number(spStudents.find((s) => s.userId === currentHubUserId)?.id ?? 0) || undefined
+      : undefined;
+
+    return this.calculateLeaderboard(students, period, date, currentStudentId);
   }
 
   /**

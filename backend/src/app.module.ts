@@ -21,6 +21,7 @@ import { MyClassModule } from './myclass/myclass.module';
 import { BadgeModule } from './badge/badge.module';
 import { MentoringModule } from './mentoring/mentoring.module';
 import { NeisModule } from './neis/neis.module';
+import { HubClientModule } from './hub-client';
 
 @Module({
   imports: [
@@ -76,6 +77,9 @@ import { NeisModule } from './neis/neis.module';
 
     // NEIS 학교 일정/시간표 연동
     NeisModule,
+
+    // Hub internal API client (service token 기반 read-only)
+    HubClientModule,
   ],
 })
 export class AppModule {}
