@@ -914,17 +914,80 @@ function EditPlanDialog({ open, onOpenChange, plan, onSubmit, isLoading }: EditP
 // ============================================
 
 const LABEL_W = 80; // 과목 라벨 고정 너비(px)
-const MONTH_MIN_PX = 72; // 월 컬럼 최소 너비(px)
+const COL_MIN_PX = 28; // 컬럼 최소 너비(px)
 
-// 뷰 모드 — 한 화면에 보일 월 개수
+// 뷰 모드 — 컬럼 단위와 한 화면에 보일 컬럼 개수
+type ColumnUnit = 'month' | 'week' | 'day';
+
 const VIEW_MODES = [
-  { id: 'year', label: '년간', months: 12 },
-  { id: 'half', label: '반기', months: 6 },
-  { id: 'quarter', label: '분기', months: 3 },
-  { id: 'month', label: '월간', months: 1 },
+  { id: 'year', label: '년간', unit: 'month' as ColumnUnit, count: 12 },
+  { id: 'half', label: '반기', unit: 'month' as ColumnUnit, count: 6 },
+  { id: 'quarter', label: '분기', unit: 'week' as ColumnUnit, count: 13 },
+  { id: 'month', label: '월간', unit: 'day' as ColumnUnit, count: 30 },
 ] as const;
 type ViewModeId = (typeof VIEW_MODES)[number]['id'];
 const DEFAULT_VIEW_MODE: ViewModeId = 'half';
+
+interface TimelineColumn {
+  date: Date; // 컬럼의 시작 날짜
+  label: string;
+  isPeriodStart: boolean; // 더 큰 단위 경계 (월→년 시작 / 주·일→월 시작)
+}
+
+function buildTimelineColumns(start: Date, end: Date, unit: ColumnUnit): TimelineColumn[] {
+  const cols: TimelineColumn[] = [];
+  const cur = new Date(start);
+  if (unit === 'month') {
+    cur.setDate(1);
+    let lastYear = -1;
+    while (cur <= end) {
+      const y = cur.getFullYear();
+      const m = cur.getMonth() + 1;
+      const isYearStart = lastYear !== y;
+      cols.push({
+        date: new Date(cur),
+        label: isYearStart ? `${y}년 ${m}월` : `${m}월`,
+        isPeriodStart: isYearStart,
+      });
+      lastYear = y;
+      cur.setMonth(cur.getMonth() + 1);
+    }
+  } else if (unit === 'week') {
+    // 월요일 정렬
+    const day = cur.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    cur.setDate(cur.getDate() + mondayOffset);
+    let lastMonth = -1;
+    while (cur <= end) {
+      const m = cur.getMonth() + 1;
+      const d = cur.getDate();
+      const isMonthStart = lastMonth !== m;
+      cols.push({
+        date: new Date(cur),
+        label: isMonthStart ? `${m}/${d}` : `${d}`,
+        isPeriodStart: isMonthStart,
+      });
+      lastMonth = m;
+      cur.setDate(cur.getDate() + 7);
+    }
+  } else {
+    // day
+    let lastMonth = -1;
+    while (cur <= end) {
+      const m = cur.getMonth() + 1;
+      const d = cur.getDate();
+      const isMonthStart = lastMonth !== m;
+      cols.push({
+        date: new Date(cur),
+        label: isMonthStart ? `${m}/${d}` : `${d}`,
+        isPeriodStart: isMonthStart,
+      });
+      lastMonth = m;
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  return cols;
+}
 
 function GanttTimeline({
   plans,
@@ -936,11 +999,10 @@ function GanttTimeline({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [viewMode, setViewMode] = useState<ViewModeId>(DEFAULT_VIEW_MODE);
-  const visibleMonths =
-    VIEW_MODES.find((v) => v.id === viewMode)?.months ??
-    VIEW_MODES.find((v) => v.id === DEFAULT_VIEW_MODE)?.months ??
-    6;
-  const pendingScrollMonthIdxRef = useRef<number | null>(null);
+  const mode = VIEW_MODES.find((v) => v.id === viewMode) ?? VIEW_MODES[1];
+  const visibleColumns = mode.count;
+  const columnUnit = mode.unit;
+  const pendingCenterMsRef = useRef<number | null>(null);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -956,22 +1018,15 @@ function GanttTimeline({
     return () => ro.disconnect();
   }, []);
 
-  // 뷰 모드 변경 시 뷰포트 중심을 유지하며 스크롤 위치 복원
-  useEffect(() => {
-    if (pendingScrollMonthIdxRef.current !== null && scrollRef.current && containerWidth > 0) {
-      const newMonthPx = containerWidth / visibleMonths;
-      const target = pendingScrollMonthIdxRef.current * newMonthPx - containerWidth / 2;
-      scrollRef.current.scrollLeft = Math.max(0, target);
-      pendingScrollMonthIdxRef.current = null;
-    }
-  }, [visibleMonths, containerWidth]);
-
   const handleViewChange = (next: ViewModeId) => {
     if (next === viewMode) return;
     const el = scrollRef.current;
     if (el && containerWidth > 0) {
-      const oldMonthPx = containerWidth / visibleMonths;
-      pendingScrollMonthIdxRef.current = (el.scrollLeft + containerWidth / 2) / oldMonthPx;
+      // 변경 직전 뷰포트 중심의 timestamp 기억 → 새 뷰에서도 같은 시점에 위치
+      const totalW = el.scrollWidth;
+      const centerScroll = el.scrollLeft + containerWidth / 2;
+      const centerPct = totalW > 0 ? centerScroll / totalW : 0.5;
+      pendingCenterMsRef.current = centerPct;
     }
     setViewMode(next);
   };
@@ -1006,19 +1061,37 @@ function GanttTimeline({
   const rangeEnd = rangeEndDate;
   const totalMs = rangeEnd.getTime() - rangeStart.getTime();
 
-  // 줌 단계에 따른 월 너비
-  const monthPx = containerWidth > 0 ? containerWidth / visibleMonths : MONTH_MIN_PX;
-
-  // 올해 5월 인덱스 (0-based: rangeStart 기준)
-  const mayMonthIdx = (curYear - rangeStart.getFullYear()) * 12 + 4; // 4 = May
-
-  // 마운트·계획 로드·컨테이너 크기 확정 시 → 올해 5월로 스크롤
-  useEffect(() => {
-    if (scrollRef.current && containerWidth > 0) {
-      scrollRef.current.scrollLeft = mayMonthIdx * monthPx;
-    }
+  // 뷰 모드별 컬럼 리스트 (단위에 따라 월/주/일)
+  const columns = useMemo(
+    () => buildTimelineColumns(rangeStart, rangeEnd, columnUnit),
+    // rangeStart/End는 매 렌더 새 객체라 ms로 비교
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [containerWidth, datePlans.length]);
+    [rangeStart.getTime(), rangeEnd.getTime(), columnUnit],
+  );
+  const numColumns = columns.length;
+  const columnPx =
+    containerWidth > 0 ? Math.max(COL_MIN_PX, containerWidth / visibleColumns) : COL_MIN_PX;
+  // 미세 격자선 표시 여부 (날짜 단위에서는 너무 많아 생략, 월 경계만 표시)
+  const showMinorLines = numColumns <= 60;
+
+  // 마운트·컨테이너 크기 확정 시 → 오늘 위치로 스크롤
+  useEffect(() => {
+    if (!scrollRef.current || containerWidth <= 0) return;
+    const totalW = numColumns * columnPx;
+    if (pendingCenterMsRef.current !== null) {
+      // 뷰 모드 전환 후: 직전 중심 비율을 새 totalW에 매핑
+      scrollRef.current.scrollLeft = Math.max(
+        0,
+        pendingCenterMsRef.current * totalW - containerWidth / 2,
+      );
+      pendingCenterMsRef.current = null;
+      return;
+    }
+    // 최초 마운트·리사이즈·계획 변동: 오늘로 스크롤
+    const todayPct = (today.getTime() - rangeStart.getTime()) / totalMs;
+    scrollRef.current.scrollLeft = Math.max(0, todayPct * totalW - containerWidth / 2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [containerWidth, datePlans.length, columnUnit, numColumns, columnPx]);
 
   // 방학 구간 계산 (연도+이름으로 그룹화, 항상 호출해야 hooks 순서 일정)
   const vacationRanges = useMemo(() => {
@@ -1057,23 +1130,6 @@ function GanttTimeline({
       </div>
     );
   }
-
-  // 월 목록 — 년도 경계에만 년도 표시
-  const months: { label: string; year: number; month: number }[] = [];
-  const cur = new Date(rangeStart);
-  let lastYear = -1;
-  while (cur <= rangeEnd) {
-    const y = cur.getFullYear();
-    const m = cur.getMonth() + 1;
-    months.push({
-      label: lastYear !== y ? `${y}년 ${m}월` : `${m}월`,
-      year: y,
-      month: m,
-    });
-    lastYear = y;
-    cur.setMonth(cur.getMonth() + 1);
-  }
-  const numMonths = months.length;
 
   // 오늘 위치 (%)
   const todayPct = ((today.getTime() - rangeStart.getTime()) / totalMs) * 100;
@@ -1181,25 +1237,32 @@ function GanttTimeline({
 
         {/* ── 우측: 가로 스크롤 타임라인 ── */}
         <div ref={scrollRef} className="flex-1 overflow-x-auto">
-          <div style={{ minWidth: '100%', width: `${numMonths * monthPx}px` }}>
-            {/* 월 헤더 행 */}
+          <div style={{ minWidth: '100%', width: `${numColumns * columnPx}px` }}>
+            {/* 헤더 행 */}
             <div className="flex border-b border-gray-100" style={{ height: '28px' }}>
-              {months.map((m, i) => {
-                const isYearStart = m.month === 1 || i === 0;
-                return (
-                  <div
-                    key={i}
-                    className={`flex flex-1 items-center px-1.5 ${isYearStart ? 'border-l-2 border-indigo-200 bg-indigo-50/40' : 'border-l border-gray-100'}`}
-                    style={{ minWidth: `${monthPx}px`, height: '28px' }}
+              {columns.map((c, i) => (
+                <div
+                  key={i}
+                  className={`flex items-center px-1 ${
+                    c.isPeriodStart
+                      ? 'border-l-2 border-indigo-200 bg-indigo-50/40'
+                      : 'border-l border-gray-100'
+                  }`}
+                  style={{
+                    width: `${columnPx}px`,
+                    minWidth: `${columnPx}px`,
+                    height: '28px',
+                  }}
+                >
+                  <span
+                    className={`whitespace-nowrap text-[10px] font-semibold ${
+                      c.isPeriodStart ? 'text-indigo-500' : 'text-gray-400'
+                    }`}
                   >
-                    <span
-                      className={`whitespace-nowrap text-[10px] font-semibold ${isYearStart ? 'text-indigo-500' : 'text-gray-400'}`}
-                    >
-                      {m.label}
-                    </span>
-                  </div>
-                );
-              })}
+                    {c.label}
+                  </span>
+                </div>
+              ))}
             </div>
 
             {/* 학교 일정 행 */}
@@ -1208,14 +1271,18 @@ function GanttTimeline({
                 className="relative border-b border-gray-100"
                 style={{ height: `${SCHOOL_ROW_H}px` }}
               >
-                {/* 월 구분선 */}
-                {months.map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute inset-y-0 w-px bg-gray-100"
-                    style={{ left: `${(i / numMonths) * 100}%` }}
-                  />
-                ))}
+                {/* 컬럼 구분선 (월 경계는 강조, 미세는 컬럼 수가 적을 때만) */}
+                {columns.map((c, i) =>
+                  c.isPeriodStart || showMinorLines ? (
+                    <div
+                      key={i}
+                      className={`absolute inset-y-0 w-px ${
+                        c.isPeriodStart ? 'bg-indigo-100' : 'bg-gray-100'
+                      }`}
+                      style={{ left: `${(i / numColumns) * 100}%` }}
+                    />
+                  ) : null,
+                )}
                 {/* 오늘 마커 */}
                 {showToday && (
                   <div
@@ -1274,14 +1341,18 @@ function GanttTimeline({
                   className="relative border-b border-gray-50 last:border-0"
                   style={{ height: `${rowH}px` }}
                 >
-                  {/* 월 구분선: 균등 % 간격 */}
-                  {months.map((_, i) => (
-                    <div
-                      key={i}
-                      className="absolute inset-y-0 w-px bg-gray-100"
-                      style={{ left: `${(i / numMonths) * 100}%` }}
-                    />
-                  ))}
+                  {/* 컬럼 구분선 */}
+                  {columns.map((c, i) =>
+                    c.isPeriodStart || showMinorLines ? (
+                      <div
+                        key={i}
+                        className={`absolute inset-y-0 w-px ${
+                          c.isPeriodStart ? 'bg-indigo-100' : 'bg-gray-100'
+                        }`}
+                        style={{ left: `${(i / numColumns) * 100}%` }}
+                      />
+                    ) : null,
+                  )}
 
                   {/* 오늘 마커 */}
                   {showToday && (
