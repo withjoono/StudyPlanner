@@ -34,7 +34,7 @@ import {
   useGetSchoolEvents,
   type SchoolEvent,
 } from '@/stores/server/planner/school-schedule';
-import { useGetMe } from '@/stores/server/auth';
+import { useSchoolDisplayPrefs } from '@/stores/client';
 import { env } from '@/lib/config/env';
 import type { Routine, RoutineMajorCategory, LongTermPlan } from '@/types/planner';
 import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, getSubjectColor } from '@/types/planner';
@@ -454,6 +454,8 @@ function useSchoolEventsForWeek(weekStart: Date, weekEnd: Date): Map<string, Sch
 function WeeklyCalendar({ routines }: { routines: Routine[] }) {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const { data: linkedSchool, isLoading: isSchoolLoading } = useGetLinkedSchool();
+  const { showSchoolEvents, showSchoolTimetable, toggleEvents, toggleTimetable } =
+    useSchoolDisplayPrefs();
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -581,9 +583,10 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
               {/* 요일 헤더 */}
               {weekDays.map((date, idx) => {
                 const isToday = date.getTime() === today.getTime();
-                const dayEvts = linkedSchool
-                  ? (schoolEventsMap.get(formatDateStr(date)) ?? [])
-                  : [];
+                const dayEvts =
+                  linkedSchool && showSchoolEvents
+                    ? (schoolEventsMap.get(formatDateStr(date)) ?? [])
+                    : [];
                 const nonHolidayEvts = dayEvts.filter((e) => !e.isHoliday);
                 return (
                   <div
@@ -627,9 +630,10 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
               {weekDays.map((date, dayIdx) => {
                 const isToday = date.getTime() === today.getTime();
                 const dayRoutines = getRoutinesForDay(dayIdx);
-                const dayTimetable = getTimetableForDay(dayIdx);
+                const dayTimetable = showSchoolTimetable ? getTimetableForDay(dayIdx) : [];
                 const isHoliday =
                   linkedSchool != null &&
+                  showSchoolEvents &&
                   (schoolEventsMap.get(formatDateStr(date))?.some((e) => e.isHoliday) ?? false);
 
                 return (
@@ -671,6 +675,7 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                     {/* 비방학 학교 행사 배너 */}
                     {!isHoliday &&
                       linkedSchool &&
+                      showSchoolEvents &&
                       (() => {
                         const evts =
                           schoolEventsMap.get(formatDateStr(date))?.filter((e) => !e.isHoliday) ??
@@ -803,55 +808,33 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
             </div>
           </div>
 
-          {/* 임시 진단 — 학교 미연결 사유 파악용 */}
-          {!isSchoolLoading && !linkedSchool && <SchoolLinkDiagnostic />}
+          {/* 학교 일정·시간표 표시 옵션 */}
+          {linkedSchool && (
+            <div className="mt-2 flex flex-wrap items-center gap-4 border-t pt-2 text-xs text-gray-500">
+              <span className="font-semibold text-gray-600">표시 옵션</span>
+              <label className="flex cursor-pointer select-none items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={showSchoolEvents}
+                  onChange={toggleEvents}
+                  className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-500 focus:ring-indigo-300"
+                />
+                <span>🏫 학교 일정</span>
+              </label>
+              <label className="flex cursor-pointer select-none items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={showSchoolTimetable}
+                  onChange={toggleTimetable}
+                  className="h-3.5 w-3.5 rounded border-gray-300 text-sky-500 focus:ring-sky-300"
+                />
+                <span>📚 시간표</span>
+              </label>
+            </div>
+          )}
         </CardContent>
       </Card>
     </>
-  );
-}
-
-/**
- * 임시 진단 패널 — 학교가 연결되지 않은 이유 파악용.
- * Hub /auth/me의 studentProfile / 최상위 학교 관련 필드를 화면에 그대로 노출.
- */
-function SchoolLinkDiagnostic() {
-  const { data: me, isLoading } = useGetMe();
-  if (isLoading) return null;
-  const profile = me?.studentProfile;
-  const topLevelKeys = me ? Object.keys(me) : [];
-  return (
-    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800">
-      <div className="mb-1 font-bold">🔍 학교 일정·시간표가 안 보이는 이유 진단</div>
-      <div className="font-mono leading-relaxed">
-        <div>
-          <span className="text-amber-600">/auth/me 최상위 키:</span>{' '}
-          {topLevelKeys.length === 0 ? '(없음)' : topLevelKeys.join(', ')}
-        </div>
-        <div className="mt-1">
-          <span className="text-amber-600">me.school:</span>{' '}
-          {JSON.stringify((me as { school?: unknown } | undefined)?.school)}
-          {' / '}
-          <span className="text-amber-600">me.grade:</span>{' '}
-          {JSON.stringify((me as { grade?: unknown } | undefined)?.grade)}
-        </div>
-        <div className="mt-1">
-          <span className="text-amber-600">me.studentProfile:</span>{' '}
-          {profile === undefined ? (
-            <span className="font-bold text-red-600">undefined (Hub가 안 보냄)</span>
-          ) : profile === null ? (
-            <span className="font-bold text-red-600">null</span>
-          ) : (
-            <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all rounded bg-white/60 p-2">
-              {JSON.stringify(profile, null, 2)}
-            </pre>
-          )}
-        </div>
-      </div>
-      <div className="mt-2 text-[10px] text-amber-700">
-        ← 이 박스 내용을 그대로 캡처/복사해서 보내주시면 원인을 짚어드립니다.
-      </div>
-    </div>
   );
 }
 

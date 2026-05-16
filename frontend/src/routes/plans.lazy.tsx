@@ -40,6 +40,7 @@ import {
   useGetLinkedSchool,
   type SchoolEvent,
 } from '@/stores/server/planner/school-schedule';
+import { useSchoolDisplayPrefs } from '@/stores/client';
 import { env } from '@/lib/config/env';
 import { Button } from 'geobuk-shared/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'geobuk-shared/ui';
@@ -1003,6 +1004,7 @@ function GanttTimeline({
   const visibleColumns = mode.count;
   const columnUnit = mode.unit;
   const pendingCenterMsRef = useRef<number | null>(null);
+  const { showSchoolEvents, toggleEvents } = useSchoolDisplayPrefs();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -1116,7 +1118,7 @@ function GanttTimeline({
     [allSchoolEvents],
   );
 
-  const showSchoolRow = !!linkedSchool && allSchoolEvents.length > 0;
+  const showSchoolRow = !!linkedSchool && allSchoolEvents.length > 0 && showSchoolEvents;
   const SCHOOL_ROW_H = 32;
 
   if (datePlans.length === 0) {
@@ -1426,6 +1428,20 @@ function GanttTimeline({
         </div>
       </div>
 
+      {linkedSchool && (
+        <div className="flex flex-wrap items-center gap-4 border-t border-gray-50 px-4 py-2 text-xs text-gray-500">
+          <span className="font-semibold text-gray-600">표시 옵션</span>
+          <label className="flex cursor-pointer select-none items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={showSchoolEvents}
+              onChange={toggleEvents}
+              className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-500 focus:ring-indigo-300"
+            />
+            <span>🏫 학교 일정</span>
+          </label>
+        </div>
+      )}
       {noDateCount > 0 && (
         <div className="border-t border-gray-50 px-4 py-2">
           <p className="text-[10px] text-gray-400">

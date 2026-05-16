@@ -43,8 +43,9 @@ import {
   type SchoolEvent,
   type TimetableItem,
 } from '@/stores/server/planner/school-schedule';
+import { useSchoolDisplayPrefs } from '@/stores/client';
 import { env } from '@/lib/config/env';
-import { getSubjectColor } from '@/types/planner';
+import { getSubjectColor, MAJOR_CATEGORY_COLORS } from '@/types/planner';
 import type { Routine } from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'geobuk-shared/ui';
@@ -1043,9 +1044,13 @@ function MyMissionsPage() {
     selectedDate.getFullYear(),
     selectedDate.getMonth() + 1,
   );
-  const todaySchoolEvents = useMemo<SchoolEvent[]>(() => {
+  const allTodaySchoolEvents = useMemo<SchoolEvent[]>(() => {
     return (schoolEventsData ?? []).filter((e) => e.date === dateStr);
   }, [schoolEventsData, dateStr]);
+  const { showSchoolEvents, showSchoolTimetable, toggleEvents, toggleTimetable } =
+    useSchoolDisplayPrefs();
+  const todaySchoolEvents = showSchoolEvents ? allTodaySchoolEvents : [];
+  const visibleTimetableItems = showSchoolTimetable ? (timetableItems ?? []) : [];
 
   // 선택한 날짜의 요일에 활성화된 루틴 필터링
   const dayRoutines = useMemo(() => {
@@ -1079,10 +1084,11 @@ function MyMissionsPage() {
       ...dayRoutines.map((r) => ({ type: 'routine' as const, data: r })),
       ...dayMissions.map((m) => ({ type: 'mission' as const, data: m })),
     ];
-    // 시간표 추가 (평일, 학교 연동, 방학 아닌 날)
-    const isSchoolDay = isWeekday && !!linkedSchool && !todaySchoolEvents.some((e) => e.isHoliday);
-    if (isSchoolDay && timetableItems && timetableItems.length > 0) {
-      timetableItems.forEach((tt) => {
+    // 시간표 추가 (평일, 학교 연동, 방학 아닌 날, 토글 ON)
+    const isHolidayToday = allTodaySchoolEvents.some((e) => e.isHoliday);
+    const isSchoolDay = isWeekday && !!linkedSchool && !isHolidayToday;
+    if (isSchoolDay && visibleTimetableItems.length > 0) {
+      visibleTimetableItems.forEach((tt) => {
         const times = PERIOD_TIMES[tt.period];
         if (times) {
           items.push({
@@ -1110,7 +1116,14 @@ function MyMissionsPage() {
       return aTime.localeCompare(bTime);
     });
     return items;
-  }, [dayRoutines, dayMissions, isWeekday, linkedSchool, todaySchoolEvents, timetableItems]);
+  }, [
+    dayRoutines,
+    dayMissions,
+    isWeekday,
+    linkedSchool,
+    allTodaySchoolEvents,
+    visibleTimetableItems,
+  ]);
 
   // 날짜 이동
   const navigateDate = (dir: 'prev' | 'next') => {
@@ -1451,10 +1464,47 @@ function MyMissionsPage() {
         </div>
       </section>
 
-      {/* ═══════ 탭 바 + 메인 콘텐츠 ═══════ */}
-      <div className="relative mx-auto -mt-10 max-w-2xl px-4 pb-24">
+      {/* ═══════ 하루 일정표 (시간별) + 탭 바 + 메인 콘텐츠 ═══════ */}
+      <div className="relative mx-auto -mt-10 max-w-2xl space-y-4 px-4 pb-24">
+        {/* 하루 시간별 일정표 — 학교 일정/시간표 + 루틴 + 미션 통합 시각화 */}
+        <DailyTimelineCard
+          date={selectedDate}
+          routines={dayRoutines}
+          missions={dayMissions}
+          timetable={isWeekday ? visibleTimetableItems : []}
+          schoolEvents={todaySchoolEvents}
+          onMissionClick={handleEditMission}
+          onRoutineClick={handleRoutineClick}
+          onAddMission={handleNewMission}
+        />
+
+        {/* 학교 일정·시간표 표시 옵션 */}
+        {linkedSchool && (
+          <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-gray-100 bg-white px-4 py-2 text-xs text-gray-500 shadow-sm">
+            <span className="font-semibold text-gray-600">표시 옵션</span>
+            <label className="flex cursor-pointer select-none items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={showSchoolEvents}
+                onChange={toggleEvents}
+                className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-500 focus:ring-indigo-300"
+              />
+              <span>🏫 학교 일정</span>
+            </label>
+            <label className="flex cursor-pointer select-none items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={showSchoolTimetable}
+                onChange={toggleTimetable}
+                className="h-3.5 w-3.5 rounded border-gray-300 text-sky-500 focus:ring-sky-300"
+              />
+              <span>📚 시간표</span>
+            </label>
+          </div>
+        )}
+
         {/* 탭 바 */}
-        <div className="mb-4 flex overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/50">
+        <div className="flex overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/50">
           {[
             { key: 'plan' as const, label: '📋 계획', icon: <BookOpen className="h-4 w-4" /> },
             {
@@ -1948,6 +1998,278 @@ function MyMissionsPage() {
         onOpenChange={setRoutineSheetOpen}
         onConvertToMission={handleConvertRoutineToMission}
       />
+    </div>
+  );
+}
+
+// ─────────── 하루 시간별 일정표 (timeline) ───────────
+
+const DAILY_TL_START_HOUR = 6;
+const DAILY_TL_END_HOUR = 24;
+const DAILY_TL_RANGE_MINS = (DAILY_TL_END_HOUR - DAILY_TL_START_HOUR) * 60;
+const DAILY_TL_HEIGHT_PX = 540;
+const DAILY_TL_HOURS = Array.from(
+  { length: DAILY_TL_END_HOUR - DAILY_TL_START_HOUR },
+  (_, i) => i + DAILY_TL_START_HOUR,
+);
+
+function dailyTlToTopPct(minutes: number) {
+  return (
+    ((Math.max(DAILY_TL_START_HOUR * 60, Math.min(DAILY_TL_END_HOUR * 60, minutes)) -
+      DAILY_TL_START_HOUR * 60) /
+      DAILY_TL_RANGE_MINS) *
+    100
+  );
+}
+function dailyTlToHeightPct(startMin: number, endMin: number) {
+  const s = Math.max(DAILY_TL_START_HOUR * 60, startMin);
+  const e = Math.min(DAILY_TL_END_HOUR * 60, endMin);
+  return Math.max(2, ((e - s) / DAILY_TL_RANGE_MINS) * 100);
+}
+function dailyTlTimeToMin(time: string) {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function DailyTimelineCard({
+  date,
+  routines,
+  missions,
+  timetable,
+  schoolEvents,
+  onMissionClick,
+  onRoutineClick,
+  onAddMission,
+}: {
+  date: Date;
+  routines: Routine[];
+  missions: DailyMission[];
+  timetable: TimetableItem[];
+  schoolEvents: SchoolEvent[];
+  onMissionClick: (m: DailyMission) => void;
+  onRoutineClick: (r: Routine) => void;
+  onAddMission: () => void;
+}) {
+  const isHolidayDay = schoolEvents.some((e) => e.isHoliday);
+  const nonHolidayEvts = schoolEvents.filter((e) => !e.isHoliday);
+  const holidayEvt = schoolEvents.find((e) => e.isHoliday);
+
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const currentMin = now.getHours() * 60 + now.getMinutes();
+  const currentTopPct = dailyTlToTopPct(currentMin);
+  const showNowLine =
+    isToday && currentMin >= DAILY_TL_START_HOUR * 60 && currentMin <= DAILY_TL_END_HOUR * 60;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-gray-50 px-4 py-2.5">
+        <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+          <Clock className="h-4 w-4 text-indigo-500" />
+          <span>
+            하루 일정표 · {date.getMonth() + 1}/{date.getDate()}
+          </span>
+        </div>
+        <button
+          onClick={onAddMission}
+          className="flex items-center gap-1 rounded-full bg-indigo-500 px-2.5 py-1 text-xs font-bold text-white hover:bg-indigo-600"
+        >
+          <Plus className="h-3 w-3" /> 미션
+        </button>
+      </div>
+
+      {/* 학교 행사/방학 배너 */}
+      {(nonHolidayEvts.length > 0 || isHolidayDay) && (
+        <div className="space-y-1 border-b border-gray-50 px-4 py-2">
+          {isHolidayDay && (
+            <div className="rounded-lg border border-amber-100 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
+              🎉 {holidayEvt?.eventName ?? '방학'}
+            </div>
+          )}
+          {nonHolidayEvts.map((ev) => (
+            <div
+              key={ev.id}
+              className="rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700"
+            >
+              📅 {ev.eventName}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex p-3">
+        {/* 좌측 시간 라벨 */}
+        <div className="w-9 shrink-0">
+          <div className="relative" style={{ height: `${DAILY_TL_HEIGHT_PX}px` }}>
+            {DAILY_TL_HOURS.filter((h) => h % 2 === 0).map((hour) => (
+              <div
+                key={hour}
+                className="absolute left-0 right-0 pr-1.5 text-right text-[10px] text-gray-400"
+                style={{
+                  top: `${((hour - DAILY_TL_START_HOUR) / (DAILY_TL_END_HOUR - DAILY_TL_START_HOUR)) * 100}%`,
+                  transform: 'translateY(-50%)',
+                }}
+              >
+                {hour.toString().padStart(2, '0')}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 일정 그리드 */}
+        <div
+          className="relative flex-1 rounded-lg border border-gray-100 bg-gray-50"
+          style={{ height: `${DAILY_TL_HEIGHT_PX}px` }}
+        >
+          {/* 시간 격자선 */}
+          {DAILY_TL_HOURS.map((hour) => (
+            <div
+              key={hour}
+              className="absolute left-0 right-0 border-t border-gray-100"
+              style={{
+                top: `${((hour - DAILY_TL_START_HOUR) / (DAILY_TL_END_HOUR - DAILY_TL_START_HOUR)) * 100}%`,
+              }}
+            />
+          ))}
+
+          {/* 현재 시간 선 */}
+          {showNowLine && (
+            <div
+              className="pointer-events-none absolute left-0 right-0 z-30 h-0.5 bg-red-400"
+              style={{ top: `${currentTopPct}%` }}
+            >
+              <div className="absolute -left-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-400" />
+            </div>
+          )}
+
+          {/* 시간표 (방학 아닐 때만 표시) */}
+          {!isHolidayDay &&
+            timetable
+              .slice()
+              .sort((a, b) => Number(a.period) - Number(b.period))
+              .map((tt) => {
+                const times = PERIOD_TIMES[tt.period];
+                if (!times) return null;
+                const s = dailyTlTimeToMin(times.start);
+                const e = dailyTlTimeToMin(times.end);
+                return (
+                  <div
+                    key={`tt-${tt.period}`}
+                    className="absolute inset-x-1 overflow-hidden rounded border-l-2 border-sky-400 bg-sky-100/70 px-1.5 py-0.5"
+                    style={{
+                      top: `${dailyTlToTopPct(s)}%`,
+                      height: `${dailyTlToHeightPct(s, e)}%`,
+                      zIndex: 5,
+                    }}
+                    title={`${tt.period}교시 ${tt.subject} (${times.start}~${times.end})`}
+                  >
+                    <div className="truncate text-[10px] font-semibold text-sky-700">
+                      {tt.period}교시 · {tt.subject}
+                    </div>
+                  </div>
+                );
+              })}
+
+          {/* 루틴 — 그리드의 왼쪽 절반 */}
+          {routines.map((r) => {
+            if (!r.startTime || !r.endTime) return null;
+            const s = dailyTlTimeToMin(r.startTime);
+            const e = dailyTlTimeToMin(r.endTime);
+            const colors = MAJOR_CATEGORY_COLORS[r.majorCategory] || {
+              bg: 'bg-gray-500',
+              border: 'border-gray-600',
+              text: 'text-gray-600',
+            };
+            return (
+              <button
+                key={`r-${r.id}`}
+                onClick={() => onRoutineClick(r)}
+                className={`absolute left-1 cursor-pointer overflow-hidden rounded border-l-2 px-1.5 py-0.5 text-left text-xs text-white ${colors.bg} ${colors.border}`}
+                style={{
+                  width: 'calc(50% - 0.5rem)',
+                  top: `${dailyTlToTopPct(s)}%`,
+                  height: `${dailyTlToHeightPct(s, e)}%`,
+                  zIndex: 10,
+                }}
+                title={`${r.title} (${r.startTime}~${r.endTime})`}
+              >
+                <div className="truncate text-[10px] font-bold">{r.title}</div>
+                <div className="text-[9px] opacity-80">{r.startTime}</div>
+              </button>
+            );
+          })}
+
+          {/* 미션 — 그리드의 오른쪽 절반 */}
+          {missions.map((m) => {
+            if (!m.startTime || !m.endTime) return null;
+            const s = dailyTlTimeToMin(m.startTime);
+            const e = dailyTlTimeToMin(m.endTime);
+            const isDone =
+              m.status === 'completed' || (typeof m.progress === 'number' && m.progress >= 100);
+            return (
+              <button
+                key={`m-${m.id}`}
+                onClick={() => onMissionClick(m)}
+                className={`absolute right-1 cursor-pointer overflow-hidden rounded border-l-2 px-1.5 py-0.5 text-left text-xs ${
+                  isDone
+                    ? 'border-green-500 bg-green-100 text-green-800'
+                    : 'border-purple-500 bg-purple-100 text-purple-800'
+                }`}
+                style={{
+                  width: 'calc(50% - 0.5rem)',
+                  top: `${dailyTlToTopPct(s)}%`,
+                  height: `${dailyTlToHeightPct(s, e)}%`,
+                  zIndex: 20,
+                }}
+                title={`${m.subject || ''} ${m.content || ''} (${m.startTime}~${m.endTime})`}
+              >
+                <div className="truncate text-[10px] font-bold">
+                  {isDone ? '✓ ' : ''}
+                  {m.subject ? `${m.subject} · ` : ''}
+                  {m.content || '미션'}
+                </div>
+                <div className="text-[9px] opacity-70">{m.startTime}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 우측 시간 라벨 */}
+        <div className="w-9 shrink-0">
+          <div className="relative" style={{ height: `${DAILY_TL_HEIGHT_PX}px` }}>
+            {DAILY_TL_HOURS.filter((h) => h % 2 === 0).map((hour) => (
+              <div
+                key={hour}
+                className="absolute left-0 right-0 pl-1.5 text-[10px] text-gray-400"
+                style={{
+                  top: `${((hour - DAILY_TL_START_HOUR) / (DAILY_TL_END_HOUR - DAILY_TL_START_HOUR)) * 100}%`,
+                  transform: 'translateY(-50%)',
+                }}
+              >
+                {hour.toString().padStart(2, '0')}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 border-t border-gray-50 px-4 py-2 text-[10px] text-gray-500">
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded border-l-2 border-sky-400 bg-sky-100" />{' '}
+          시간표
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded bg-purple-300" /> 미션
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded bg-blue-300" /> 루틴
+        </span>
+        {showNowLine && (
+          <span className="ml-auto flex items-center gap-1 text-red-400">
+            <span className="inline-block h-0.5 w-2 bg-red-400" /> 현재
+          </span>
+        )}
+      </div>
     </div>
   );
 }
