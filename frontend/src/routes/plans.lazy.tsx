@@ -21,6 +21,8 @@ import {
   BarChart3,
   Trash2,
   Pencil,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import {
   useGetPlans,
@@ -915,7 +917,8 @@ function EditPlanDialog({ open, onOpenChange, plan, onSubmit, isLoading }: EditP
 
 const LABEL_W = 80; // 과목 라벨 고정 너비(px)
 const MONTH_MIN_PX = 72; // 월 컬럼 최소 너비(px)
-const VISIBLE_MONTHS = 8; // 기본 뷰: 5월~12월 (8개월) 화면 꽉 채움
+const VISIBLE_MONTHS_DEFAULT = 8; // 기본 뷰: 5월~12월 (8개월) 화면 꽉 채움
+const ZOOM_LEVELS = [3, 4, 6, 8, 12, 18, 24, 36]; // 뷰포트에 보일 월 개수 단계
 
 function GanttTimeline({
   plans,
@@ -926,6 +929,8 @@ function GanttTimeline({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [visibleMonths, setVisibleMonths] = useState(VISIBLE_MONTHS_DEFAULT);
+  const pendingScrollMonthIdxRef = useRef<number | null>(null);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -940,6 +945,53 @@ function GanttTimeline({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // 줌 변경 시 뷰포트 중심을 유지하며 스크롤 위치 복원
+  useEffect(() => {
+    if (pendingScrollMonthIdxRef.current !== null && scrollRef.current && containerWidth > 0) {
+      const newMonthPx = containerWidth / visibleMonths;
+      const target = pendingScrollMonthIdxRef.current * newMonthPx - containerWidth / 2;
+      scrollRef.current.scrollLeft = Math.max(0, target);
+      pendingScrollMonthIdxRef.current = null;
+    }
+  }, [visibleMonths, containerWidth]);
+
+  const zoomTo = (next: number) => {
+    if (next === visibleMonths) return;
+    const el = scrollRef.current;
+    if (el && containerWidth > 0) {
+      const oldMonthPx = containerWidth / visibleMonths;
+      pendingScrollMonthIdxRef.current = (el.scrollLeft + containerWidth / 2) / oldMonthPx;
+    }
+    setVisibleMonths(next);
+  };
+
+  const currentZoomIdx = ZOOM_LEVELS.indexOf(visibleMonths);
+  const zoomInIdx = currentZoomIdx > 0 ? currentZoomIdx - 1 : -1; // 확대 = 보이는 월 개수 ↓
+  const zoomOutIdx =
+    currentZoomIdx >= 0 && currentZoomIdx < ZOOM_LEVELS.length - 1 ? currentZoomIdx + 1 : -1;
+  const canZoomIn = zoomInIdx >= 0;
+  const canZoomOut = zoomOutIdx >= 0;
+  const handleZoomIn = () => canZoomIn && zoomTo(ZOOM_LEVELS[zoomInIdx]);
+  const handleZoomOut = () => canZoomOut && zoomTo(ZOOM_LEVELS[zoomOutIdx]);
+
+  // Ctrl/Cmd + 휠로 줌
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const idx = ZOOM_LEVELS.indexOf(visibleMonths);
+      if (idx < 0) return;
+      const next = e.deltaY < 0 ? idx - 1 : idx + 1; // 위로 = 확대
+      if (next < 0 || next >= ZOOM_LEVELS.length) return;
+      zoomTo(ZOOM_LEVELS[next]);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleMonths, containerWidth]);
 
   const datePlans = plans.filter((p) => p.startDate && p.endDate);
   const noDateCount = plans.length - datePlans.length;
@@ -971,8 +1023,8 @@ function GanttTimeline({
   const rangeEnd = rangeEndDate;
   const totalMs = rangeEnd.getTime() - rangeStart.getTime();
 
-  // 5월~12월(8개월)이 뷰포트를 꽉 채우도록 월 너비 계산
-  const monthPx = containerWidth > 0 ? containerWidth / VISIBLE_MONTHS : MONTH_MIN_PX;
+  // 줌 단계에 따른 월 너비
+  const monthPx = containerWidth > 0 ? containerWidth / visibleMonths : MONTH_MIN_PX;
 
   // 올해 5월 인덱스 (0-based: rangeStart 기준)
   const mayMonthIdx = (curYear - rangeStart.getFullYear()) * 12 + 4; // 4 = May
@@ -1068,6 +1120,32 @@ function GanttTimeline({
             오늘
           </span>
         )}
+        {/* 줌 컨트롤 */}
+        <div className="ml-3 flex items-center gap-0.5 rounded-full border border-gray-200 bg-white px-0.5">
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            disabled={!canZoomOut}
+            className="rounded-full p-1 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
+            title="구간 축소 (더 많은 월 보기)"
+            aria-label="구간 축소"
+          >
+            <ZoomOut className="h-3.5 w-3.5" />
+          </button>
+          <span className="select-none px-1 text-[10px] font-semibold text-gray-500">
+            {visibleMonths}개월
+          </span>
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            disabled={!canZoomIn}
+            className="rounded-full p-1 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
+            title="구간 확대 (월 컬럼 넓게)"
+            aria-label="구간 확대"
+          >
+            <ZoomIn className="h-3.5 w-3.5" />
+          </button>
+        </div>
         <div className="ml-auto">
           {linkedSchool ? (
             <span className="flex items-center gap-1 text-xs text-gray-400">
