@@ -21,8 +21,6 @@ import {
   BarChart3,
   Trash2,
   Pencil,
-  ZoomIn,
-  ZoomOut,
 } from 'lucide-react';
 import {
   useGetPlans,
@@ -917,8 +915,16 @@ function EditPlanDialog({ open, onOpenChange, plan, onSubmit, isLoading }: EditP
 
 const LABEL_W = 80; // 과목 라벨 고정 너비(px)
 const MONTH_MIN_PX = 72; // 월 컬럼 최소 너비(px)
-const VISIBLE_MONTHS_DEFAULT = 8; // 기본 뷰: 5월~12월 (8개월) 화면 꽉 채움
-const ZOOM_LEVELS = [3, 4, 6, 8, 12, 18, 24, 36]; // 뷰포트에 보일 월 개수 단계
+
+// 뷰 모드 — 한 화면에 보일 월 개수
+const VIEW_MODES = [
+  { id: 'year', label: '년간', months: 12 },
+  { id: 'half', label: '반기', months: 6 },
+  { id: 'quarter', label: '분기', months: 3 },
+  { id: 'month', label: '월간', months: 1 },
+] as const;
+type ViewModeId = (typeof VIEW_MODES)[number]['id'];
+const DEFAULT_VIEW_MODE: ViewModeId = 'half';
 
 function GanttTimeline({
   plans,
@@ -929,7 +935,11 @@ function GanttTimeline({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [visibleMonths, setVisibleMonths] = useState(VISIBLE_MONTHS_DEFAULT);
+  const [viewMode, setViewMode] = useState<ViewModeId>(DEFAULT_VIEW_MODE);
+  const visibleMonths =
+    VIEW_MODES.find((v) => v.id === viewMode)?.months ??
+    VIEW_MODES.find((v) => v.id === DEFAULT_VIEW_MODE)?.months ??
+    6;
   const pendingScrollMonthIdxRef = useRef<number | null>(null);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -946,7 +956,7 @@ function GanttTimeline({
     return () => ro.disconnect();
   }, []);
 
-  // 줌 변경 시 뷰포트 중심을 유지하며 스크롤 위치 복원
+  // 뷰 모드 변경 시 뷰포트 중심을 유지하며 스크롤 위치 복원
   useEffect(() => {
     if (pendingScrollMonthIdxRef.current !== null && scrollRef.current && containerWidth > 0) {
       const newMonthPx = containerWidth / visibleMonths;
@@ -956,42 +966,15 @@ function GanttTimeline({
     }
   }, [visibleMonths, containerWidth]);
 
-  const zoomTo = (next: number) => {
-    if (next === visibleMonths) return;
+  const handleViewChange = (next: ViewModeId) => {
+    if (next === viewMode) return;
     const el = scrollRef.current;
     if (el && containerWidth > 0) {
       const oldMonthPx = containerWidth / visibleMonths;
       pendingScrollMonthIdxRef.current = (el.scrollLeft + containerWidth / 2) / oldMonthPx;
     }
-    setVisibleMonths(next);
+    setViewMode(next);
   };
-
-  const currentZoomIdx = ZOOM_LEVELS.indexOf(visibleMonths);
-  const zoomInIdx = currentZoomIdx > 0 ? currentZoomIdx - 1 : -1; // 확대 = 보이는 월 개수 ↓
-  const zoomOutIdx =
-    currentZoomIdx >= 0 && currentZoomIdx < ZOOM_LEVELS.length - 1 ? currentZoomIdx + 1 : -1;
-  const canZoomIn = zoomInIdx >= 0;
-  const canZoomOut = zoomOutIdx >= 0;
-  const handleZoomIn = () => canZoomIn && zoomTo(ZOOM_LEVELS[zoomInIdx]);
-  const handleZoomOut = () => canZoomOut && zoomTo(ZOOM_LEVELS[zoomOutIdx]);
-
-  // Ctrl/Cmd + 휠로 줌
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      e.preventDefault();
-      const idx = ZOOM_LEVELS.indexOf(visibleMonths);
-      if (idx < 0) return;
-      const next = e.deltaY < 0 ? idx - 1 : idx + 1; // 위로 = 확대
-      if (next < 0 || next >= ZOOM_LEVELS.length) return;
-      zoomTo(ZOOM_LEVELS[next]);
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleMonths, containerWidth]);
 
   const datePlans = plans.filter((p) => p.startDate && p.endDate);
   const noDateCount = plans.length - datePlans.length;
@@ -1120,31 +1103,29 @@ function GanttTimeline({
             오늘
           </span>
         )}
-        {/* 줌 컨트롤 */}
-        <div className="ml-3 flex items-center gap-0.5 rounded-full border border-gray-200 bg-white px-0.5">
-          <button
-            type="button"
-            onClick={handleZoomOut}
-            disabled={!canZoomOut}
-            className="rounded-full p-1 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
-            title="구간 축소 (더 많은 월 보기)"
-            aria-label="구간 축소"
-          >
-            <ZoomOut className="h-3.5 w-3.5" />
-          </button>
-          <span className="select-none px-1 text-[10px] font-semibold text-gray-500">
-            {visibleMonths}개월
-          </span>
-          <button
-            type="button"
-            onClick={handleZoomIn}
-            disabled={!canZoomIn}
-            className="rounded-full p-1 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-30"
-            title="구간 확대 (월 컬럼 넓게)"
-            aria-label="구간 확대"
-          >
-            <ZoomIn className="h-3.5 w-3.5" />
-          </button>
+        {/* 뷰 모드 탭 */}
+        <div
+          className="ml-3 inline-flex items-center gap-0.5 rounded-full border border-gray-200 bg-white p-0.5"
+          role="tablist"
+          aria-label="타임라인 뷰 모드"
+        >
+          {VIEW_MODES.map((v) => {
+            const isActive = v.id === viewMode;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => handleViewChange(v.id)}
+                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+                  isActive ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                {v.label}
+              </button>
+            );
+          })}
         </div>
         <div className="ml-auto">
           {linkedSchool ? (
