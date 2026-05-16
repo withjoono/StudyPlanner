@@ -68,9 +68,21 @@ const setupCaseConversion = (client: AxiosInstance) => {
     (error) => Promise.reject(error),
   );
 
-  // Response: snake_case → camelCase
+  // Response: envelope 해제 + snake_case → camelCase
   client.interceptors.response.use(
     (response) => {
+      // Hub 응답 envelope `{ success, data, message? }` 자동 해제
+      const body = response.data as unknown;
+      if (
+        body &&
+        typeof body === 'object' &&
+        !Array.isArray(body) &&
+        !(body instanceof Blob) &&
+        typeof (body as { success?: unknown }).success === 'boolean' &&
+        'data' in (body as Record<string, unknown>)
+      ) {
+        response.data = (body as { data: unknown }).data;
+      }
       if (response.data && typeof response.data === 'object' && !(response.data instanceof Blob)) {
         response.data = camelizeKeys(response.data);
       }
@@ -78,6 +90,16 @@ const setupCaseConversion = (client: AxiosInstance) => {
     },
     (error) => {
       if (error.response?.data) {
+        // 에러 envelope도 동일하게 풀어줘 message/statusCode 접근 일관화
+        const body = error.response.data as unknown;
+        if (
+          body &&
+          typeof body === 'object' &&
+          typeof (body as { success?: unknown }).success === 'boolean' &&
+          'data' in (body as Record<string, unknown>)
+        ) {
+          error.response.data = (body as { data: unknown }).data ?? body;
+        }
         error.response.data = camelizeKeys(error.response.data);
       }
       return Promise.reject(error);
