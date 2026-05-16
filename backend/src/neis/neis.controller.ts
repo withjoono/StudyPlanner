@@ -12,8 +12,8 @@ export class NeisController {
   @Get('schedule')
   @ApiOperation({ summary: '학교 행사 일정 조회 (atptCode·schulCode 기반, DB 캐시)' })
   async getSchedule(
-    @Query('atptCode') atptCode: string,
-    @Query('schulCode') schulCode: string,
+    @Query('atpt_code') atptCode: string,
+    @Query('schul_code') schulCode: string,
     @Query('year') year: string,
     @Query('month') month?: string,
   ) {
@@ -43,14 +43,14 @@ export class NeisController {
   }
 
   @Get('timetable')
-  @ApiOperation({ summary: '시간표 조회 (studentProfile의 schoolLevel·grade 기반)' })
+  @ApiOperation({ summary: '시간표 조회 (studentProfile의 school_level·grade 기반)' })
   async getTimetable(
-    @Query('atptCode') atptCode: string,
-    @Query('schulCode') schulCode: string,
+    @Query('atpt_code') atptCode: string,
+    @Query('schul_code') schulCode: string,
     @Query('date') date: string,
-    @Query('schoolLevel') schoolLevel?: string,
+    @Query('school_level') schoolLevel?: string,
     @Query('grade') grade?: string,
-    @Query('classNm') classNm?: string,
+    @Query('class_nm') classNm?: string,
   ) {
     if (!atptCode || !schulCode || !date) return [];
     return this.neisService.getTimetable(atptCode, schulCode, date, schoolLevel, grade, classNm);
