@@ -837,7 +837,6 @@ function CreateClassModal({ onClose }: { onClose: () => void }) {
 function InvitationsPanel({ invitations }: { invitations: InvitationItem[] }) {
   const acceptMutation = useAcceptInvitation();
   const declineMutation = useDeclineInvitation();
-  const queryClient = useQueryClient();
 
   const handleAccept = (inv: InvitationItem) => {
     acceptMutation.mutate(inv.id, {
