@@ -38,9 +38,21 @@ export class PlanController {
       if (withPrefix) return Number(withPrefix.id);
     }
 
-    // 학생 자동 생성
+    // 학생 자동 생성 — User FK 제약 위반 방지: User 먼저 upsert
     const code = `SP${Date.now()}`;
     const normalizedUserId = userIdStr.startsWith('sp_') ? userIdStr : `sp_${userIdStr}`;
+    const hubId = normalizedUserId.replace(/^sp_/, '');
+    await this.prisma.user.upsert({
+      where: { id: normalizedUserId },
+      create: {
+        id: normalizedUserId,
+        email: `${hubId}@hub.local`,
+        name: hubId,
+        role: 'student',
+        hubUserId: hubId,
+      },
+      update: {},
+    });
     const student = await this.prisma.student.create({
       data: {
         studentCode: code,
