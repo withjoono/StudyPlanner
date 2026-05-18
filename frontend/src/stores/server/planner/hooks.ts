@@ -159,7 +159,7 @@ export function useDeleteRoutine() {
 
 export function useGetPlans() {
   const user = useAuthStore((state) => state.user);
-  const memberId = user?.id || 1;
+  const memberId = user?.id;
   return useQuery({
     queryKey: plannerKeys.plans(),
     queryFn: async () => {
@@ -168,6 +168,7 @@ export function useGetPlans() {
       });
       return response.data as ExtendedLongTermPlan[];
     },
+    enabled: !!memberId,
   });
 }
 

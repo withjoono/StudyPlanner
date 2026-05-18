@@ -61,7 +61,7 @@ export function useLoginWithEmail() {
       setActiveServices(data.activeServices);
 
       // 사용자 정보 조회
-      const meResponse = await authClient.get<Member>('/auth/me');
+      const meResponse = await plannerClient.get<Member>('/auth/me');
       setUser(toMember(meResponse.data as unknown as Record<string, unknown>));
 
       // 캐시 갱신
@@ -86,7 +86,7 @@ export function useLoginWithSocial() {
       setTokens(data.accessToken, data.refreshToken);
       setActiveServices(data.activeServices);
 
-      const meResponse = await authClient.get<Member>('/auth/me');
+      const meResponse = await plannerClient.get<Member>('/auth/me');
       setUser(toMember(meResponse.data as unknown as Record<string, unknown>));
 
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
@@ -114,7 +114,7 @@ export function useRegisterWithEmail() {
       setTokens(data.accessToken, data.refreshToken);
       setActiveServices(data.activeServices);
 
-      const meResponse = await authClient.get<Member>('/auth/me');
+      const meResponse = await plannerClient.get<Member>('/auth/me');
       setUser(toMember(meResponse.data as unknown as Record<string, unknown>));
 
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
@@ -138,7 +138,7 @@ export function useRegisterWithSocial() {
       setTokens(data.accessToken, data.refreshToken);
       setActiveServices(data.activeServices);
 
-      const meResponse = await authClient.get<Member>('/auth/me');
+      const meResponse = await plannerClient.get<Member>('/auth/me');
       setUser(toMember(meResponse.data as unknown as Record<string, unknown>));
 
       queryClient.invalidateQueries({ queryKey: authKeys.me() });

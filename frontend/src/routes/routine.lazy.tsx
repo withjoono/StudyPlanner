@@ -1571,7 +1571,7 @@ function PlannerRoutinePage() {
       </section>
 
       {/* ═══════ 캘린더 (max-w-4xl 중앙 정렬) ═══════ */}
-      <div className="relative mx-auto -mt-10 w-full max-w-screen-xl px-4 pb-4">
+      <div className="relative -mt-10 w-full px-4 pb-4">
         <WeeklyCalendar routines={routines || []} />
       </div>
 
