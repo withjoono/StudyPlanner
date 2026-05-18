@@ -3,8 +3,8 @@
  * GB-Front의 토큰 갱신 패턴 적용
  */
 
-import { AxiosError } from 'axios';
-import { publicClient } from '../instances';
+import axios, { AxiosError } from 'axios';
+import { env } from '@/lib/config/env';
 import { clearTokens, getRefreshToken, setTokens } from '../token-manager';
 
 // 에러 코드 상수
@@ -24,11 +24,24 @@ const refreshAccessToken = async (): Promise<string | null> => {
       return null;
     }
 
-    const response = await publicClient.post('/auth/refresh', {
-      refreshToken,
-    });
+    // publicClient는 body를 snake_case로 변환하므로 순수 axios 직접 사용
+    // Hub 백엔드는 camelCase `refreshToken`을 기대함
+    const response = await axios.post(
+      `${env.apiUrlHub}/auth/refresh`,
+      {
+        refreshToken,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+        withCredentials: true,
+      },
+    );
 
-    const { accessToken, refreshToken: newRefreshToken } = response.data;
+    // Hub 응답 envelope { success, data } 자동 해제 + camelCase/snake_case 모두 지원
+    const raw = response.data;
+    const payload = (raw?.data ?? raw) as Record<string, unknown>;
+    const accessToken = (payload?.accessToken ?? payload?.access_token) as string | undefined;
+    const newRefreshToken = (payload?.refreshToken ?? payload?.refresh_token) as string | undefined;
     if (accessToken) {
       setTokens(accessToken, newRefreshToken || refreshToken);
       return accessToken;
@@ -87,7 +100,7 @@ export const authResponseErrorInterceptor = async (error: AxiosError) => {
       const newAccessToken = await refreshAccessToken();
       if (newAccessToken && originalRequest) {
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        return publicClient.request(originalRequest);
+        return axios(originalRequest);
       } else {
         handleLogout();
         return Promise.reject(error);
