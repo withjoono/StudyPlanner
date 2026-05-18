@@ -13,6 +13,7 @@ import { AcornService } from '../acorn/acorn.service';
  *
  * - 학생이 직접 경쟁 반을 생성
  * - SNS 초대 코드로 친구를 초대
+ * - 학생 직접 초대 (검색 → 초대장 발송 → 수락/거절)
  * - 방 내 주간 랭킹 경쟁
  * - 생성/초대 시 도토리 보상
  */
@@ -429,6 +430,226 @@ export class MyClassService {
       ownerName: r.owner.name,
       memberCount: r._count.members,
     }));
+  }
+
+  // ─────────────────────────────────────────────
+  // 학생 직접 초대 기능
+  // ─────────────────────────────────────────────
+
+  /**
+   * 학생 이름으로 검색 (초대 대상 찾기)
+   */
+  async searchStudents(query: string, requesterId: string) {
+    if (!query || query.length < 1) return [];
+
+    const requester = await this.findStudent(requesterId);
+    if (!requester) return [];
+
+    const students = await this.prisma.student.findMany({
+      where: {
+        name: { contains: query },
+        id: { not: requester.id }, // 본인 제외
+        userId: { not: null }, // 앱 가입자만
+      },
+      select: { id: true, name: true, grade: true, schoolName: true },
+      take: 20,
+      orderBy: { name: 'asc' },
+    });
+
+    return students.map((s) => ({
+      id: Number(s.id),
+      name: s.name,
+      grade: s.grade,
+      schoolName: s.schoolName,
+    }));
+  }
+
+  /**
+   * 특정 학생에게 클래스 초대장 발송
+   */
+  async sendInvitation(roomId: number, senderId: string, inviteeId: number, message?: string) {
+    const sender = await this.findStudent(senderId);
+    if (!sender) throw new NotFoundException('학생 정보를 찾을 수 없습니다.');
+
+    // 발송자가 해당 클래스 멤버인지 확인
+    const senderMembership = await this.prisma.studyRoomMember.findUnique({
+      where: { uk_room_member: { roomId: BigInt(roomId), studentId: sender.id } },
+    });
+    if (!senderMembership || !senderMembership.isActive) {
+      throw new ForbiddenException('클래스 멤버만 초대할 수 있습니다.');
+    }
+
+    const room = await this.prisma.studyRoom.findUnique({
+      where: { id: BigInt(roomId) },
+      include: { _count: { select: { members: { where: { isActive: true } } } } },
+    });
+    if (!room || !room.isActive) throw new NotFoundException('클래스를 찾을 수 없습니다.');
+
+    if (room._count.members >= room.maxMembers) {
+      throw new BadRequestException('정원이 꽉 찼습니다.');
+    }
+
+    // 초대 대상이 이미 멤버인지 확인
+    const alreadyMember = await this.prisma.studyRoomMember.findUnique({
+      where: { uk_room_member: { roomId: BigInt(roomId), studentId: BigInt(inviteeId) } },
+    });
+    if (alreadyMember?.isActive) {
+      throw new BadRequestException('이미 클래스에 참여 중인 학생입니다.');
+    }
+
+    // 이미 대기 중인 초대가 있는지 확인
+    const existingPending = await this.prisma.studyRoomInvitation.findFirst({
+      where: {
+        roomId: BigInt(roomId),
+        inviteeId: BigInt(inviteeId),
+        status: 'pending',
+        expiresAt: { gt: new Date() },
+      },
+    });
+    if (existingPending) {
+      throw new BadRequestException('이미 초대장이 발송되어 있습니다.');
+    }
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7일 유효
+
+    const invitation = await this.prisma.studyRoomInvitation.create({
+      data: {
+        roomId: BigInt(roomId),
+        inviterId: sender.id,
+        inviteeId: BigInt(inviteeId),
+        message,
+        expiresAt,
+      },
+    });
+
+    this.logger.log(`📨 Invitation sent: room=${roomId} from=${senderId} to=${inviteeId}`);
+
+    return { success: true, invitationId: Number(invitation.id) };
+  }
+
+  /**
+   * 내가 받은 초대 목록 조회 (pending)
+   */
+  async getMyInvitations(memberId: string) {
+    const student = await this.findStudent(memberId);
+    if (!student) return [];
+
+    const invitations = await this.prisma.studyRoomInvitation.findMany({
+      where: {
+        inviteeId: student.id,
+        status: 'pending',
+        expiresAt: { gt: new Date() },
+      },
+      include: {
+        room: {
+          include: {
+            _count: { select: { members: { where: { isActive: true } } } },
+          },
+        },
+        inviter: { select: { id: true, name: true, grade: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return invitations.map((inv) => ({
+      id: Number(inv.id),
+      roomId: Number(inv.roomId),
+      roomName: inv.room.name,
+      roomCode: inv.room.roomCode,
+      memberCount: inv.room._count.members,
+      maxMembers: inv.room.maxMembers,
+      inviterName: inv.inviter.name,
+      inviterGrade: inv.inviter.grade,
+      message: inv.message,
+      createdAt: inv.createdAt,
+      expiresAt: inv.expiresAt,
+    }));
+  }
+
+  /**
+   * 초대 수락
+   */
+  async acceptInvitation(invitationId: number, memberId: string) {
+    const student = await this.findStudent(memberId);
+    if (!student) throw new NotFoundException('학생 정보를 찾을 수 없습니다.');
+
+    const invitation = await this.prisma.studyRoomInvitation.findUnique({
+      where: { id: BigInt(invitationId) },
+      include: {
+        room: {
+          include: { _count: { select: { members: { where: { isActive: true } } } } },
+        },
+      },
+    });
+
+    if (!invitation) throw new NotFoundException('초대장을 찾을 수 없습니다.');
+    if (invitation.inviteeId !== student.id)
+      throw new ForbiddenException('본인의 초대장이 아닙니다.');
+    if (invitation.status !== 'pending') throw new BadRequestException('이미 처리된 초대장입니다.');
+    if (invitation.expiresAt < new Date()) throw new BadRequestException('만료된 초대장입니다.');
+
+    const room = invitation.room;
+    if (!room.isActive) throw new NotFoundException('클래스가 더 이상 존재하지 않습니다.');
+    if (room._count.members >= room.maxMembers)
+      throw new BadRequestException('정원이 꽉 찼습니다.');
+
+    await this.prisma.$transaction(async (tx) => {
+      // 상태 업데이트
+      await tx.studyRoomInvitation.update({
+        where: { id: BigInt(invitationId) },
+        data: { status: 'accepted' },
+      });
+
+      // 멤버 추가 (재가입 처리 포함)
+      const existing = await tx.studyRoomMember.findUnique({
+        where: { uk_room_member: { roomId: invitation.roomId, studentId: student.id } },
+      });
+
+      if (existing) {
+        await tx.studyRoomMember.update({
+          where: { id: existing.id },
+          data: { isActive: true },
+        });
+      } else {
+        await tx.studyRoomMember.create({
+          data: { roomId: invitation.roomId, studentId: student.id, role: 'member' },
+        });
+      }
+    });
+
+    // 초대한 사람에게 도토리 보상
+    await this.acornService.earn(String(invitation.inviterId), 'invite', memberId);
+
+    this.logger.log(
+      `✅ Invitation accepted: inv=${invitationId} student=${memberId} → room=${invitation.roomId}`,
+    );
+
+    return { success: true, roomId: Number(invitation.roomId), roomName: room.name };
+  }
+
+  /**
+   * 초대 거절
+   */
+  async declineInvitation(invitationId: number, memberId: string) {
+    const student = await this.findStudent(memberId);
+    if (!student) throw new NotFoundException('학생 정보를 찾을 수 없습니다.');
+
+    const invitation = await this.prisma.studyRoomInvitation.findUnique({
+      where: { id: BigInt(invitationId) },
+    });
+
+    if (!invitation) throw new NotFoundException('초대장을 찾을 수 없습니다.');
+    if (invitation.inviteeId !== student.id)
+      throw new ForbiddenException('본인의 초대장이 아닙니다.');
+    if (invitation.status !== 'pending') throw new BadRequestException('이미 처리된 초대장입니다.');
+
+    await this.prisma.studyRoomInvitation.update({
+      where: { id: BigInt(invitationId) },
+      data: { status: 'declined' },
+    });
+
+    return { success: true };
   }
 
   // ─────────── Private Helpers ───────────

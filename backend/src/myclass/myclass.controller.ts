@@ -23,6 +23,24 @@ export class MyClassController {
     return this.myClassService.searchPublicRooms(query, subject);
   }
 
+  @Get('invitations')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '내가 받은 초대 목록 (pending)' })
+  async getMyInvitations(@Req() req: any) {
+    const userId = req.user?.sub || req.user?.userId;
+    return this.myClassService.getMyInvitations(String(userId));
+  }
+
+  @Get('students/search')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '초대할 학생 검색 (이름)' })
+  async searchStudents(@Query('q') query: string, @Req() req: any) {
+    const userId = req.user?.sub || req.user?.userId;
+    return this.myClassService.searchStudents(query || '', String(userId));
+  }
+
   @Get('code/:code')
   @ApiOperation({ summary: '초대 코드로 방 정보 조회 (가입 전 미리보기)' })
   async getRoomByCode(@Param('code') code: string) {
@@ -87,6 +105,42 @@ export class MyClassController {
   ) {
     const userId = req.user?.sub || req.user?.userId;
     return this.myClassService.joinRoom(String(userId), code, body.inviterId);
+  }
+
+  @Post(':id/invite')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '특정 학생에게 초대장 발송' })
+  async sendInvitation(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() body: { inviteeId: number; message?: string },
+  ) {
+    const userId = req.user?.sub || req.user?.userId;
+    return this.myClassService.sendInvitation(
+      parseInt(id, 10),
+      String(userId),
+      body.inviteeId,
+      body.message,
+    );
+  }
+
+  @Post('invitations/:invId/accept')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '초대 수락' })
+  async acceptInvitation(@Param('invId') invId: string, @Req() req: any) {
+    const userId = req.user?.sub || req.user?.userId;
+    return this.myClassService.acceptInvitation(parseInt(invId, 10), String(userId));
+  }
+
+  @Post('invitations/:invId/decline')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '초대 거절' })
+  async declineInvitation(@Param('invId') invId: string, @Req() req: any) {
+    const userId = req.user?.sub || req.user?.userId;
+    return this.myClassService.declineInvitation(parseInt(invId, 10), String(userId));
   }
 
   @Post(':id/leave')

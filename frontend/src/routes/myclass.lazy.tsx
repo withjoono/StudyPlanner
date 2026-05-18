@@ -27,6 +27,11 @@ import {
   ChevronUp,
   TrendingUp,
   BarChart2,
+  Bell,
+  Search,
+  X,
+  UserPlus,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -37,8 +42,15 @@ import {
   useJoinMyClass,
   useDeleteMyClass,
   useLeaveMyClass,
+  useMyInvitations,
+  useSearchStudents,
+  useSendInvitation,
+  useAcceptInvitation,
+  useDeclineInvitation,
   type MyClassRoom,
   type LeaderboardEntry,
+  type StudentSearchResult,
+  type InvitationItem,
 } from '@/stores/server/myclass';
 import { useHubGroupLeaderboard, useLeaderboard } from '@/stores/server/ranking';
 
@@ -52,7 +64,9 @@ function MyClassPage() {
   const [joinCode, setJoinCode] = useState('');
 
   const { data: rooms, isLoading } = useMyClassList();
+  const { data: invitations } = useMyInvitations();
   const joinMutation = useJoinMyClass();
+  const pendingCount = invitations?.length ?? 0;
 
   const handleJoin = () => {
     if (!joinCode.trim()) return;
@@ -84,13 +98,26 @@ function MyClassPage() {
             친구와 함께 학습 경쟁! 클래스를 만들고 초대하세요.
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105"
-        >
-          <Plus className="h-4 w-4" />새 클래스 만들기
-        </button>
+        <div className="flex items-center gap-2">
+          {pendingCount > 0 && (
+            <div className="relative">
+              <Bell className="h-6 w-6 text-amber-500" />
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                {pendingCount}
+              </span>
+            </div>
+          )}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg transition-transform hover:scale-105"
+          >
+            <Plus className="h-4 w-4" />새 클래스 만들기
+          </button>
+        </div>
       </div>
+
+      {/* 받은 초대 목록 */}
+      {pendingCount > 0 && <InvitationsPanel invitations={invitations!} />}
 
       {/* Hub 학습 그룹 리더보드 (target_univ / teacher / student_study) */}
       <HubGroupLeaderboardSection />
@@ -221,6 +248,7 @@ function RoomDetail({ roomId, onBack }: { roomId: number; onBack: () => void }) 
   const deleteMutation = useDeleteMyClass();
   const leaveMutation = useLeaveMyClass();
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   const handleCopyCode = () => {
     if (room?.roomCode) {
@@ -327,7 +355,13 @@ function RoomDetail({ roomId, onBack }: { roomId: number; onBack: () => void }) 
                   onClick={handleShareInvite}
                   className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50"
                 >
-                  <Share2 className="h-3.5 w-3.5" /> 친구 초대 🌰+50
+                  <Share2 className="h-3.5 w-3.5" /> 링크 공유 🌰+50
+                </button>
+                <button
+                  onClick={() => setShowInviteModal(true)}
+                  className="flex items-center gap-1.5 rounded-lg bg-indigo-400/30 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-indigo-400/50"
+                >
+                  <UserPlus className="h-3.5 w-3.5" /> 학생 초대
                 </button>
               </div>
             </div>
@@ -415,6 +449,15 @@ function RoomDetail({ roomId, onBack }: { roomId: number; onBack: () => void }) 
             leaderboard={leaderboard}
           />
         </>
+      )}
+
+      {/* 학생 직접 초대 모달 */}
+      {showInviteModal && room && (
+        <InviteModal
+          roomId={roomId}
+          roomName={room.name}
+          onClose={() => setShowInviteModal(false)}
+        />
       )}
     </div>
   );
@@ -784,6 +827,236 @@ function CreateClassModal({ onClose }: { onClose: () => void }) {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ─────────── 받은 초대 목록 패널 ───────────
+
+function InvitationsPanel({ invitations }: { invitations: InvitationItem[] }) {
+  const acceptMutation = useAcceptInvitation();
+  const declineMutation = useDeclineInvitation();
+  const queryClient = useQueryClient();
+
+  const handleAccept = (inv: InvitationItem) => {
+    acceptMutation.mutate(inv.id, {
+      onSuccess: (result) => {
+        toast.success(`"${result.roomName}"에 가입했습니다! 🎉`);
+      },
+      onError: (err: any) => {
+        toast.error(err?.response?.data?.message || '수락에 실패했습니다.');
+      },
+    });
+  };
+
+  const handleDecline = (inv: InvitationItem) => {
+    declineMutation.mutate(inv.id, {
+      onSuccess: () => {
+        toast.success('초대를 거절했습니다.');
+      },
+    });
+  };
+
+  return (
+    <div className="mb-6 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50">
+      <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-100 px-4 py-3">
+        <Bell className="h-4 w-4 text-amber-600" />
+        <span className="text-sm font-bold text-amber-800">받은 초대</span>
+        <span className="ml-1 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+          {invitations.length}
+        </span>
+      </div>
+      <div className="divide-y divide-amber-100">
+        {invitations.map((inv) => (
+          <div key={inv.id} className="flex items-center gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-gray-800">🏠 {inv.roomName}</p>
+              <p className="text-xs text-gray-500">
+                <span className="font-medium text-indigo-600">{inv.inviterName}</span>
+                {inv.inviterGrade && ` (${inv.inviterGrade})`}님이 초대했습니다
+                {inv.message && <span className="ml-1 italic text-gray-400">"{inv.message}"</span>}
+              </p>
+              <p className="mt-0.5 text-[10px] text-gray-400">
+                {inv.memberCount}/{inv.maxMembers}명 •{' '}
+                {new Date(inv.expiresAt).toLocaleDateString('ko-KR')} 만료
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleDecline(inv)}
+                disabled={declineMutation.isPending}
+                className="rounded-lg border border-gray-300 bg-white p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                title="거절"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleAccept(inv)}
+                disabled={acceptMutation.isPending}
+                className="rounded-lg bg-indigo-600 p-2 text-white hover:bg-indigo-700 disabled:opacity-50"
+                title="수락"
+              >
+                <Check className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────── 학생 직접 초대 모달 ───────────
+
+function InviteModal({
+  roomId,
+  roomName,
+  onClose,
+}: {
+  roomId: number;
+  roomName: string;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [message, setMessage] = useState('');
+  const [sentIds, setSentIds] = useState<Set<number>>(new Set());
+
+  const { data: results, isFetching } = useSearchStudents(query);
+  const sendMutation = useSendInvitation();
+
+  const handleSend = (student: StudentSearchResult) => {
+    sendMutation.mutate(
+      { roomId, inviteeId: student.id, message: message.trim() || undefined },
+      {
+        onSuccess: () => {
+          toast.success(`${student.name}님에게 초대장을 보냈습니다! 🎉`);
+          setSentIds((prev) => new Set(prev).add(student.id));
+        },
+        onError: (err: any) => {
+          toast.error(err?.response?.data?.message || '초대 발송에 실패했습니다.');
+        },
+      },
+    );
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="mx-4 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+        {/* 헤더 */}
+        <div
+          className="flex items-center justify-between px-6 py-5"
+          style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' }}
+        >
+          <div>
+            <h2 className="text-lg font-bold text-white">학생 초대</h2>
+            <p className="mt-0.5 text-sm text-white/70">{roomName}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg bg-white/10 p-2 text-white hover:bg-white/20"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-5">
+          {/* 학생 검색 */}
+          <div>
+            <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+              학생 이름으로 검색
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="이름 입력..."
+                autoFocus
+                className="w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+              {isFetching && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                  검색 중...
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* 검색 결과 */}
+          {query.trim().length >= 1 && (
+            <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-100 bg-gray-50">
+              {!results || results.length === 0 ? (
+                <p className="p-4 text-center text-sm text-gray-400">
+                  {isFetching ? '검색 중...' : '검색 결과가 없습니다.'}
+                </p>
+              ) : (
+                results.map((student) => {
+                  const sent = sentIds.has(student.id);
+                  return (
+                    <div
+                      key={student.id}
+                      className="flex items-center gap-3 border-b border-gray-100 px-4 py-2.5 last:border-0"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700">
+                        {student.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-800">{student.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {student.grade && `${student.grade} · `}
+                          {student.schoolName ?? '학교 미상'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleSend(student)}
+                        disabled={sent || sendMutation.isPending}
+                        className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                          sent
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50'
+                        }`}
+                      >
+                        {sent ? (
+                          <>
+                            <Check className="h-3 w-3" /> 발송됨
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="h-3 w-3" /> 초대
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* 초대 메시지 (선택) */}
+          <div>
+            <label className="mb-1.5 block text-sm font-semibold text-gray-700">
+              초대 메시지 <span className="font-normal text-gray-400">(선택)</span>
+            </label>
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="같이 공부해요! 🔥"
+              maxLength={100}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            />
+          </div>
+
+          <p className="text-center text-xs text-gray-400">
+            초대장은 7일간 유효하며, 수락 시 🌰+50 도토리를 받습니다.
+          </p>
+        </div>
       </div>
     </div>
   );

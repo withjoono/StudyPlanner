@@ -1,7 +1,7 @@
 /**
  * 마이 클래스(StudyRoom) API Hooks
  *
- * TanStack Query 기반 마이 클래스 CRUD + 리더보드
+ * TanStack Query 기반 마이 클래스 CRUD + 리더보드 + 학생 직접 초대
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,6 +20,8 @@ export const myClassKeys = {
     [...myClassKeys.all, 'leaderboard', id, period] as const,
   byCode: (code: string) => [...myClassKeys.all, 'code', code] as const,
   search: (q?: string) => [...myClassKeys.all, 'search', q] as const,
+  invitations: () => [...myClassKeys.all, 'invitations'] as const,
+  studentSearch: (q: string) => [...myClassKeys.all, 'studentSearch', q] as const,
 };
 
 // ============================================
@@ -77,6 +79,27 @@ export interface RoomLeaderboard {
     weeklyGoal: number | null;
     goalAchieved: boolean | null;
   } | null;
+}
+
+export interface StudentSearchResult {
+  id: number;
+  name: string;
+  grade: string | null;
+  schoolName: string | null;
+}
+
+export interface InvitationItem {
+  id: number;
+  roomId: number;
+  roomName: string;
+  roomCode: string;
+  memberCount: number;
+  maxMembers: number;
+  inviterName: string;
+  inviterGrade: string | null;
+  message: string | null;
+  createdAt: string;
+  expiresAt: string;
 }
 
 // ============================================
@@ -151,6 +174,37 @@ export function useSearchPublicRooms(query?: string) {
   });
 }
 
+/** 내가 받은 초대 목록 */
+export function useMyInvitations() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  return useQuery({
+    queryKey: myClassKeys.invitations(),
+    queryFn: async () => {
+      const response = await plannerClient.get('/myclass/invitations');
+      return response.data as InvitationItem[];
+    },
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60,
+    refetchInterval: 1000 * 60 * 2,
+  });
+}
+
+/** 초대할 학생 검색 */
+export function useSearchStudents(query: string) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  return useQuery({
+    queryKey: myClassKeys.studentSearch(query),
+    queryFn: async () => {
+      const response = await plannerClient.get('/myclass/students/search', {
+        params: { q: query },
+      });
+      return response.data as StudentSearchResult[];
+    },
+    enabled: isAuthenticated && query.trim().length >= 1,
+    staleTime: 1000 * 30,
+  });
+}
+
 /** 마이 클래스 생성 */
 export function useCreateMyClass() {
   const queryClient = useQueryClient();
@@ -181,6 +235,56 @@ export function useJoinMyClass() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: myClassKeys.list() });
+    },
+  });
+}
+
+/** 특정 학생에게 초대장 발송 */
+export function useSendInvitation() {
+  return useMutation({
+    mutationFn: async ({
+      roomId,
+      inviteeId,
+      message,
+    }: {
+      roomId: number;
+      inviteeId: number;
+      message?: string;
+    }) => {
+      const response = await plannerClient.post(`/myclass/${roomId}/invite`, {
+        inviteeId,
+        message,
+      });
+      return response.data;
+    },
+  });
+}
+
+/** 초대 수락 */
+export function useAcceptInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (invitationId: number) => {
+      const response = await plannerClient.post(`/myclass/invitations/${invitationId}/accept`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: myClassKeys.invitations() });
+      queryClient.invalidateQueries({ queryKey: myClassKeys.list() });
+    },
+  });
+}
+
+/** 초대 거절 */
+export function useDeclineInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (invitationId: number) => {
+      const response = await plannerClient.post(`/myclass/invitations/${invitationId}/decline`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: myClassKeys.invitations() });
     },
   });
 }

@@ -206,8 +206,10 @@ model Student {
   dailyReflections  DailyReflection[]
   acornBalance      AcornBalance?
   acornTransactions AcornTransaction[]
-  studyRoomsOwned   StudyRoom[]          @relation("RoomOwner")
-  studyRoomMemberships StudyRoomMember[]
+  studyRoomsOwned       StudyRoom[]             @relation("RoomOwner")
+  studyRoomMemberships  StudyRoomMember[]
+  invitationsSent       StudyRoomInvitation[]   @relation("InvitationSender")
+  invitationsReceived   StudyRoomInvitation[]   @relation("InvitationReceiver")
   badges            StudentBadge[]
   neisSchoolId      Int?                 @map("neis_school_id")
   neisSchool        NeisSchool?          @relation(fields: [neisSchoolId], references: [id], onDelete: SetNull)
@@ -1104,6 +1106,7 @@ model StudyRoom {
 
   owner       Student        @relation("RoomOwner", fields: [ownerId], references: [id])
   members     StudyRoomMember[]
+  invitations StudyRoomInvitation[]
 
   @@index([roomCode], name: "idx_room_code")
   @@index([ownerId], name: "idx_room_owner")
@@ -1126,6 +1129,27 @@ model StudyRoomMember {
   @@unique([roomId, studentId], name: "uk_room_member")
   @@index([studentId], name: "idx_room_member_student")
   @@map("sp_study_room_member")
+}
+
+/// 마이 클래스 학생 직접 초대
+model StudyRoomInvitation {
+  id          BigInt   @id @default(autoincrement())
+  roomId      BigInt   @map("room_id")
+  inviterId   BigInt   @map("inviter_id")
+  inviteeId   BigInt   @map("invitee_id")
+  status      String   @default("pending") @db.VarChar(20) // pending | accepted | declined
+  message     String?  @db.VarChar(200)
+  createdAt   DateTime @default(now()) @map("created_at")
+  expiresAt   DateTime @map("expires_at")
+
+  room        StudyRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  inviter     Student   @relation("InvitationSender", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee     Student   @relation("InvitationReceiver", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, inviteeId, status], name: "uk_room_invitee_status")
+  @@index([inviteeId, status], name: "idx_invite_invitee_status")
+  @@index([roomId], name: "idx_invite_room")
+  @@map("sp_study_room_invitation")
 }
 
 // ================================================================
