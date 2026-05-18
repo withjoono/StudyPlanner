@@ -122,7 +122,10 @@ export function useGetDayTimetable(dateStr: string) {
 
   const grade = profile?.grade != null ? String(profile.grade) : undefined;
   const classNm = profile?.classNm ?? undefined;
-  const schoolLevel = profile?.schoolLevel ?? undefined;
+  // schoolLevel: studentProfile 또는 linkedSchool.schulKind 에서 fallback
+  const schoolLevel =
+    (profile?.schoolLevel ?? undefined) ||
+    (linkedSchool?.schulKind ? linkedSchool.schulKind : undefined);
   const yyyymmdd = dateStr.replace(/-/g, '');
 
   return useQuery({
@@ -140,7 +143,8 @@ export function useGetDayTimetable(dateStr: string) {
       });
       return res.data ?? [];
     },
-    enabled: !!dateStr && !!linkedSchool && !!schoolLevel,
+    // schoolLevel 없이도 학교 연결되면 조회 시도 (백엔드가 학교코드+날짜만으로도 반환 가능)
+    enabled: !!dateStr && !!linkedSchool,
     staleTime: 1000 * 60 * 60 * 24,
   });
 }

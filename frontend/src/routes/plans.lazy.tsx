@@ -38,7 +38,10 @@ import { getSubjectColor, type LongTermPlan } from '@/types/planner';
 import {
   useGetSchoolEvents,
   useGetLinkedSchool,
+  useGetDayTimetable,
+  PERIOD_TIMES,
   type SchoolEvent,
+  type TimetableItem,
 } from '@/stores/server/planner/school-schedule';
 import { useSchoolDisplayPrefs } from '@/stores/client';
 import { env } from '@/lib/config/env';
@@ -1004,7 +1007,8 @@ function GanttTimeline({
   const visibleColumns = mode.count;
   const columnUnit = mode.unit;
   const pendingCenterMsRef = useRef<number | null>(null);
-  const { showSchoolEvents, toggleEvents } = useSchoolDisplayPrefs();
+  const { showSchoolEvents, showSchoolTimetable, toggleEvents, toggleTimetable } =
+    useSchoolDisplayPrefs();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -1044,6 +1048,15 @@ function GanttTimeline({
   const { data: prevYearEvents } = useGetSchoolEvents(curYear - 1);
   const { data: curYearEvents } = useGetSchoolEvents(curYear);
   const { data: nextYearEvents } = useGetSchoolEvents(curYear + 1);
+
+  // 오늘 시간표 (평일만)
+  const isWeekday = today.getDay() >= 1 && today.getDay() <= 5;
+  const todayDateStr = today.toISOString().split('T')[0];
+  const { data: todayTimetable } = useGetDayTimetable(isWeekday ? todayDateStr : '');
+  const todayEvents = useMemo<SchoolEvent[]>(() => {
+    return (curYearEvents ?? []).filter((e) => e.date === todayDateStr);
+  }, [curYearEvents, todayDateStr]);
+  const isTodayHoliday = todayEvents.some((e) => e.isHoliday);
   const allSchoolEvents = useMemo<SchoolEvent[]>(() => {
     return [...(prevYearEvents ?? []), ...(curYearEvents ?? []), ...(nextYearEvents ?? [])];
   }, [prevYearEvents, curYearEvents, nextYearEvents]);
@@ -1428,6 +1441,64 @@ function GanttTimeline({
         </div>
       </div>
 
+      {/* 오늘 시간표 (평일이고 학교 연결 & 방학 아닐 때) */}
+      {linkedSchool && showSchoolTimetable && isWeekday && !isTodayHoliday && (
+        <div className="border-t border-gray-50 px-4 py-2">
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-sky-600">📚 오늘 시간표</span>
+            <span className="text-[10px] text-gray-400">
+              {today.getMonth() + 1}/{today.getDate()}
+            </span>
+          </div>
+          {todayTimetable && todayTimetable.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {(todayTimetable as TimetableItem[])
+                .slice()
+                .sort((a, b) => Number(a.period) - Number(b.period))
+                .map((tt) => {
+                  const times = PERIOD_TIMES[tt.period];
+                  return (
+                    <div
+                      key={tt.period}
+                      className="flex items-center gap-1 rounded-lg border border-sky-100 bg-sky-50 px-2 py-1"
+                      title={times ? `${times.start}~${times.end}` : ''}
+                    >
+                      <span className="text-[10px] font-bold text-sky-600">{tt.period}교시</span>
+                      <span className="text-[10px] text-gray-600">{tt.subject}</span>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <p className="text-[10px] text-gray-400">시간표 정보 없음</p>
+          )}
+        </div>
+      )}
+
+      {/* 오늘 학교 행사 */}
+      {linkedSchool && showSchoolEvents && todayEvents.length > 0 && (
+        <div className="border-t border-gray-50 px-4 py-2">
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-indigo-600">🏫 오늘 학교 일정</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {todayEvents.map((ev) => (
+              <div
+                key={ev.id}
+                className={`flex items-center gap-1 rounded-lg border px-2 py-1 ${ev.isHoliday ? 'border-amber-100 bg-amber-50' : 'border-indigo-100 bg-indigo-50'}`}
+              >
+                <span className="text-[10px]">{ev.isHoliday ? '🎉' : '📅'}</span>
+                <span
+                  className={`text-[10px] font-medium ${ev.isHoliday ? 'text-amber-700' : 'text-indigo-700'}`}
+                >
+                  {ev.eventName}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {linkedSchool && (
         <div className="flex flex-wrap items-center gap-4 border-t border-gray-50 px-4 py-2 text-xs text-gray-500">
           <span className="font-semibold text-gray-600">표시 옵션</span>
@@ -1439,6 +1510,15 @@ function GanttTimeline({
               className="h-3.5 w-3.5 rounded border-gray-300 text-indigo-500 focus:ring-indigo-300"
             />
             <span>🏫 학교 일정</span>
+          </label>
+          <label className="flex cursor-pointer select-none items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={showSchoolTimetable}
+              onChange={toggleTimetable}
+              className="h-3.5 w-3.5 rounded border-gray-300 text-sky-500 focus:ring-sky-300"
+            />
+            <span>📚 시간표</span>
           </label>
         </div>
       )}
