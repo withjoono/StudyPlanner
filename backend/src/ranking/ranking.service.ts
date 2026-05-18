@@ -67,7 +67,9 @@ export class RankingService {
           headers: { Authorization: authHeader },
           timeout: 3000,
         });
-        hubGroups = data?.groups || [];
+        // Hub 응답: { success: true, data: [{ group: { id, name, groupType, ... }, ... }] }
+        const memberships: any[] = data?.data || [];
+        hubGroups = memberships.map((m: any) => m.group).filter(Boolean);
         hubGroups.forEach((g) => {
           availableGroups.push({ id: String(g.id), name: g.name });
         });
