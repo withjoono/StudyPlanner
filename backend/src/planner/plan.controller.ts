@@ -30,12 +30,21 @@ export class PlanController {
     });
     if (byUserId) return Number(byUserId.id);
 
+    // sp_ 없이 들어온 Hub raw ID 재시도 ("S26H208011" → "sp_S26H208011")
+    if (!userIdStr.startsWith('sp_')) {
+      const withPrefix = await this.prisma.student.findFirst({
+        where: { userId: `sp_${userIdStr}` },
+      });
+      if (withPrefix) return Number(withPrefix.id);
+    }
+
     // 학생 자동 생성
     const code = `SP${Date.now()}`;
+    const normalizedUserId = userIdStr.startsWith('sp_') ? userIdStr : `sp_${userIdStr}`;
     const student = await this.prisma.student.create({
       data: {
         studentCode: code,
-        userId: userIdStr.startsWith('sp_') ? userIdStr : undefined,
+        userId: normalizedUserId,
         year: new Date().getFullYear(),
         schoolLevel: 'high',
         name: '학생',

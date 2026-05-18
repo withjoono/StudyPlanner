@@ -5,7 +5,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { publicClient, authClient, setTokens, clearTokens } from '@/lib/api';
+import { publicClient, authClient, plannerClient, setTokens, clearTokens } from '@/lib/api';
 import { env } from '@/lib/config/env';
 import type {
   LoginWithEmailRequest,
@@ -291,7 +291,8 @@ export function useSsoExchange() {
       setTokens(data.accessToken, data.refreshToken);
       setActiveServices(data.activeServices);
 
-      const meResponse = await authClient.get<Member>('/auth/me');
+      // SSO 후엔 StudyPlanner 백엔드 /auth/me 호출 → id = "sp_XXXX" 반환
+      const meResponse = await plannerClient.get<Member>('/auth/me');
       setUser(toMember(meResponse.data as unknown as Record<string, unknown>));
 
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
