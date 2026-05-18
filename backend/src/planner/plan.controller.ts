@@ -53,14 +53,17 @@ export class PlanController {
       },
       update: {},
     });
-    const student = await this.prisma.student.create({
-      data: {
+    // Student도 upsert — auth/me와의 경쟁 조건 또는 중복 생성 방지
+    const student = await this.prisma.student.upsert({
+      where: { userId: normalizedUserId },
+      create: {
         studentCode: code,
         userId: normalizedUserId,
         year: new Date().getFullYear(),
         schoolLevel: 'high',
         name: '학생',
       },
+      update: {},
     });
     return Number(student.id);
   }
