@@ -21,6 +21,14 @@ import type {
 } from '@/types/auth';
 import { useAuthStore } from '@/stores/client/use-auth-store';
 
+// Hub /auth/me 응답은 nickname 필드를 사용하지만 StudyPlanner Member 타입은 userName을 사용
+function toMember(raw: Record<string, unknown>): Member {
+  return {
+    ...raw,
+    userName: (raw.userName as string) || (raw.nickname as string) || '',
+  } as Member;
+}
+
 // ============================================
 // Query Keys
 // ============================================
@@ -54,7 +62,7 @@ export function useLoginWithEmail() {
 
       // 사용자 정보 조회
       const meResponse = await authClient.get<Member>('/auth/me');
-      setUser(meResponse.data);
+      setUser(toMember(meResponse.data as unknown as Record<string, unknown>));
 
       // 캐시 갱신
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
@@ -79,7 +87,7 @@ export function useLoginWithSocial() {
       setActiveServices(data.activeServices);
 
       const meResponse = await authClient.get<Member>('/auth/me');
-      setUser(meResponse.data);
+      setUser(toMember(meResponse.data as unknown as Record<string, unknown>));
 
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
     },
@@ -107,7 +115,7 @@ export function useRegisterWithEmail() {
       setActiveServices(data.activeServices);
 
       const meResponse = await authClient.get<Member>('/auth/me');
-      setUser(meResponse.data);
+      setUser(toMember(meResponse.data as unknown as Record<string, unknown>));
 
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
     },
@@ -131,7 +139,7 @@ export function useRegisterWithSocial() {
       setActiveServices(data.activeServices);
 
       const meResponse = await authClient.get<Member>('/auth/me');
-      setUser(meResponse.data);
+      setUser(toMember(meResponse.data as unknown as Record<string, unknown>));
 
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
     },
@@ -198,8 +206,9 @@ export function useGetMe() {
     queryKey: authKeys.me(),
     queryFn: async () => {
       const response = await authClient.get<Member>('/auth/me');
-      setUser(response.data);
-      return response.data;
+      const member = toMember(response.data as unknown as Record<string, unknown>);
+      setUser(member);
+      return member;
     },
     staleTime: 5 * 60 * 1000, // 5분
     retry: false,
@@ -283,7 +292,7 @@ export function useSsoExchange() {
       setActiveServices(data.activeServices);
 
       const meResponse = await authClient.get<Member>('/auth/me');
-      setUser(meResponse.data);
+      setUser(toMember(meResponse.data as unknown as Record<string, unknown>));
 
       queryClient.invalidateQueries({ queryKey: authKeys.me() });
     },

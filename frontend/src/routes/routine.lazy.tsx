@@ -562,7 +562,7 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
             {/* 시간 라벨 (왼쪽) */}
             <div className="w-10 flex-shrink-0">
               <div className="h-12" />
-              <div className="relative h-[380px]">
+              <div className="relative h-[480px]">
                 {HOURS.filter((h) => h % 2 === 0).map((hour) => (
                   <div
                     key={hour}
@@ -755,7 +755,7 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
             {/* 시간 라벨 (오른쪽) */}
             <div className="w-10 flex-shrink-0">
               <div className="h-12" />
-              <div className="relative h-[380px]">
+              <div className="relative h-[480px]">
                 {HOURS.filter((h) => h % 2 === 0).map((hour) => (
                   <div
                     key={hour}
@@ -1571,17 +1571,17 @@ function PlannerRoutinePage() {
       </section>
 
       {/* ═══════ 캘린더 (max-w-4xl 중앙 정렬) ═══════ */}
-      <div className="relative mx-auto -mt-10 max-w-4xl px-4 pb-4">
+      <div className="relative mx-auto -mt-10 w-full max-w-screen-xl px-4 pb-4">
         <WeeklyCalendar routines={routines || []} />
       </div>
 
       {/* ═══════ 주간 미션 ═══════ */}
-      <div className="mx-auto max-w-2xl px-4 pb-4">
+      <div className="mx-auto w-full max-w-screen-xl px-4 pb-4">
         <WeeklyMissionSection />
       </div>
 
       {/* ═══════ 루틴 목록 (카테고리별 아코디언) ═══════ */}
-      <div className="mx-auto max-w-2xl px-4 pb-4">
+      <div className="mx-auto w-full max-w-screen-xl px-4 pb-4">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-700">📋 루틴 목록</h3>
         </div>
@@ -1693,7 +1693,7 @@ function PlannerRoutinePage() {
       </div>
 
       {/* ═══════ 분석 ═══════ */}
-      <div className="mx-auto max-w-2xl px-4 pb-24">
+      <div className="mx-auto w-full max-w-screen-xl px-4 pb-24">
         <div className="mb-3">
           <h3 className="text-sm font-bold text-gray-700">📊 분석</h3>
         </div>
