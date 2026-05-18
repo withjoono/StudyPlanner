@@ -63,6 +63,15 @@ export class PlanService {
     return plans.map((p) => this.mapToPlan(p));
   }
 
+  async getPlansForStudents(studentIds: number[]): Promise<PlannerPlan[]> {
+    if (studentIds.length === 0) return [];
+    const plans = await this.prisma.longTermPlan.findMany({
+      where: { studentId: { in: studentIds.map((id) => BigInt(id)) } },
+      orderBy: { startDate: 'asc' },
+    });
+    return plans.map((p) => this.mapToPlan(p));
+  }
+
   async getPlan(id: number): Promise<PlannerPlan | undefined> {
     const plan = await this.prisma.longTermPlan.findUnique({
       where: { id: BigInt(id) },

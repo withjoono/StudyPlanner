@@ -71,8 +71,21 @@ export class PlanController {
   @Get()
   @ApiOperation({ summary: '장기 계획 목록 조회' })
   async getPlans(@Query('memberId') memberId?: string, @Query('member_id') memberIdSnake?: string) {
-    const studentId = await this.resolveStudentId(memberId || memberIdSnake);
-    return this.planService.getPlans(studentId);
+    const raw = memberId || memberIdSnake;
+    const primaryId = await this.resolveStudentId(raw);
+
+    // sp_ prefix 유무 두 variant 모두 조회해 기존 계획이 누락되지 않도록 함
+    const studentIds = new Set<number>([primaryId]);
+    if (raw && typeof raw === 'string') {
+      const variants = raw.startsWith('sp_') ? [raw, raw.slice(3)] : [raw, `sp_${raw}`];
+      const others = await this.prisma.student.findMany({
+        where: { userId: { in: variants } },
+        select: { id: true },
+      });
+      others.forEach((s) => studentIds.add(Number(s.id)));
+    }
+
+    return this.planService.getPlansForStudents([...studentIds]);
   }
 
   @Get(':id')
