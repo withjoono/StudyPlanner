@@ -68,7 +68,7 @@ jobs:
             echo '  cloud_sql_instances: "ts-back-nest-479305:asia-northeast3:geobuk-db"'
             echo ''
             echo 'automatic_scaling:'
-            echo '  min_instances: 0'
+            echo '  min_instances: 1'
             echo '  max_instances: 2'
             echo ''
             echo 'handlers:'
