@@ -169,6 +169,7 @@ export function useGetPlans() {
       return response.data as ExtendedLongTermPlan[];
     },
     enabled: !!memberId,
+    retry: 1,
   });
 }
 

@@ -93,9 +93,9 @@ function MyClassPage() {
       {/* 헤더 */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-gray-900">🏠 마이 클래스</h1>
+          <h1 className="text-2xl font-black tracking-tight text-gray-900">🏠 마이 그룹</h1>
           <p className="mt-1 text-sm text-gray-500">
-            친구와 함께 학습 경쟁! 클래스를 만들고 초대하세요.
+            친구와 함께 학습 경쟁! 그룹을 만들고 초대하세요.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -259,11 +259,11 @@ function RoomDetail({ roomId, onBack }: { roomId: number; onBack: () => void }) 
 
   const handleShareInvite = async () => {
     if (!room) return;
-    const text = `🏠 "${room.name}" 마이 클래스에서 같이 공부하자!\n\n초대 코드: ${room.roomCode}\n\n🌱 StudyPlanner by 거북스쿨\nhttps://geobukschool.kr/join/${room.roomCode}`;
+    const text = `🏠 "${room.name}" 마이 그룹에서 같이 공부하자!\n\n초대 코드: ${room.roomCode}\n\n🌱 StudyPlanner by 거북스쿨\nhttps://geobukschool.kr/join/${room.roomCode}`;
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: `마이 클래스 초대 - ${room.name}`, text });
+        await navigator.share({ title: `마이 그룹 초대 - ${room.name}`, text });
       } catch (e) {
         // cancelled
       }

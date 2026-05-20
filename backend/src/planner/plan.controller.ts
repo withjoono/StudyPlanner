@@ -68,6 +68,54 @@ export class PlanController {
     return Number(student.id);
   }
 
+  /** DB 상태 진단 — 특정 userId의 student/plan 현황 확인 */
+  @Get('debug')
+  @ApiOperation({ summary: '장기 계획 DB 진단 (개발·운영 디버깅용)' })
+  async debugPlans(
+    @Query('memberId') memberId?: string,
+    @Query('member_id') memberIdSnake?: string,
+  ) {
+    const raw = memberId || memberIdSnake;
+
+    // userId 변형 목록
+    const variants: string[] = [];
+    if (raw) {
+      variants.push(raw);
+      if (raw.startsWith('sp_')) variants.push(raw.slice(3));
+      else variants.push(`sp_${raw}`);
+    }
+
+    // 해당 userId로 조회되는 student 목록
+    const students = await this.prisma.student.findMany({
+      where: variants.length > 0 ? { userId: { in: variants } } : {},
+      select: { id: true, userId: true, name: true, studentCode: true },
+    });
+
+    // 각 student의 plan 수
+    const planCounts = await Promise.all(
+      students.map(async (s) => {
+        const count = await this.prisma.longTermPlan.count({ where: { studentId: s.id } });
+        return { studentId: Number(s.id), userId: s.userId, name: s.name, planCount: count };
+      }),
+    );
+
+    // studentId=1의 plan 수 (구버전 기본값 확인)
+    const defaultStudentPlanCount = await this.prisma.longTermPlan.count({
+      where: { studentId: BigInt(1) },
+    });
+
+    // 전체 plan 수
+    const totalPlans = await this.prisma.longTermPlan.count();
+
+    return {
+      queriedMemberId: raw,
+      variants,
+      matchedStudents: planCounts,
+      defaultStudentId1PlanCount: defaultStudentPlanCount,
+      totalPlansInDb: totalPlans,
+    };
+  }
+
   @Get()
   @ApiOperation({ summary: '장기 계획 목록 조회' })
   async getPlans(@Query('memberId') memberId?: string, @Query('member_id') memberIdSnake?: string) {

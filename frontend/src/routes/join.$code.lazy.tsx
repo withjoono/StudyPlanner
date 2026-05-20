@@ -65,7 +65,7 @@ function JoinPage() {
           onClick={() => navigate({ to: '/myclass' })}
           className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-indigo-700"
         >
-          마이 클래스 목록으로
+          마이 그룹 목록으로
         </button>
       </div>
     );

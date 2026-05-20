@@ -5,7 +5,14 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
-import { publicClient, authClient, plannerClient, setTokens, clearTokens } from '@/lib/api';
+import {
+  publicClient,
+  authClient,
+  plannerClient,
+  setTokens,
+  clearTokens,
+  hasAccessToken,
+} from '@/lib/api';
 import { env } from '@/lib/config/env';
 import type {
   LoginWithEmailRequest,
@@ -205,13 +212,17 @@ export function useGetMe() {
   return useQuery({
     queryKey: authKeys.me(),
     queryFn: async () => {
-      const response = await authClient.get<Member>('/auth/me');
+      // plannerClient: StudyPlanner 백엔드 /auth/me → id = "sp_XXXX" 형식 반환
+      // authClient(Hub)와 id 형식이 달라 user.id 불일치 → plans 조회 불가 문제 방지
+      const response = await plannerClient.get<Member>('/auth/me');
       const member = toMember(response.data as unknown as Record<string, unknown>);
       setUser(member);
       return member;
     },
-    staleTime: 5 * 60 * 1000, // 5분
+    staleTime: 5 * 60 * 1000,
     retry: false,
+    enabled: hasAccessToken(),
+    refetchOnMount: 'always',
   });
 }
 

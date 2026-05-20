@@ -120,7 +120,7 @@ function AIMentoringPage() {
               href="/myclass"
               className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-amber-600 hover:text-amber-500"
             >
-              마이 클래스 만들기 →
+              마이 그룹 만들기 →
             </a>
           </div>
         </div>

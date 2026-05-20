@@ -2,7 +2,7 @@ import { createRootRoute, Outlet, Link, useRouterState } from '@tanstack/react-r
 import { Toaster, toast } from 'sonner';
 import { useAuthStore } from '@/stores/client/use-auth-store';
 
-import { useSsoExchange } from '@/stores/server/auth';
+import { useSsoExchange, useGetMe } from '@/stores/server/auth';
 import { useEffect, useRef, useState } from 'react';
 import { X, LayoutGrid, ChevronDown, Timer } from 'lucide-react';
 import PromoPage from '@/components/PromoPage';
@@ -22,6 +22,7 @@ function RootLayout() {
   const { user, isAuthenticated, clearAuth } = useAuthStore();
   const router = useRouterState();
   const ssoExchangeMutation = useSsoExchange();
+  useGetMe(); // 앱 로드마다 서버에서 최신 사용자 정보 동기화
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [myclassDropdownOpen, setMyclassDropdownOpen] = useState(false);
@@ -148,13 +149,13 @@ function RootLayout() {
               <NavLink to="/missions">금일계획</NavLink>
               <NavLink to="/growth">성장</NavLink>
               <NavLink to="/learning">분석</NavLink>
-              {/* 마이 클래스 드롭다운 */}
+              {/* 마이 그룹 드롭다운 */}
               <div className="relative" ref={myclassDropdownRef}>
                 <button
                   onClick={() => setMyclassDropdownOpen((v) => !v)}
                   className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
                 >
-                  마이 클래스
+                  My Group
                   <ChevronDown
                     className={`h-4 w-4 transition-transform ${myclassDropdownOpen ? 'rotate-180' : ''}`}
                   />
@@ -258,7 +259,7 @@ function RootLayout() {
                 ))}
                 <div className="my-1 border-t border-gray-100" />
                 <p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                  마이 클래스
+                  마이 그룹
                 </p>
                 {[
                   { href: '/myclass?type=university', label: '🎓 목표대학 반' },

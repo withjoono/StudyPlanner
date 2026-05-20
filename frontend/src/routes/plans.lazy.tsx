@@ -1538,7 +1538,7 @@ function GanttTimeline({
 // ============================================
 
 function PlannerPlansPage() {
-  const { data: plans, isLoading } = useGetPlans();
+  const { data: plans, isLoading, isError, error } = useGetPlans();
   const { data: routines } = useGetRoutines();
   const createPlanMutation = useCreatePlan();
   const updatePlanMutation = useUpdatePlan();
@@ -1692,6 +1692,23 @@ function PlannerPlansPage() {
             <Skeleton key={i} className="h-32 w-full rounded-xl" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    const errMsg =
+      (error as any)?.response?.data?.message || (error as any)?.message || String(error);
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 p-8 text-center">
+        <p className="text-lg font-bold text-red-500">계획 불러오기 실패</p>
+        <p className="max-w-sm rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{errMsg}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-full bg-indigo-600 px-6 py-2 text-sm font-semibold text-white"
+        >
+          다시 시도
+        </button>
       </div>
     );
   }
