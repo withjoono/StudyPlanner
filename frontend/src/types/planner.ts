@@ -9,7 +9,7 @@
 /** 과목 색상 매핑 */
 export const SUBJECT_COLORS: Record<string, string> = {
   // 주요 교과
-  국어: '#ef4444', // red
+  국어: '#c026d3', // fuchsia (국어 전용; 음악·미술·체육은 거의 미사용)
   수학: '#eab308', // yellow
   영어: '#f97316', // orange
   사회: '#3b82f6', // blue
@@ -20,13 +20,13 @@ export const SUBJECT_COLORS: Record<string, string> = {
   사탐: '#2563eb', // blue-600
   과탐: '#0d9488', // teal-600
 
-  // 국어 세부
-  공통국어1: '#dc2626', // red-600
-  공통국어2: '#b91c1c', // red-700
-  문학: '#e11d48', // rose-600
-  독서: '#f43f5e', // rose-500
-  화법과작문: '#fb7185', // rose-400
-  언어와매체: '#be123c', // rose-700
+  // 국어 세부 (fuchsia 계열)
+  공통국어1: '#a21caf', // fuchsia-700
+  공통국어2: '#86198f', // fuchsia-800
+  문학: '#d946ef', // fuchsia-500
+  독서: '#e879f9', // fuchsia-400
+  화법과작문: '#c026d3', // fuchsia-600
+  언어와매체: '#701a75', // fuchsia-900
 
   // 수학 세부
   수학1: '#ca8a04', // yellow-600

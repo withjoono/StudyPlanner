@@ -3,7 +3,7 @@
  */
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -451,23 +451,38 @@ function useSchoolEventsForWeek(weekStart: Date, weekEnd: Date): Map<string, Sch
   }, [r1.data, r2.data, sm, em]);
 }
 
+const MAJOR_COLOR_HEX: Record<string, string> = {
+  class: '#3b82f6',
+  self_study: '#f97316',
+  exercise: '#22c55e',
+  schedule: '#64748b',
+};
+
 function WeeklyCalendar({ routines }: { routines: Routine[] }) {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const { data: linkedSchool, isLoading: isSchoolLoading } = useGetLinkedSchool();
   const { showSchoolEvents, showSchoolTimetable, toggleEvents, toggleTimetable } =
     useSchoolDisplayPrefs();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const HOUR_PX = 60;
   const START_HOUR = 6;
   const END_HOUR = 24;
-  const RANGE_MINS = (END_HOUR - START_HOUR) * 60;
+  const GRID_HEIGHT = (END_HOUR - START_HOUR) * HOUR_PX; // 1080px
   const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => i + START_HOUR);
 
-  const toTopPct = (minutes: number) =>
-    ((Math.max(START_HOUR * 60, Math.min(END_HOUR * 60, minutes)) - START_HOUR * 60) / RANGE_MINS) *
-    100;
+  const toTopPx = (totalMinutes: number) =>
+    Math.max(0, Math.min(totalMinutes, END_HOUR * 60) - START_HOUR * 60);
+
+  const formatKoreanHour = (hour: number) => {
+    if (hour === 0 || hour === 24) return '자정';
+    if (hour < 12) return `오전 ${hour}시`;
+    if (hour === 12) return '오후 12시';
+    return `오후 ${hour - 12}시`;
+  };
 
   const navigate = (direction: 'prev' | 'next') => {
     const newStart = new Date(weekStart);
@@ -494,18 +509,6 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
     return hours * 60 + minutes;
   };
 
-  const getRoutinePosition = (routine: Routine) => {
-    const startMinutes = timeToMinutes(routine.startTime);
-    const endMinutes = timeToMinutes(routine.endTime);
-    const top = toTopPct(startMinutes);
-    const height =
-      ((Math.min(END_HOUR * 60, endMinutes) - Math.max(START_HOUR * 60, startMinutes)) /
-        RANGE_MINS) *
-      100;
-    return { top, height: Math.max(height, 2) };
-  };
-
-  // 해당 주에 유효한 루틴인지 체크
   const isRoutineActiveInWeek = useCallback(
     (routine: Routine) => {
       if (!routine.startDate || !routine.endDate) return true;
@@ -518,34 +521,38 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
     [weekStart, weekEnd],
   );
 
-  const getRoutinesForDay = (dayIndex: number) => {
-    return routines.filter((r) => r.days[dayIndex] && isRoutineActiveInWeek(r));
-  };
+  const getRoutinesForDay = (dayIndex: number) =>
+    routines.filter((r) => r.days[dayIndex] && isRoutineActiveInWeek(r));
 
-  // 주간 시간표 (월~금 각 쿼리)
   const weekdayTimetables = useTimetableForWeek(weekDays);
-  // weekDays[0]=일, weekDays[1]=월 ... weekDays[5]=금, weekDays[6]=토
-  // weekdayTimetables[0]=월, [1]=화, [2]=수, [3]=목, [4]=금
   const schoolEventsMap = useSchoolEventsForWeek(weekStart, weekEnd);
   const getTimetableForDay = (dayIdx: number) => {
-    // dayIdx: 0=일,1=월,...,5=금,6=토
     if (dayIdx < 1 || dayIdx > 5) return [];
     return weekdayTimetables[dayIdx - 1] ?? [];
   };
 
   const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const currentPosition = toTopPct(currentMinutes);
+  const currentTopPx = toTopPx(now.getHours() * 60 + now.getMinutes());
+  const isCurrentWeek = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d >= weekStart && d <= weekEnd;
+  }, [weekStart, weekEnd]);
+
+  useEffect(() => {
+    if (scrollRef.current && isCurrentWeek) {
+      scrollRef.current.scrollTop = Math.max(0, currentTopPx - 120);
+    }
+  }, [isCurrentWeek]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
-      {/* 주간 루틴 요약 (캘린더 상단) */}
       <WeeklyRoutineSummaryCard routines={routines} weekStart={weekStart} weekEnd={weekEnd} />
 
       <Card className="mb-6">
         <CardContent className="p-4">
           {/* 헤더 */}
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between">
             <button onClick={() => navigate('prev')} className="rounded-full p-1 hover:bg-gray-100">
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -557,30 +564,11 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
             </button>
           </div>
 
-          {/* 주간 타임라인 */}
-          <div className="flex">
-            {/* 시간 라벨 (왼쪽) */}
-            <div className="w-10 flex-shrink-0">
-              <div className="h-12" />
-              <div className="relative h-[480px]">
-                {HOURS.filter((h) => h % 2 === 0).map((hour) => (
-                  <div
-                    key={hour}
-                    className="absolute left-0 right-0 pr-2 text-right text-xs text-gray-400"
-                    style={{
-                      top: `${((hour - START_HOUR) / (END_HOUR - START_HOUR)) * 100}%`,
-                      transform: 'translateY(-50%)',
-                    }}
-                  >
-                    {hour.toString().padStart(2, '0')}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 요일 컬럼들 */}
-            <div className="grid flex-1 grid-cols-7 gap-0.5">
-              {/* 요일 헤더 */}
+          {/* 캘린더 */}
+          <div className="overflow-hidden rounded-lg border border-gray-200">
+            {/* 요일 헤더 (고정) */}
+            <div className="flex flex-shrink-0 border-b border-gray-200">
+              <div className="w-14 flex-shrink-0 border-r border-gray-200 bg-white" />
               {weekDays.map((date, idx) => {
                 const isToday = date.getTime() === today.getTime();
                 const dayEvts =
@@ -591,8 +579,8 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                 return (
                   <div
                     key={`header-${idx}`}
-                    className={`flex h-12 flex-col items-center justify-center rounded-t-lg ${
-                      isToday ? 'bg-ultrasonic-500 text-white' : 'bg-gray-100'
+                    className={`flex flex-1 flex-col items-center justify-center border-l border-gray-200 py-2 ${
+                      isToday ? 'bg-ultrasonic-500' : 'bg-gray-50'
                     }`}
                   >
                     <span
@@ -615,178 +603,204 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                     </span>
                     {nonHolidayEvts.length > 0 && (
                       <span
-                        className={`mt-0.5 max-w-full truncate rounded px-1 py-0.5 text-center text-[9px] font-bold leading-none ${isToday ? 'bg-yellow-300/20 text-yellow-200' : 'bg-indigo-100 text-indigo-600'}`}
+                        className={`mt-0.5 max-w-[90%] truncate rounded px-1 text-center text-[8px] font-semibold leading-tight ${isToday ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'}`}
                         title={nonHolidayEvts.map((e) => e.eventName).join(', ')}
                       >
                         {nonHolidayEvts[0].eventName}
-                        {nonHolidayEvts.length > 1 ? ` +${nonHolidayEvts.length - 1}` : ''}
                       </span>
                     )}
                   </div>
                 );
               })}
-
-              {/* 타임라인 그리드 */}
-              {weekDays.map((date, dayIdx) => {
-                const isToday = date.getTime() === today.getTime();
-                const dayRoutines = getRoutinesForDay(dayIdx);
-                const dayTimetable = showSchoolTimetable ? getTimetableForDay(dayIdx) : [];
-                const isHoliday =
-                  linkedSchool != null &&
-                  showSchoolEvents &&
-                  (schoolEventsMap.get(formatDateStr(date))?.some((e) => e.isHoliday) ?? false);
-
-                return (
-                  <div
-                    key={`timeline-${dayIdx}`}
-                    className={`relative h-[380px] border-l border-gray-200 ${
-                      isToday ? 'bg-ultrasonic-50' : 'bg-gray-50'
-                    }`}
-                  >
-                    {HOURS.map((hour) => (
-                      <div
-                        key={hour}
-                        className="absolute left-0 right-0 border-t border-gray-100"
-                        style={{
-                          top: `${((hour - START_HOUR) / (END_HOUR - START_HOUR)) * 100}%`,
-                        }}
-                      />
-                    ))}
-
-                    {isToday && (
-                      <div
-                        className="bg-ultrasonic-500 absolute left-0 right-0 z-10 h-0.5"
-                        style={{ top: `${currentPosition}%` }}
-                      >
-                        <div className="bg-ultrasonic-500 absolute -left-1 -top-1 h-2.5 w-2.5 rounded-full" />
-                      </div>
-                    )}
-
-                    {/* 방학 배경 */}
-                    {isHoliday && dayIdx >= 1 && dayIdx <= 5 && (
-                      <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-3">
-                        <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[8px] font-semibold text-amber-400">
-                          {schoolEventsMap.get(formatDateStr(date))?.find((e) => e.isHoliday)
-                            ?.eventName ?? '방학'}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* 비방학 학교 행사 배너 */}
-                    {!isHoliday &&
-                      linkedSchool &&
-                      showSchoolEvents &&
-                      (() => {
-                        const evts =
-                          schoolEventsMap.get(formatDateStr(date))?.filter((e) => !e.isHoliday) ??
-                          [];
-                        return evts.length > 0 ? (
-                          <div className="absolute left-0 right-0 top-0 z-20 border-b border-indigo-200 bg-indigo-50/90 px-0.5 py-0.5">
-                            {evts.map((ev, i) => (
-                              <div
-                                key={i}
-                                className="truncate text-[8px] font-bold text-indigo-600"
-                                title={ev.eventName}
-                              >
-                                📅 {ev.eventName}
-                              </div>
-                            ))}
-                          </div>
-                        ) : null;
-                      })()}
-
-                    {/* 학교 시간표 블록 */}
-                    {!isHoliday &&
-                      dayTimetable
-                        .sort((a, b) => Number(a.period) - Number(b.period))
-                        .map((item) => {
-                          const times = PERIOD_TIMES[item.period];
-                          if (!times) return null;
-                          const [sh, sm] = times.start.split(':').map(Number);
-                          const [eh, em] = times.end.split(':').map(Number);
-                          const startMin = sh * 60 + sm;
-                          const endMin = eh * 60 + em;
-                          const top = toTopPct(startMin);
-                          const height = Math.max(((endMin - startMin) / RANGE_MINS) * 100, 1.5);
-                          return (
-                            <div
-                              key={`tt-${item.period}`}
-                              className="absolute left-0 right-0 overflow-hidden border-l-2 border-sky-400 bg-sky-100/70 px-0.5"
-                              style={{ top: `${top}%`, height: `${height}%`, minHeight: '18px' }}
-                              title={`${item.period}교시 ${item.subject} (${times.start}~${times.end})`}
-                            >
-                              <div className="truncate text-[9px] font-semibold leading-tight text-sky-700">
-                                {item.subject}
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                    {dayRoutines.map((routine) => {
-                      const pos = getRoutinePosition(routine);
-                      const colors = MAJOR_CATEGORY_COLORS[routine.majorCategory] || {
-                        bg: 'bg-gray-500',
-                        border: 'border-gray-600',
-                        text: 'text-gray-600',
-                      };
-                      return (
-                        <div
-                          key={routine.id}
-                          className={`absolute left-0.5 right-0.5 overflow-hidden rounded border-l-2 px-1 text-xs text-white ${colors.bg} ${colors.border}`}
-                          style={{
-                            top: `${pos.top}%`,
-                            height: `${pos.height}%`,
-                            minHeight: '20px',
-                          }}
-                          title={`${routine.title} (${routine.startTime}~${routine.endTime})`}
-                        >
-                          <div className="truncate font-medium">{routine.title}</div>
-                          {pos.height > 4 && (
-                            <div className="text-[10px] opacity-80">{routine.startTime}</div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
             </div>
 
-            {/* 시간 라벨 (오른쪽) */}
-            <div className="w-10 flex-shrink-0">
-              <div className="h-12" />
-              <div className="relative h-[480px]">
-                {HOURS.filter((h) => h % 2 === 0).map((hour) => (
-                  <div
-                    key={hour}
-                    className="absolute left-0 right-0 pl-2 text-xs text-gray-400"
-                    style={{
-                      top: `${((hour - START_HOUR) / (END_HOUR - START_HOUR)) * 100}%`,
-                      transform: 'translateY(-50%)',
-                    }}
-                  >
-                    {hour.toString().padStart(2, '0')}
-                  </div>
-                ))}
+            {/* 스크롤 타임라인 */}
+            <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: '560px' }}>
+              <div className="flex" style={{ height: `${GRID_HEIGHT}px` }}>
+                {/* 시간 레이블 열 */}
+                <div className="relative w-14 flex-shrink-0 border-r border-gray-200 bg-white">
+                  {HOURS.map((hour) => (
+                    <div
+                      key={hour}
+                      className="absolute right-2 text-right text-[10px] leading-none text-gray-400"
+                      style={{
+                        top: `${(hour - START_HOUR) * HOUR_PX}px`,
+                        transform: 'translateY(-50%)',
+                      }}
+                    >
+                      {formatKoreanHour(hour)}
+                    </div>
+                  ))}
+                </div>
+
+                {/* 요일 컬럼들 */}
+                {weekDays.map((date, dayIdx) => {
+                  const isToday = date.getTime() === today.getTime();
+                  const dayRoutines = getRoutinesForDay(dayIdx);
+                  const dayTimetable = showSchoolTimetable ? getTimetableForDay(dayIdx) : [];
+                  const isHoliday =
+                    linkedSchool != null &&
+                    showSchoolEvents &&
+                    (schoolEventsMap.get(formatDateStr(date))?.some((e) => e.isHoliday) ?? false);
+
+                  return (
+                    <div
+                      key={`col-${dayIdx}`}
+                      className={`relative flex-1 border-l border-gray-200 ${
+                        isToday ? 'bg-blue-50/20' : 'bg-white'
+                      }`}
+                    >
+                      {/* 수평 시간선 */}
+                      {HOURS.map((hour) => (
+                        <div
+                          key={hour}
+                          className={`absolute left-0 right-0 border-t ${
+                            hour % 2 === 0 ? 'border-gray-200' : 'border-gray-100'
+                          }`}
+                          style={{ top: `${(hour - START_HOUR) * HOUR_PX}px` }}
+                        />
+                      ))}
+
+                      {/* 현재 시각선 */}
+                      {isToday && isCurrentWeek && (
+                        <div
+                          className="pointer-events-none absolute left-0 right-0 z-20 flex items-center"
+                          style={{ top: `${currentTopPx}px` }}
+                        >
+                          <div
+                            className="h-2 w-2 flex-shrink-0 rounded-full bg-red-500"
+                            style={{ marginLeft: '-4px' }}
+                          />
+                          <div className="h-px flex-1 bg-red-400" />
+                        </div>
+                      )}
+
+                      {/* 방학 배경 */}
+                      {isHoliday && (
+                        <div className="pointer-events-none absolute inset-0 z-10 flex items-start justify-center bg-amber-50/40 pt-3">
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[8px] font-semibold text-amber-500">
+                            {schoolEventsMap.get(formatDateStr(date))?.find((e) => e.isHoliday)
+                              ?.eventName ?? '방학'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* 학교 행사 배너 (회색) */}
+                      {!isHoliday &&
+                        linkedSchool &&
+                        showSchoolEvents &&
+                        (() => {
+                          const evts =
+                            schoolEventsMap.get(formatDateStr(date))?.filter((e) => !e.isHoliday) ??
+                            [];
+                          return evts.length > 0 ? (
+                            <div className="absolute left-0 right-0 top-0 z-10 border-b border-gray-200 bg-gray-100/90 px-0.5 py-0.5">
+                              {evts.map((ev, i) => (
+                                <div
+                                  key={i}
+                                  className="truncate text-[8px] font-medium text-gray-500"
+                                  title={ev.eventName}
+                                >
+                                  {ev.eventName}
+                                </div>
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
+
+                      {/* 학교 시간표 블록 (회색) */}
+                      {!isHoliday &&
+                        dayTimetable
+                          .sort((a, b) => Number(a.period) - Number(b.period))
+                          .map((item) => {
+                            const times = PERIOD_TIMES[item.period];
+                            if (!times) return null;
+                            const [sh, sMin] = times.start.split(':').map(Number);
+                            const [eh, eMin] = times.end.split(':').map(Number);
+                            const startM = sh * 60 + sMin;
+                            const endM = eh * 60 + eMin;
+                            const topPx = toTopPx(startM);
+                            const heightPx = Math.max(endM - startM, 20);
+                            return (
+                              <div
+                                key={`tt-${item.period}`}
+                                className="absolute left-0.5 right-0.5 overflow-hidden rounded border-l-2 border-gray-300 bg-gray-100 px-1 py-0.5"
+                                style={{ top: `${topPx}px`, height: `${heightPx}px` }}
+                                title={`${item.period}교시 ${item.subject} (${times.start}~${times.end})`}
+                              >
+                                <div className="truncate text-[9px] font-semibold leading-tight text-gray-500">
+                                  {item.subject}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                      {/* 루틴 블록 (교과 색상) */}
+                      {dayRoutines.map((routine) => {
+                        const startM = timeToMinutes(routine.startTime);
+                        const endM = timeToMinutes(routine.endTime);
+                        const topPx = toTopPx(startM);
+                        const heightPx = Math.max(
+                          Math.min(END_HOUR * 60, endM) - Math.max(START_HOUR * 60, startM),
+                          20,
+                        );
+                        const color = routine.subject
+                          ? getSubjectColor(routine.subject)
+                          : (MAJOR_COLOR_HEX[routine.majorCategory] ?? '#94a3b8');
+                        return (
+                          <div
+                            key={routine.id}
+                            className="absolute left-0.5 right-0.5 overflow-hidden rounded"
+                            style={{
+                              top: `${topPx}px`,
+                              height: `${heightPx}px`,
+                              backgroundColor: `${color}28`,
+                              borderLeft: `3px solid ${color}`,
+                            }}
+                            title={`${routine.title} (${routine.startTime}~${routine.endTime})`}
+                          >
+                            <div
+                              className="truncate px-1 pt-0.5 text-[10px] font-semibold leading-tight"
+                              style={{ color }}
+                            >
+                              {routine.title}
+                            </div>
+                            {heightPx >= 32 && (
+                              <div
+                                className="px-1 text-[9px] leading-none"
+                                style={{ color: `${color}99` }}
+                              >
+                                {routine.startTime}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
 
           {/* 범례 */}
           <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-3">
-            {Object.entries(MAJOR_CATEGORY_LABELS).map(([key, label]) => (
-              <div key={key} className="flex items-center gap-1.5 text-xs text-gray-600">
-                <div
-                  className={`h-3 w-3 rounded ${MAJOR_CATEGORY_COLORS[key as RoutineMajorCategory].bg}`}
-                />
-                <span>{label}</span>
-              </div>
-            ))}
+            {Object.entries(MAJOR_CATEGORY_LABELS).map(([key, label]) => {
+              const c = MAJOR_COLOR_HEX[key] ?? '#94a3b8';
+              return (
+                <div key={key} className="flex items-center gap-1.5 text-xs text-gray-600">
+                  <div
+                    className="h-3 w-3 rounded"
+                    style={{ backgroundColor: `${c}44`, borderLeft: `3px solid ${c}` }}
+                  />
+                  <span>{label}</span>
+                </div>
+              );
+            })}
             <div className="flex items-center gap-1.5 text-xs text-gray-600">
-              <div className="h-3 w-3 rounded border-l-2 border-sky-400 bg-sky-100" />
+              <div className="h-3 w-3 rounded border-l-2 border-gray-300 bg-gray-100" />
               <span>학교 시간표</span>
             </div>
-            {/* 학교 연결 상태 */}
             <div className="ml-auto">
               {isSchoolLoading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-300" />
@@ -808,7 +822,6 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
             </div>
           </div>
 
-          {/* 학교 일정·시간표 표시 옵션 */}
           {linkedSchool && (
             <div className="mt-2 flex flex-wrap items-center gap-4 border-t pt-2 text-xs text-gray-500">
               <span className="font-semibold text-gray-600">표시 옵션</span>
