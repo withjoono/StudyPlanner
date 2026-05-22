@@ -924,13 +924,12 @@ const COL_MIN_PX = 28; // 컬럼 최소 너비(px)
 type ColumnUnit = 'month' | 'week' | 'day';
 
 const VIEW_MODES = [
-  { id: 'year', label: '년간', unit: 'month' as ColumnUnit, count: 12 },
-  { id: 'half', label: '반기', unit: 'month' as ColumnUnit, count: 6 },
-  { id: 'quarter', label: '분기', unit: 'week' as ColumnUnit, count: 13 },
-  { id: 'month', label: '월간', unit: 'day' as ColumnUnit, count: 30 },
+  { id: 'month', label: '월별', unit: 'month' as ColumnUnit, count: 12 },
+  { id: 'week', label: '주별', unit: 'week' as ColumnUnit, count: 13 },
+  { id: 'day', label: '일별', unit: 'day' as ColumnUnit, count: 30 },
 ] as const;
 type ViewModeId = (typeof VIEW_MODES)[number]['id'];
-const DEFAULT_VIEW_MODE: ViewModeId = 'half';
+const DEFAULT_VIEW_MODE: ViewModeId = 'month';
 
 interface TimelineColumn {
   date: Date; // 컬럼의 시작 날짜
@@ -1765,12 +1764,10 @@ function PlannerPlansPage() {
 
       {/* ═══════ 타임라인 (full-width) ═══════ */}
       <div className="relative -mt-10 px-3 pb-4 sm:px-5">
-        {plans && (
-          <GanttTimeline
-            plans={plans}
-            onPlanClick={(plan) => guard(() => setEditTarget(plan as ExtendedLongTermPlan))}
-          />
-        )}
+        <GanttTimeline
+          plans={plans ?? []}
+          onPlanClick={(plan) => guard(() => setEditTarget(plan as ExtendedLongTermPlan))}
+        />
       </div>
 
       {/* ═══════ 과목별 계획 목록 ═══════ */}
