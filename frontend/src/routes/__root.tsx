@@ -147,8 +147,8 @@ function RootLayout() {
               <NavLink to="/plans">장기계획</NavLink>
               <NavLink to="/routine">주간루틴</NavLink>
               <NavLink to="/missions">금일계획</NavLink>
-              <NavLink to="/growth">성장</NavLink>
-              <NavLink to="/learning">분석</NavLink>
+              <NavLink to="/growth">성장기록</NavLink>
+              <NavLink to="/learning">학습분석</NavLink>
               {/* 마이 그룹 드롭다운 */}
               <div className="relative" ref={myclassDropdownRef}>
                 <button
@@ -211,7 +211,7 @@ function RootLayout() {
                   products: `${HUB_URL}/products`,
                   notifications: `${HUB_URL}/notifications`,
                   accountLinkage: '/connections',
-                  login: `${HUB_URL}/login?redirect=${encodeURIComponent(window.location.href)}`,
+                  login: `${HUB_URL}/auth/login?redirect=${encodeURIComponent(window.location.href)}`,
                   profile: `${HUB_URL}/users/profile`,
                   payment: `${HUB_URL}/users/payment`,
                 }}
@@ -245,8 +245,8 @@ function RootLayout() {
                   { to: '/plans', label: '장기계획' },
                   { to: '/routine', label: '주간루틴' },
                   { to: '/missions', label: '금일계획' },
-                  { to: '/growth', label: '성장' },
-                  { to: '/learning', label: '분석' },
+                  { to: '/growth', label: '성장기록' },
+                  { to: '/learning', label: '학습분석' },
                 ].map((item) => (
                   <Link
                     key={item.to}
@@ -341,8 +341,8 @@ function RootLayout() {
             <MobileNavLink to="/" label="홈" />
             <MobileNavLink to="/plans" label="장기계획" />
             <MobileNavLink to="/missions" label="금일계획" />
-            <MobileNavLink to="/growth" label="성장" />
-            <MobileNavLink to="/learning" label="분석" />
+            <MobileNavLink to="/growth" label="성장기록" />
+            <MobileNavLink to="/learning" label="학습분석" />
           </div>
         </nav>
       )}

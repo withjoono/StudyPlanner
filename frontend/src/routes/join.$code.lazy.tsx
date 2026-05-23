@@ -29,7 +29,7 @@ function JoinPage() {
       const HUB_URL =
         import.meta.env.VITE_HUB_URL ||
         (import.meta.env.PROD ? 'https://tskool.kr' : 'http://localhost:5173');
-      window.location.href = `${HUB_URL}/login?redirect=${encodeURIComponent(window.location.href)}`;
+      window.location.href = `${HUB_URL}/auth/login?redirect=${encodeURIComponent(window.location.href)}`;
       return;
     }
 

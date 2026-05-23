@@ -22,7 +22,7 @@ const HUB_URL =
   import.meta.env.VITE_HUB_URL ||
   (import.meta.env.PROD ? 'https://www.tskool.kr' : 'http://localhost:5173');
 
-const loginUrl = `${HUB_URL}/login?redirect=${encodeURIComponent(window.location.href)}`;
+const loginUrl = `${HUB_URL}/auth/login?redirect=${encodeURIComponent(window.location.href)}`;
 
 /* ═══════════════════════════════════════════
    Hero Section
