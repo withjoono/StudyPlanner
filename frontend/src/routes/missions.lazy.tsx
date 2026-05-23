@@ -1504,8 +1504,11 @@ function MyMissionsPage() {
         </div>
       </section>
 
-      {/* ═══════ 하루 일정표 (시간별) + 탭 바 + 메인 콘텐츠 ═══════ */}
-      <div className="relative mx-auto -mt-10 max-w-2xl space-y-4 px-4 pb-24">
+      {/* ═══════ 하루 일정표 + 탭 + 메인 콘텐츠 — 와이드 2단 레이아웃 ═══════ */}
+      <div className="relative mx-auto -mt-10 max-w-screen-xl px-4 pb-24">
+        <div className="grid gap-4 lg:grid-cols-12 lg:items-start">
+        {/* ── 좌측: 하루 타임라인 ── */}
+        <div className="space-y-4 lg:col-span-7">
         {/* 하루 시간별 일정표 — 학교 일정/시간표 + 루틴 + 미션 통합 시각화 */}
         <DailyTimelineCard
           date={selectedDate}
@@ -1542,7 +1545,9 @@ function MyMissionsPage() {
             </label>
           </div>
         )}
-
+        </div>
+        {/* ── 우측: 탭 + 콘텐츠 ── */}
+        <div className="space-y-4 lg:col-span-5">
         {/* 탭 바 */}
         <div className="flex overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/50">
           {[
@@ -1762,6 +1767,11 @@ function MyMissionsPage() {
                         >
                           {mission.subject || '미지정'}
                         </span>
+                        {mission.planId ? (
+                          <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[9px] font-bold text-indigo-600">
+                            자동
+                          </span>
+                        ) : null}
                         {isCompleted && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
                         {!isCompleted && mission.progress && mission.progress > 0 && (
                           <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-[9px] font-bold text-purple-600">
@@ -1775,8 +1785,9 @@ function MyMissionsPage() {
                         {mission.content || mission.title || '(내용 없음)'}
                       </p>
                       {(mission.startPage || mission.endPage) && (
-                        <p className="text-xs text-gray-400">
-                          p.{mission.startPage}~{mission.endPage}
+                        <p className="mt-0.5 text-xs font-medium text-indigo-500">
+                          오늘 p.{mission.startPage}~{mission.endPage}
+                          {mission.amount ? ` · ${mission.amount}p` : ''}
                         </p>
                       )}
                     </button>
@@ -2047,6 +2058,8 @@ function MyMissionsPage() {
             )}
           </div>
         )}
+        </div>
+        </div>
       </div>
 
       {/* FAB — 계획 탭에서만 */}
@@ -2054,7 +2067,7 @@ function MyMissionsPage() {
         <button
           onClick={handleNewMission}
           aria-label="새 미션 추가"
-          className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 transition-all hover:scale-105 hover:shadow-xl active:scale-95 md:bottom-6 md:right-[calc(50%-28rem)]"
+          className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 transition-all hover:scale-105 hover:shadow-xl active:scale-95 md:bottom-6 md:right-8"
         >
           <Plus className="h-7 w-7" />
         </button>
