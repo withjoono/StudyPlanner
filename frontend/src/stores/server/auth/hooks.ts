@@ -223,6 +223,7 @@ export function useGetMe() {
     retry: false,
     enabled: hasAccessToken(),
     refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }
 

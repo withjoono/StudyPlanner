@@ -16,6 +16,24 @@ export class AuthService {
   }
 
   /**
+   * Hub에서 최신 사용자 정보 조회 (닉네임 동기화용)
+   * 실패 시 null 반환 — 호출부에서 DB 값으로 폴백
+   */
+  async getHubUserInfo(token: string): Promise<Record<string, unknown> | null> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(`${this.hubApiUrl}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 3000,
+        }),
+      );
+      return (response.data?.data ?? response.data) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * SSO 코드 검증 및 토큰 발급
    * Hub Backend에 SSO 코드를 보내 토큰을 받아옵니다.
    */
