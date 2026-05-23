@@ -90,6 +90,7 @@ function ReflectionCard({ date }: { date: string }) {
   const [dailyGoal, setDailyGoal] = useState('');
   const [understanding, setUnderstanding] = useState(3);
   const [isEditing, setIsEditing] = useState(false);
+  const [showDetail, setShowDetail] = useState(false); // 회고 상세 항목 펼침
 
   // reflection이 로드되면 상태 업데이트
   useState(() => {
@@ -234,45 +235,60 @@ function ReflectionCard({ date }: { date: string }) {
             />
           </div>
 
-          {/* 잘한 것 */}
-          <div className="mb-4">
-            <label className="mb-1.5 block text-sm font-medium text-gray-600">
-              ✅ 오늘 가장 잘한 것
-            </label>
-            <textarea
-              value={bestThing}
-              onChange={(e) => setBestThing(e.target.value)}
-              placeholder="영어 단어 50개 모두 외웠다!"
-              rows={2}
-              className="w-full resize-none rounded-xl border border-gray-200 px-4 py-2.5 text-sm transition-colors focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
+          {/* 상세 회고 — 선택 입력 (매일 작성 부담을 줄이기 위해 기본은 접힘) */}
+          {!showDetail ? (
+            <button
+              type="button"
+              onClick={() => setShowDetail(true)}
+              className="mb-5 w-full rounded-xl border border-dashed border-gray-200 py-2.5 text-xs font-medium text-gray-400 transition-colors hover:border-indigo-300 hover:text-indigo-500"
+            >
+              + 잘한 점·아쉬운 점·개선점도 적기 (선택)
+            </button>
+          ) : (
+            <>
+              {/* 잘한 것 */}
+              <div className="mb-4">
+                <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                  ✅ 오늘 가장 잘한 것
+                </label>
+                <textarea
+                  value={bestThing}
+                  onChange={(e) => setBestThing(e.target.value)}
+                  placeholder="영어 단어 50개 모두 외웠다!"
+                  rows={2}
+                  className="w-full resize-none rounded-xl border border-gray-200 px-4 py-2.5 text-sm transition-colors focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
 
-          {/* 아쉬운 것 */}
-          <div className="mb-4">
-            <label className="mb-1.5 block text-sm font-medium text-gray-600">😥 아쉬웠던 것</label>
-            <textarea
-              value={worstThing}
-              onChange={(e) => setWorstThing(e.target.value)}
-              placeholder="수학 문제집 6쪽밖에 못 풀었다"
-              rows={2}
-              className="w-full resize-none rounded-xl border border-gray-200 px-4 py-2.5 text-sm transition-colors focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
+              {/* 아쉬운 것 */}
+              <div className="mb-4">
+                <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                  😥 아쉬웠던 것
+                </label>
+                <textarea
+                  value={worstThing}
+                  onChange={(e) => setWorstThing(e.target.value)}
+                  placeholder="수학 문제집 6쪽밖에 못 풀었다"
+                  rows={2}
+                  className="w-full resize-none rounded-xl border border-gray-200 px-4 py-2.5 text-sm transition-colors focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
 
-          {/* 개선할 점 */}
-          <div className="mb-5">
-            <label className="mb-1.5 block text-sm font-medium text-gray-600">
-              🔧 내일 개선할 점
-            </label>
-            <textarea
-              value={improvement}
-              onChange={(e) => setImprovement(e.target.value)}
-              placeholder="수학 시간을 30분 더 확보하자"
-              rows={2}
-              className="w-full resize-none rounded-xl border border-gray-200 px-4 py-2.5 text-sm transition-colors focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-            />
-          </div>
+              {/* 개선할 점 */}
+              <div className="mb-5">
+                <label className="mb-1.5 block text-sm font-medium text-gray-600">
+                  🔧 내일 개선할 점
+                </label>
+                <textarea
+                  value={improvement}
+                  onChange={(e) => setImprovement(e.target.value)}
+                  placeholder="수학 시간을 30분 더 확보하자"
+                  rows={2}
+                  className="w-full resize-none rounded-xl border border-gray-200 px-4 py-2.5 text-sm transition-colors focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+            </>
+          )}
 
           <button
             onClick={handleSave}
