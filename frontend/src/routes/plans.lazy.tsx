@@ -15,7 +15,6 @@ import {
   MonitorPlay,
   FileText,
   Target,
-  Calendar,
   Sparkles,
   MessageSquare,
   BarChart3,
@@ -328,24 +327,32 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
             />
           </div>
 
-          {/* ===== 2. 내용 ===== */}
+          {/* ===== 2. 내용 (선택) ===== */}
           <div>
             <Label htmlFor="planDescription" className="text-sm font-semibold text-gray-700">
-              내용
+              내용 <span className="ml-1 text-xs font-normal text-gray-400">(선택)</span>
             </Label>
             <textarea
               id="planDescription"
-              placeholder="계획에 대한 설명을 입력하세요"
+              placeholder="메모, 목표, 진행 방법 등을 적어두면 좋아요"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={3}
+              rows={2}
               className="mt-1.5 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
           {/* ===== 3. 기간 ===== */}
           <div>
-            <Label className="text-sm font-semibold text-gray-700">기간</Label>
+            <div className="flex items-baseline justify-between">
+              <Label className="text-sm font-semibold text-gray-700">기간</Label>
+              <span className="text-xs font-medium text-blue-500">
+                총 {schedule.nWeeks}주
+                {schedule.remainderDays > 0 && (
+                  <span className="text-gray-400"> +{schedule.remainderDays}일</span>
+                )}
+              </span>
+            </div>
             <div className="mt-1.5 grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="startDate" className="text-xs text-gray-500">
@@ -628,73 +635,93 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
 
           {/* ===== 6. 범위 입력: 시작/끝 + 총분량 ===== */}
           <div>
-            <Label className="text-sm font-semibold text-gray-700">범위</Label>
+            <Label className="text-sm font-semibold text-gray-700">
+              범위
+              <span className="ml-1 text-xs font-normal text-gray-400">
+                {activeTab === 'lecture' || amountUnit === 'lecture'
+                  ? '(강의 번호)'
+                  : '(페이지 번호)'}
+              </span>
+            </Label>
             <div className="mt-1.5 flex items-center gap-2">
               <div className="flex-1">
                 <Input
                   type="number"
                   min={1}
-                  placeholder="시작"
+                  placeholder={
+                    activeTab === 'lecture' || amountUnit === 'lecture' ? '시작 강' : '시작 p'
+                  }
                   value={startPage}
                   onChange={(e) => setStartPage(e.target.value ? Number(e.target.value) : '')}
                   className="text-center"
                 />
-                <p className="mt-0.5 text-center text-[10px] text-gray-400">
-                  시작 {activeTab === 'lecture' || amountUnit === 'lecture' ? '강' : 'p'}
-                </p>
               </div>
               <span className="text-gray-400">~</span>
               <div className="flex-1">
                 <Input
                   type="number"
                   min={typeof startPage === 'number' ? startPage : 1}
-                  placeholder="끝"
+                  placeholder={
+                    activeTab === 'lecture' || amountUnit === 'lecture' ? '끝 강' : '끝 p'
+                  }
                   value={endPage}
                   onChange={(e) => setEndPage(e.target.value ? Number(e.target.value) : '')}
                   className="text-center"
                 />
-                <p className="mt-0.5 text-center text-[10px] text-gray-400">
-                  끝 {activeTab === 'lecture' || amountUnit === 'lecture' ? '강' : 'p'}
-                </p>
               </div>
               <span className="text-gray-400">=</span>
-              <div className="w-20 flex-shrink-0 rounded-lg bg-blue-50 px-3 py-2 text-center">
-                <p className="text-lg font-bold text-blue-600">
+              <div className="w-24 flex-shrink-0 rounded-lg bg-blue-50 px-3 py-2 text-center">
+                <p className="text-lg font-bold leading-none text-blue-600">
                   {totalAmount > 0 ? totalAmount : '-'}
+                  <span className="ml-0.5 text-xs font-semibold">
+                    {totalAmount > 0
+                      ? activeTab === 'lecture' || amountUnit === 'lecture'
+                        ? '강'
+                        : 'p'
+                      : ''}
+                  </span>
                 </p>
-                <p className="text-[10px] text-blue-400">총분량</p>
+                <p className="mt-0.5 text-[10px] text-blue-400">총분량</p>
               </div>
             </div>
           </div>
 
           {/* ===== 7. 자동 주간 할당 ===== */}
           {totalAmount > 0 && (
-            <div className="rounded-lg border border-dashed border-gray-300 bg-white p-4">
+            <div className="rounded-lg border border-dashed border-indigo-200 bg-indigo-50/40 p-4">
               <div className="mb-2 flex items-center gap-2">
-                <Sparkles className="text-ultrasonic-500 h-4 w-4" />
+                <Sparkles className="h-4 w-4 text-indigo-500" />
                 <span className="text-sm font-medium text-gray-700">자동 주간 할당</span>
               </div>
+              <p className="mb-3 text-xs leading-relaxed text-gray-600">
+                이 페이스로 진행하면{' '}
+                <strong className="text-indigo-600">
+                  매주 {schedule.weeklyTarget}
+                  {activeTab === 'lecture' || amountUnit === 'lecture' ? '강' : 'p'}
+                </strong>
+                씩 {schedule.nWeeks}주에 걸쳐 완료합니다.
+              </p>
               <div className="grid grid-cols-3 gap-3 text-sm">
-                <div className="rounded-lg bg-gray-50 p-2 text-center">
+                <div className="rounded-lg bg-white p-2 text-center shadow-sm">
                   <p className="text-xs text-gray-500">학습 기간</p>
                   <p className="font-semibold">
                     {schedule.nWeeks}주
                     {schedule.remainderDays > 0 && (
                       <span className="text-xs font-normal text-gray-400">
                         {' '}
-                        (+{schedule.remainderDays}일)
+                        +{schedule.remainderDays}일
                       </span>
                     )}
                   </p>
                 </div>
-                <div className="rounded-lg bg-gray-50 p-2 text-center">
+                <div className="rounded-lg bg-white p-2 text-center shadow-sm">
                   <p className="text-xs text-gray-500">주간 할당량</p>
-                  <p className="font-semibold text-blue-600">
+                  <p className="font-semibold text-indigo-600">
                     {schedule.weeklyTarget}
                     {activeTab === 'lecture' || amountUnit === 'lecture' ? '강' : 'p'}
                   </p>
                 </div>
-                <div className="rounded-lg bg-gray-50 p-2 text-center">
+                <div className="rounded-lg bg-white p-2 text-center shadow-sm">
                   <p className="text-xs text-gray-500">총 분량</p>
                   <p className="font-semibold">
                     {totalAmount}
@@ -706,17 +733,26 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
           )}
 
           {/* ===== 8. 취소 / 계획 생성 버튼 ===== */}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => handleOpenChange(false)}
+              className="text-gray-500"
+            >
               취소
             </Button>
-            <Button type="submit" disabled={isLoading} className="gap-2">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="gap-2 bg-indigo-500 px-5 hover:bg-indigo-600"
+            >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Calendar className="h-4 w-4" />
+                <Plus className="h-4 w-4" />
               )}
-              계획 생성
+              계획 만들기
             </Button>
           </div>
         </form>
