@@ -8,194 +8,201 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router';
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ProductsIndexRouteImport } from './routes/products/index'
-import { Route as OrderProductIdRouteImport } from './routes/order/$productId'
-import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
-import { Route as AuthRegisterRouteImport } from './routes/auth/register'
-import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as rootRouteImport } from './routes/__root';
+import { Route as IndexRouteImport } from './routes/index';
+import { Route as ProductsIndexRouteImport } from './routes/products/index';
+import { Route as OrderProductIdRouteImport } from './routes/order/$productId';
+import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password';
+import { Route as AuthRegisterRouteImport } from './routes/auth/register';
+import { Route as AuthLoginRouteImport } from './routes/auth/login';
 
-const TimerLazyRouteImport = createFileRoute('/timer')()
-const TeacherLazyRouteImport = createFileRoute('/teacher')()
-const RoutineLazyRouteImport = createFileRoute('/routine')()
-const PlansLazyRouteImport = createFileRoute('/plans')()
-const MyclassLazyRouteImport = createFileRoute('/myclass')()
-const MissionsLazyRouteImport = createFileRoute('/missions')()
-const LearningLazyRouteImport = createFileRoute('/learning')()
-const GrowthLazyRouteImport = createFileRoute('/growth')()
-const ConnectionsLazyRouteImport = createFileRoute('/connections')()
-const BadgesLazyRouteImport = createFileRoute('/badges')()
-const MentoringHumanLazyRouteImport = createFileRoute('/mentoring/human')()
-const MentoringAiLazyRouteImport = createFileRoute('/mentoring/ai')()
-const JoinCodeLazyRouteImport = createFileRoute('/join/$code')()
+const TimerLazyRouteImport = createFileRoute('/timer')();
+const TeacherGroupLazyRouteImport = createFileRoute('/teacher-group')();
+const TeacherLazyRouteImport = createFileRoute('/teacher')();
+const RoutineLazyRouteImport = createFileRoute('/routine')();
+const PlansLazyRouteImport = createFileRoute('/plans')();
+const MyclassLazyRouteImport = createFileRoute('/myclass')();
+const MissionsLazyRouteImport = createFileRoute('/missions')();
+const LearningLazyRouteImport = createFileRoute('/learning')();
+const GrowthLazyRouteImport = createFileRoute('/growth')();
+const ConnectionsLazyRouteImport = createFileRoute('/connections')();
+const BadgesLazyRouteImport = createFileRoute('/badges')();
+const MentoringHumanLazyRouteImport = createFileRoute('/mentoring/human')();
+const MentoringAiLazyRouteImport = createFileRoute('/mentoring/ai')();
+const JoinCodeLazyRouteImport = createFileRoute('/join/$code')();
 
 const TimerLazyRoute = TimerLazyRouteImport.update({
   id: '/timer',
   path: '/timer',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/timer.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/timer.lazy').then((d) => d.Route));
+const TeacherGroupLazyRoute = TeacherGroupLazyRouteImport.update({
+  id: '/teacher-group',
+  path: '/teacher-group',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/teacher-group.lazy').then((d) => d.Route));
 const TeacherLazyRoute = TeacherLazyRouteImport.update({
   id: '/teacher',
   path: '/teacher',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/teacher.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/teacher.lazy').then((d) => d.Route));
 const RoutineLazyRoute = RoutineLazyRouteImport.update({
   id: '/routine',
   path: '/routine',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/routine.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/routine.lazy').then((d) => d.Route));
 const PlansLazyRoute = PlansLazyRouteImport.update({
   id: '/plans',
   path: '/plans',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/plans.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/plans.lazy').then((d) => d.Route));
 const MyclassLazyRoute = MyclassLazyRouteImport.update({
   id: '/myclass',
   path: '/myclass',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/myclass.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/myclass.lazy').then((d) => d.Route));
 const MissionsLazyRoute = MissionsLazyRouteImport.update({
   id: '/missions',
   path: '/missions',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/missions.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/missions.lazy').then((d) => d.Route));
 const LearningLazyRoute = LearningLazyRouteImport.update({
   id: '/learning',
   path: '/learning',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/learning.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/learning.lazy').then((d) => d.Route));
 const GrowthLazyRoute = GrowthLazyRouteImport.update({
   id: '/growth',
   path: '/growth',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/growth.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/growth.lazy').then((d) => d.Route));
 const ConnectionsLazyRoute = ConnectionsLazyRouteImport.update({
   id: '/connections',
   path: '/connections',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/connections.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/connections.lazy').then((d) => d.Route));
 const BadgesLazyRoute = BadgesLazyRouteImport.update({
   id: '/badges',
   path: '/badges',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/badges.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/badges.lazy').then((d) => d.Route));
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ProductsIndexRoute = ProductsIndexRouteImport.update({
   id: '/products/',
   path: '/products/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const MentoringHumanLazyRoute = MentoringHumanLazyRouteImport.update({
   id: '/mentoring/human',
   path: '/mentoring/human',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() =>
-  import('./routes/mentoring/human.lazy').then((d) => d.Route),
-)
+} as any).lazy(() => import('./routes/mentoring/human.lazy').then((d) => d.Route));
 const MentoringAiLazyRoute = MentoringAiLazyRouteImport.update({
   id: '/mentoring/ai',
   path: '/mentoring/ai',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/mentoring/ai.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/mentoring/ai.lazy').then((d) => d.Route));
 const JoinCodeLazyRoute = JoinCodeLazyRouteImport.update({
   id: '/join/$code',
   path: '/join/$code',
   getParentRoute: () => rootRouteImport,
-} as any).lazy(() => import('./routes/join.$code.lazy').then((d) => d.Route))
+} as any).lazy(() => import('./routes/join.$code.lazy').then((d) => d.Route));
 const OrderProductIdRoute = OrderProductIdRouteImport.update({
   id: '/order/$productId',
   path: '/order/$productId',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   id: '/auth/reset-password',
   path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/auth/register',
   path: '/auth/register',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/badges': typeof BadgesLazyRoute
-  '/connections': typeof ConnectionsLazyRoute
-  '/growth': typeof GrowthLazyRoute
-  '/learning': typeof LearningLazyRoute
-  '/missions': typeof MissionsLazyRoute
-  '/myclass': typeof MyclassLazyRoute
-  '/plans': typeof PlansLazyRoute
-  '/routine': typeof RoutineLazyRoute
-  '/teacher': typeof TeacherLazyRoute
-  '/timer': typeof TimerLazyRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/register': typeof AuthRegisterRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/order/$productId': typeof OrderProductIdRoute
-  '/join/$code': typeof JoinCodeLazyRoute
-  '/mentoring/ai': typeof MentoringAiLazyRoute
-  '/mentoring/human': typeof MentoringHumanLazyRoute
-  '/products/': typeof ProductsIndexRoute
+  '/': typeof IndexRoute;
+  '/badges': typeof BadgesLazyRoute;
+  '/connections': typeof ConnectionsLazyRoute;
+  '/growth': typeof GrowthLazyRoute;
+  '/learning': typeof LearningLazyRoute;
+  '/missions': typeof MissionsLazyRoute;
+  '/myclass': typeof MyclassLazyRoute;
+  '/plans': typeof PlansLazyRoute;
+  '/routine': typeof RoutineLazyRoute;
+  '/teacher-group': typeof TeacherGroupLazyRoute;
+  '/teacher': typeof TeacherLazyRoute;
+  '/timer': typeof TimerLazyRoute;
+  '/auth/login': typeof AuthLoginRoute;
+  '/auth/register': typeof AuthRegisterRoute;
+  '/auth/reset-password': typeof AuthResetPasswordRoute;
+  '/order/$productId': typeof OrderProductIdRoute;
+  '/join/$code': typeof JoinCodeLazyRoute;
+  '/mentoring/ai': typeof MentoringAiLazyRoute;
+  '/mentoring/human': typeof MentoringHumanLazyRoute;
+  '/products/': typeof ProductsIndexRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/badges': typeof BadgesLazyRoute
-  '/connections': typeof ConnectionsLazyRoute
-  '/growth': typeof GrowthLazyRoute
-  '/learning': typeof LearningLazyRoute
-  '/missions': typeof MissionsLazyRoute
-  '/myclass': typeof MyclassLazyRoute
-  '/plans': typeof PlansLazyRoute
-  '/routine': typeof RoutineLazyRoute
-  '/teacher': typeof TeacherLazyRoute
-  '/timer': typeof TimerLazyRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/register': typeof AuthRegisterRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/order/$productId': typeof OrderProductIdRoute
-  '/join/$code': typeof JoinCodeLazyRoute
-  '/mentoring/ai': typeof MentoringAiLazyRoute
-  '/mentoring/human': typeof MentoringHumanLazyRoute
-  '/products': typeof ProductsIndexRoute
+  '/': typeof IndexRoute;
+  '/badges': typeof BadgesLazyRoute;
+  '/connections': typeof ConnectionsLazyRoute;
+  '/growth': typeof GrowthLazyRoute;
+  '/learning': typeof LearningLazyRoute;
+  '/missions': typeof MissionsLazyRoute;
+  '/myclass': typeof MyclassLazyRoute;
+  '/plans': typeof PlansLazyRoute;
+  '/routine': typeof RoutineLazyRoute;
+  '/teacher-group': typeof TeacherGroupLazyRoute;
+  '/teacher': typeof TeacherLazyRoute;
+  '/timer': typeof TimerLazyRoute;
+  '/auth/login': typeof AuthLoginRoute;
+  '/auth/register': typeof AuthRegisterRoute;
+  '/auth/reset-password': typeof AuthResetPasswordRoute;
+  '/order/$productId': typeof OrderProductIdRoute;
+  '/join/$code': typeof JoinCodeLazyRoute;
+  '/mentoring/ai': typeof MentoringAiLazyRoute;
+  '/mentoring/human': typeof MentoringHumanLazyRoute;
+  '/products': typeof ProductsIndexRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/badges': typeof BadgesLazyRoute
-  '/connections': typeof ConnectionsLazyRoute
-  '/growth': typeof GrowthLazyRoute
-  '/learning': typeof LearningLazyRoute
-  '/missions': typeof MissionsLazyRoute
-  '/myclass': typeof MyclassLazyRoute
-  '/plans': typeof PlansLazyRoute
-  '/routine': typeof RoutineLazyRoute
-  '/teacher': typeof TeacherLazyRoute
-  '/timer': typeof TimerLazyRoute
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/register': typeof AuthRegisterRoute
-  '/auth/reset-password': typeof AuthResetPasswordRoute
-  '/order/$productId': typeof OrderProductIdRoute
-  '/join/$code': typeof JoinCodeLazyRoute
-  '/mentoring/ai': typeof MentoringAiLazyRoute
-  '/mentoring/human': typeof MentoringHumanLazyRoute
-  '/products/': typeof ProductsIndexRoute
+  __root__: typeof rootRouteImport;
+  '/': typeof IndexRoute;
+  '/badges': typeof BadgesLazyRoute;
+  '/connections': typeof ConnectionsLazyRoute;
+  '/growth': typeof GrowthLazyRoute;
+  '/learning': typeof LearningLazyRoute;
+  '/missions': typeof MissionsLazyRoute;
+  '/myclass': typeof MyclassLazyRoute;
+  '/plans': typeof PlansLazyRoute;
+  '/routine': typeof RoutineLazyRoute;
+  '/teacher-group': typeof TeacherGroupLazyRoute;
+  '/teacher': typeof TeacherLazyRoute;
+  '/timer': typeof TimerLazyRoute;
+  '/auth/login': typeof AuthLoginRoute;
+  '/auth/register': typeof AuthRegisterRoute;
+  '/auth/reset-password': typeof AuthResetPasswordRoute;
+  '/order/$productId': typeof OrderProductIdRoute;
+  '/join/$code': typeof JoinCodeLazyRoute;
+  '/mentoring/ai': typeof MentoringAiLazyRoute;
+  '/mentoring/human': typeof MentoringHumanLazyRoute;
+  '/products/': typeof ProductsIndexRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
+  fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
     | '/badges'
@@ -206,6 +213,7 @@ export interface FileRouteTypes {
     | '/myclass'
     | '/plans'
     | '/routine'
+    | '/teacher-group'
     | '/teacher'
     | '/timer'
     | '/auth/login'
@@ -215,8 +223,8 @@ export interface FileRouteTypes {
     | '/join/$code'
     | '/mentoring/ai'
     | '/mentoring/human'
-    | '/products/'
-  fileRoutesByTo: FileRoutesByTo
+    | '/products/';
+  fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
     | '/badges'
@@ -227,6 +235,7 @@ export interface FileRouteTypes {
     | '/myclass'
     | '/plans'
     | '/routine'
+    | '/teacher-group'
     | '/teacher'
     | '/timer'
     | '/auth/login'
@@ -236,7 +245,7 @@ export interface FileRouteTypes {
     | '/join/$code'
     | '/mentoring/ai'
     | '/mentoring/human'
-    | '/products'
+    | '/products';
   id:
     | '__root__'
     | '/'
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/myclass'
     | '/plans'
     | '/routine'
+    | '/teacher-group'
     | '/teacher'
     | '/timer'
     | '/auth/login'
@@ -257,166 +267,174 @@ export interface FileRouteTypes {
     | '/join/$code'
     | '/mentoring/ai'
     | '/mentoring/human'
-    | '/products/'
-  fileRoutesById: FileRoutesById
+    | '/products/';
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  BadgesLazyRoute: typeof BadgesLazyRoute
-  ConnectionsLazyRoute: typeof ConnectionsLazyRoute
-  GrowthLazyRoute: typeof GrowthLazyRoute
-  LearningLazyRoute: typeof LearningLazyRoute
-  MissionsLazyRoute: typeof MissionsLazyRoute
-  MyclassLazyRoute: typeof MyclassLazyRoute
-  PlansLazyRoute: typeof PlansLazyRoute
-  RoutineLazyRoute: typeof RoutineLazyRoute
-  TeacherLazyRoute: typeof TeacherLazyRoute
-  TimerLazyRoute: typeof TimerLazyRoute
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthRegisterRoute: typeof AuthRegisterRoute
-  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
-  OrderProductIdRoute: typeof OrderProductIdRoute
-  JoinCodeLazyRoute: typeof JoinCodeLazyRoute
-  MentoringAiLazyRoute: typeof MentoringAiLazyRoute
-  MentoringHumanLazyRoute: typeof MentoringHumanLazyRoute
-  ProductsIndexRoute: typeof ProductsIndexRoute
+  IndexRoute: typeof IndexRoute;
+  BadgesLazyRoute: typeof BadgesLazyRoute;
+  ConnectionsLazyRoute: typeof ConnectionsLazyRoute;
+  GrowthLazyRoute: typeof GrowthLazyRoute;
+  LearningLazyRoute: typeof LearningLazyRoute;
+  MissionsLazyRoute: typeof MissionsLazyRoute;
+  MyclassLazyRoute: typeof MyclassLazyRoute;
+  PlansLazyRoute: typeof PlansLazyRoute;
+  RoutineLazyRoute: typeof RoutineLazyRoute;
+  TeacherGroupLazyRoute: typeof TeacherGroupLazyRoute;
+  TeacherLazyRoute: typeof TeacherLazyRoute;
+  TimerLazyRoute: typeof TimerLazyRoute;
+  AuthLoginRoute: typeof AuthLoginRoute;
+  AuthRegisterRoute: typeof AuthRegisterRoute;
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute;
+  OrderProductIdRoute: typeof OrderProductIdRoute;
+  JoinCodeLazyRoute: typeof JoinCodeLazyRoute;
+  MentoringAiLazyRoute: typeof MentoringAiLazyRoute;
+  MentoringHumanLazyRoute: typeof MentoringHumanLazyRoute;
+  ProductsIndexRoute: typeof ProductsIndexRoute;
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/timer': {
-      id: '/timer'
-      path: '/timer'
-      fullPath: '/timer'
-      preLoaderRoute: typeof TimerLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/timer';
+      path: '/timer';
+      fullPath: '/timer';
+      preLoaderRoute: typeof TimerLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    '/teacher-group': {
+      id: '/teacher-group';
+      path: '/teacher-group';
+      fullPath: '/teacher-group';
+      preLoaderRoute: typeof TeacherGroupLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/teacher': {
-      id: '/teacher'
-      path: '/teacher'
-      fullPath: '/teacher'
-      preLoaderRoute: typeof TeacherLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/teacher';
+      path: '/teacher';
+      fullPath: '/teacher';
+      preLoaderRoute: typeof TeacherLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/routine': {
-      id: '/routine'
-      path: '/routine'
-      fullPath: '/routine'
-      preLoaderRoute: typeof RoutineLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/routine';
+      path: '/routine';
+      fullPath: '/routine';
+      preLoaderRoute: typeof RoutineLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/plans': {
-      id: '/plans'
-      path: '/plans'
-      fullPath: '/plans'
-      preLoaderRoute: typeof PlansLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/plans';
+      path: '/plans';
+      fullPath: '/plans';
+      preLoaderRoute: typeof PlansLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/myclass': {
-      id: '/myclass'
-      path: '/myclass'
-      fullPath: '/myclass'
-      preLoaderRoute: typeof MyclassLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/myclass';
+      path: '/myclass';
+      fullPath: '/myclass';
+      preLoaderRoute: typeof MyclassLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/missions': {
-      id: '/missions'
-      path: '/missions'
-      fullPath: '/missions'
-      preLoaderRoute: typeof MissionsLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/missions';
+      path: '/missions';
+      fullPath: '/missions';
+      preLoaderRoute: typeof MissionsLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/learning': {
-      id: '/learning'
-      path: '/learning'
-      fullPath: '/learning'
-      preLoaderRoute: typeof LearningLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/learning';
+      path: '/learning';
+      fullPath: '/learning';
+      preLoaderRoute: typeof LearningLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/growth': {
-      id: '/growth'
-      path: '/growth'
-      fullPath: '/growth'
-      preLoaderRoute: typeof GrowthLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/growth';
+      path: '/growth';
+      fullPath: '/growth';
+      preLoaderRoute: typeof GrowthLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/connections': {
-      id: '/connections'
-      path: '/connections'
-      fullPath: '/connections'
-      preLoaderRoute: typeof ConnectionsLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/connections';
+      path: '/connections';
+      fullPath: '/connections';
+      preLoaderRoute: typeof ConnectionsLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/badges': {
-      id: '/badges'
-      path: '/badges'
-      fullPath: '/badges'
-      preLoaderRoute: typeof BadgesLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/badges';
+      path: '/badges';
+      fullPath: '/badges';
+      preLoaderRoute: typeof BadgesLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/';
+      path: '/';
+      fullPath: '/';
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/products/': {
-      id: '/products/'
-      path: '/products'
-      fullPath: '/products/'
-      preLoaderRoute: typeof ProductsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/products/';
+      path: '/products';
+      fullPath: '/products/';
+      preLoaderRoute: typeof ProductsIndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/mentoring/human': {
-      id: '/mentoring/human'
-      path: '/mentoring/human'
-      fullPath: '/mentoring/human'
-      preLoaderRoute: typeof MentoringHumanLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/mentoring/human';
+      path: '/mentoring/human';
+      fullPath: '/mentoring/human';
+      preLoaderRoute: typeof MentoringHumanLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/mentoring/ai': {
-      id: '/mentoring/ai'
-      path: '/mentoring/ai'
-      fullPath: '/mentoring/ai'
-      preLoaderRoute: typeof MentoringAiLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/mentoring/ai';
+      path: '/mentoring/ai';
+      fullPath: '/mentoring/ai';
+      preLoaderRoute: typeof MentoringAiLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/join/$code': {
-      id: '/join/$code'
-      path: '/join/$code'
-      fullPath: '/join/$code'
-      preLoaderRoute: typeof JoinCodeLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/join/$code';
+      path: '/join/$code';
+      fullPath: '/join/$code';
+      preLoaderRoute: typeof JoinCodeLazyRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/order/$productId': {
-      id: '/order/$productId'
-      path: '/order/$productId'
-      fullPath: '/order/$productId'
-      preLoaderRoute: typeof OrderProductIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/order/$productId';
+      path: '/order/$productId';
+      fullPath: '/order/$productId';
+      preLoaderRoute: typeof OrderProductIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/auth/reset-password': {
-      id: '/auth/reset-password'
-      path: '/auth/reset-password'
-      fullPath: '/auth/reset-password'
-      preLoaderRoute: typeof AuthResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/auth/reset-password';
+      path: '/auth/reset-password';
+      fullPath: '/auth/reset-password';
+      preLoaderRoute: typeof AuthResetPasswordRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/auth/register': {
-      id: '/auth/register'
-      path: '/auth/register'
-      fullPath: '/auth/register'
-      preLoaderRoute: typeof AuthRegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/auth/register';
+      path: '/auth/register';
+      fullPath: '/auth/register';
+      preLoaderRoute: typeof AuthRegisterRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/auth/login': {
-      id: '/auth/login'
-      path: '/auth/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/auth/login';
+      path: '/auth/login';
+      fullPath: '/auth/login';
+      preLoaderRoute: typeof AuthLoginRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
@@ -430,6 +448,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyclassLazyRoute: MyclassLazyRoute,
   PlansLazyRoute: PlansLazyRoute,
   RoutineLazyRoute: RoutineLazyRoute,
+  TeacherGroupLazyRoute: TeacherGroupLazyRoute,
   TeacherLazyRoute: TeacherLazyRoute,
   TimerLazyRoute: TimerLazyRoute,
   AuthLoginRoute: AuthLoginRoute,
@@ -440,7 +459,7 @@ const rootRouteChildren: RootRouteChildren = {
   MentoringAiLazyRoute: MentoringAiLazyRoute,
   MentoringHumanLazyRoute: MentoringHumanLazyRoute,
   ProductsIndexRoute: ProductsIndexRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();

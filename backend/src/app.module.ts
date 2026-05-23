@@ -22,6 +22,7 @@ import { BadgeModule } from './badge/badge.module';
 import { MentoringModule } from './mentoring/mentoring.module';
 import { NeisModule } from './neis/neis.module';
 import { HubClientModule } from './hub-client';
+import { TeacherGroupModule } from './teacher-group/teacher-group.module';
 
 @Module({
   imports: [
@@ -74,6 +75,9 @@ import { HubClientModule } from './hub-client';
 
     // 멘토링 (선생님 주간 검사 + 학생 피드백 수신함)
     MentoringModule,
+
+    // 담당 선생님 그룹 (선생님 채점 결과 학생 비교)
+    TeacherGroupModule,
 
     // NEIS 학교 일정/시간표 연동
     NeisModule,

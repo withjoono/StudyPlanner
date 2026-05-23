@@ -170,7 +170,7 @@ function RootLayout() {
                       🎓 목표대학 반
                     </a>
                     <a
-                      href="/myclass?type=teacher"
+                      href="/teacher-group"
                       className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setMyclassDropdownOpen(false)}
                     >
@@ -183,6 +183,15 @@ function RootLayout() {
                     >
                       📚 스터디 반
                     </a>
+                    {user?.role === 'teacher' && (
+                      <a
+                        href="/teacher"
+                        className="flex w-full items-center border-t border-gray-100 px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+                        onClick={() => setMyclassDropdownOpen(false)}
+                      >
+                        선생님 채점 페이지
+                      </a>
+                    )}
                   </div>
                 )}
               </div>
@@ -263,7 +272,7 @@ function RootLayout() {
                 </p>
                 {[
                   { href: '/myclass?type=university', label: '🎓 목표대학 반' },
-                  { href: '/myclass?type=teacher', label: '👨‍🏫 담당 선생님 반' },
+                  { href: '/teacher-group', label: '👨‍🏫 담당 선생님 반' },
                   { href: '/myclass?type=study', label: '📚 스터디 반' },
                 ].map((item) => (
                   <a
@@ -275,6 +284,15 @@ function RootLayout() {
                     {item.label}
                   </a>
                 ))}
+                {user?.role === 'teacher' && (
+                  <a
+                    href="/teacher"
+                    className="block rounded-md px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    선생님 채점 페이지
+                  </a>
+                )}
                 {isAuthenticated && user && (
                   <>
                     <div className="my-1 border-t border-gray-100" />
