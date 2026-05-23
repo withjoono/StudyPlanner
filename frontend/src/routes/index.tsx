@@ -10,7 +10,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { useAuthStore } from '@/stores/client';
-import { useGetDailyMissions, useGetRoutines, useGetTodayDashboard } from '@/stores/server/planner';
+import {
+  useGetDailyMissions,
+  useGetPlans,
+  useGetRoutines,
+  useGetTodayDashboard,
+} from '@/stores/server/planner';
 import { useGetRecentUnread } from '@/stores/server/planner/comments';
 import type { DailyMission } from '@/stores/server/planner/planner-types';
 import type { Routine } from '@/types/planner';
@@ -55,8 +60,15 @@ function Dashboard() {
   const { data: dashboard, isLoading: dashLoading } = useGetTodayDashboard();
   const { data: allMissions, isLoading: missionsLoading } = useGetDailyMissions();
   const { data: routines } = useGetRoutines();
+  const { data: plans } = useGetPlans();
 
   const isLoading = dashLoading || missionsLoading;
+
+  // 온보딩 설정 진행 상태
+  const hasPlans = (plans?.length ?? 0) > 0;
+  const hasRoutines = (routines?.length ?? 0) > 0;
+  const hasMissions = (allMissions?.length ?? 0) > 0;
+  const setupComplete = hasPlans && hasRoutines && hasMissions;
 
   const today = new Date();
   const dateStr = today.toISOString().split('T')[0];
@@ -254,6 +266,45 @@ function Dashboard() {
 
       {/* ═══════ 메인 콘텐츠 — 3-column 그리드 (오버랩) ═══════ */}
       <div className="relative mx-auto -mt-20 max-w-screen-xl px-4 pb-24">
+        {/* 온보딩 설정 진행률 위젯 — 설정 미완료 시에만 노출 */}
+        {!setupComplete && (
+          <div className="mb-6 rounded-2xl border border-indigo-100 bg-white p-5 shadow-xl shadow-indigo-200/50 md:p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100">
+                <Sparkles className="h-4 w-4 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900">학습 플래너 시작하기</p>
+                <p className="text-xs text-gray-400">
+                  3단계만 완료하면 매일 할 일이 자동으로 채워져요
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <SetupStep
+                n={1}
+                title="장기계획 만들기"
+                desc="끝낼 교재와 기간 정하기"
+                done={hasPlans}
+                to="/plans"
+              />
+              <SetupStep
+                n={2}
+                title="주간루틴 만들기"
+                desc="매주 공부 시간표 짜기"
+                done={hasRoutines}
+                to="/routine"
+              />
+              <SetupStep
+                n={3}
+                title="금일계획 확인"
+                desc="자동으로 채워진 오늘 할 일"
+                done={hasMissions}
+                to="/missions"
+              />
+            </div>
+          </div>
+        )}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* ── 왼쪽: 오늘의 일정 (2칸) ── */}
           <div className="lg:col-span-2">
@@ -449,6 +500,42 @@ function NavCard({
         {icon}
       </div>
       <span className="text-xs font-medium text-gray-700">{label}</span>
+    </Link>
+  );
+}
+
+// ───── 온보딩 설정 단계 카드 ─────
+function SetupStep({
+  n,
+  title,
+  desc,
+  done,
+  to,
+}: {
+  n: number;
+  title: string;
+  desc: string;
+  done: boolean;
+  to: string;
+}) {
+  return (
+    <Link
+      to={to}
+      className={`flex items-start gap-3 rounded-xl border p-3 transition-all hover:-translate-y-0.5 hover:shadow-md ${
+        done ? 'border-green-200 bg-green-50/60' : 'border-gray-200 bg-white'
+      }`}
+    >
+      <div
+        className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+          done ? 'bg-green-500 text-white' : 'bg-indigo-100 text-indigo-600'
+        }`}
+      >
+        {done ? <CheckCircle className="h-4 w-4" /> : n}
+      </div>
+      <div className="min-w-0">
+        <p className={`text-sm font-bold ${done ? 'text-green-700' : 'text-gray-900'}`}>{title}</p>
+        <p className="text-xs text-gray-400">{done ? '완료됨' : desc}</p>
+      </div>
     </Link>
   );
 }
