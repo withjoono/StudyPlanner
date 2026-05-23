@@ -1194,19 +1194,19 @@ function GanttTimeline({
 
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-      {/* 타이틀 바 */}
-      <div className="flex items-center gap-2 border-b border-gray-50 px-4 py-3">
-        <BarChart3 className="h-4 w-4 text-indigo-500" />
-        <span className="text-sm font-bold text-gray-700">타임라인</span>
+      {/* 타이틀 바 (모바일: 두 줄로 자동 wrap) */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-gray-50 px-4 py-3">
+        <BarChart3 className="h-4 w-4 shrink-0 text-indigo-500" />
+        <span className="shrink-0 text-sm font-bold text-gray-700">타임라인</span>
         {showToday && (
-          <span className="flex items-center gap-1 text-[10px] text-red-400">
+          <span className="flex shrink-0 items-center gap-1 text-[10px] text-red-400">
             <span className="inline-block h-2 w-px bg-red-400" />
             오늘
           </span>
         )}
         {/* 뷰 모드 탭 */}
         <div
-          className="ml-3 inline-flex items-center gap-0.5 rounded-full border border-gray-200 bg-white p-0.5"
+          className="ml-0 inline-flex shrink-0 items-center gap-0.5 rounded-full border border-gray-200 bg-white p-0.5 sm:ml-3"
           role="tablist"
           aria-label="타임라인 뷰 모드"
         >
@@ -1219,7 +1219,7 @@ function GanttTimeline({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => handleViewChange(v.id)}
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
+                className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors ${
                   isActive ? 'bg-indigo-500 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-50'
                 }`}
               >
@@ -1228,9 +1228,9 @@ function GanttTimeline({
             );
           })}
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto shrink-0">
           {linkedSchool ? (
-            <span className="flex items-center gap-1 text-xs text-gray-400">
+            <span className="flex items-center gap-1 whitespace-nowrap text-xs text-gray-400">
               🏫 {linkedSchool.schulName}
             </span>
           ) : (
@@ -1238,7 +1238,7 @@ function GanttTimeline({
               href={`${env.hubFrontUrl}/users/profile`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 hover:bg-sky-100"
+              className="flex items-center gap-1 whitespace-nowrap rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-600 hover:bg-sky-100"
             >
               🏫 학교 연결하기
             </a>
@@ -2090,10 +2090,11 @@ function PlannerPlansPage() {
         )}
       </div>
 
-      {/* FAB */}
+      {/* FAB (모바일에서 하단 탭바·카드 액션과 겹치지 않게 우하단 코너로) */}
       <button
+        aria-label="새 계획 추가"
         onClick={() => guard(() => setIsPlanSetupOpen(true))}
-        className="fixed bottom-20 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 transition-all hover:scale-105 hover:shadow-xl active:scale-95 md:bottom-6 md:right-[calc(50%-28rem)]"
+        className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 transition-all hover:scale-105 hover:shadow-xl active:scale-95 md:bottom-6 md:right-[calc(50%-28rem)]"
       >
         <Plus className="h-7 w-7" />
       </button>

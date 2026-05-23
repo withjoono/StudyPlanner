@@ -708,11 +708,11 @@ function ResultDialog({
         return '';
       };
       setForm({
-        startPage: mission.resultStartPage?.toString() || '',
-        endPage: mission.resultEndPage?.toString() || '',
-        studyMinutes: calcMinutes(),
+        startPage: mission.result?.startPage?.toString() || '',
+        endPage: mission.result?.endPage?.toString() || '',
+        studyMinutes: mission.result?.studyMinutes?.toString() || calcMinutes(),
         progress: mission.progress?.toString() || '0',
-        memo: mission.resultMemo || '',
+        memo: mission.result?.note || '',
         understanding: 3,
       });
     }
@@ -1026,7 +1026,8 @@ function MyMissionsPage() {
 
   // 루틴 상세 시트 상태
   const [routineSheetOpen, setRoutineSheetOpen] = useState(false);
-  const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
+  // setSelectedRoutine 제거: 루틴 클릭이 변환 다이얼로그 대신 결과 입력으로 바로 진입
+  const [selectedRoutine] = useState<Routine | null>(null);
 
   // 탭 상태 (계획/결과/분석)
   const [activeTab, setActiveTab] = useState<'plan' | 'result' | 'analysis'>('plan');
@@ -1144,8 +1145,14 @@ function MyMissionsPage() {
   const completedMissions = dayMissions.filter(
     (m: DailyMission) => m.status === 'completed' || (m.progress && m.progress >= 100),
   ).length;
+  // 달성률: 미션별 진행률(부분 달성 포함) 평균
   const progressPercent =
-    totalMissions > 0 ? Math.round((completedMissions / totalMissions) * 100) : 0;
+    totalMissions > 0
+      ? Math.round(
+          dayMissions.reduce((s: number, m: DailyMission) => s + (m.progress || 0), 0) /
+            totalMissions,
+        )
+      : 0;
 
   // 도넛 차트 데이터
   const subjectStats = useMemo(() => {
@@ -1200,10 +1207,35 @@ function MyMissionsPage() {
     setResultDialogOpen(true);
   };
 
-  // 루틴 클릭
+  // 빠른 완료 — 모달 없이 한 번에 완료/취소 토글 (2단계 기록의 1차 단계)
+  const handleQuickComplete = (mission: DailyMission, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nowCompleted = !(mission.status === 'completed' || (mission.progress ?? 0) >= 100);
+    updateMutation.mutate(
+      {
+        missionId: mission.id,
+        data: {
+          status: nowCompleted ? 'completed' : 'pending',
+          result: { achievementRate: nowCompleted ? 1 : 0 },
+        },
+      },
+      {
+        onSuccess: () => {
+          if (nowCompleted) {
+            triggerConfetti();
+            toast.success('미션 완료! 🎉');
+          } else {
+            toast.success('완료를 취소했어요.');
+          }
+        },
+        onError: () => toast.error('상태 변경에 실패했습니다.'),
+      },
+    );
+  };
+
+  // 루틴 클릭 — '변환' 개념을 숨기고 바로 결과 입력으로 진입
   const handleRoutineClick = (routine: Routine) => {
-    setSelectedRoutine(routine);
-    setRoutineSheetOpen(true);
+    handleConvertRoutineToMission(routine);
   };
 
   // 루틴 → 미션 변환
@@ -1218,8 +1250,7 @@ function MyMissionsPage() {
       },
       {
         onSuccess: (created: any) => {
-          toast.success('미션으로 변환되었습니다!');
-          // 생성된 미션으로 ResultDialog 자동 오픈
+          // 생성된 미션으로 ResultDialog 자동 오픈 (변환 과정은 사용자에게 노출하지 않음)
           if (created && created.id) {
             setResultTarget(created);
             setResultDialogOpen(true);
@@ -1423,8 +1454,17 @@ function MyMissionsPage() {
               {
                 label: '학습시간',
                 value: (() => {
+                  const actualMin = dayMissions.reduce(
+                    (s: number, m: DailyMission) => s + (m.result?.studyMinutes || 0),
+                    0,
+                  );
+                  if (actualMin > 0) {
+                    const h = Math.floor(actualMin / 60);
+                    const mn = actualMin % 60;
+                    return h > 0 ? `${h}h ${mn}m` : `${mn}m`;
+                  }
                   const hrs = Object.values(subjectStats).reduce((s, v) => s + v, 0);
-                  return hrs > 0 ? `${hrs}h` : '-';
+                  return hrs > 0 ? `${hrs}h 예정` : '-';
                 })(),
                 gradient: 'from-amber-400 to-amber-500',
               },
@@ -1535,7 +1575,7 @@ function MyMissionsPage() {
             {!linkedSchool && (
               <div className="flex items-center justify-between rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
                 <p className="text-xs text-sky-600">
-                  학교를 연결하면 시간표와 학교 행사가 표시됩니다
+                  프로필에서 학교를 검색·연결하면 시간표와 학교 행사가 자동 표시됩니다
                 </p>
                 <a
                   href={`${env.hubFrontUrl}/users/profile`}
@@ -1695,6 +1735,18 @@ function MyMissionsPage() {
                       borderLeftColor: isCompleted ? '#22c55e' : color,
                     }}
                   >
+                    {/* 빠른 완료 체크 — 모달 없이 한 번에 완료 처리 */}
+                    <button
+                      onClick={(e) => handleQuickComplete(mission, e)}
+                      title={isCompleted ? '완료 취소' : '한 번에 완료'}
+                      className="flex-shrink-0"
+                    >
+                      {isCompleted ? (
+                        <CheckCircle2 className="h-6 w-6 text-green-500" />
+                      ) : (
+                        <div className="h-6 w-6 rounded-full border-2 border-gray-300 transition-colors hover:border-green-400" />
+                      )}
+                    </button>
                     <div className="flex h-10 w-16 flex-shrink-0 flex-col items-center justify-center rounded-xl bg-gray-50">
                       <span className="text-xs font-bold text-gray-600">{mission.startTime}</span>
                       <span className="text-[9px] text-gray-400">{mission.endTime}</span>
@@ -1757,15 +1809,49 @@ function MyMissionsPage() {
             ) : (
               <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
                 <BookOpen className="mb-3 h-12 w-12 text-gray-200" />
-                <p className="mb-1 text-sm font-medium text-gray-400">오늘의 일정이 없습니다</p>
-                <p className="mb-4 text-xs text-gray-300">+ 버튼으로 미션을 추가하세요</p>
-                <button
-                  onClick={handleNewMission}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  미션 추가하기
-                </button>
+                {!routines || routines.length === 0 ? (
+                  <>
+                    <p className="mb-1 text-sm font-medium text-gray-400">
+                      아직 설정된 학습 계획이 없어요
+                    </p>
+                    <p className="mb-4 text-xs text-gray-300">
+                      장기계획과 주간루틴을 만들면 매일 미션이 자동으로 채워집니다
+                    </p>
+                    <a
+                      href="/plans"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      장기계획 만들러 가기
+                    </a>
+                  </>
+                ) : selectedDate.getDay() === 0 || selectedDate.getDay() === 6 ? (
+                  <>
+                    <p className="mb-1 text-sm font-medium text-gray-400">
+                      오늘은 루틴이 없는 요일이에요
+                    </p>
+                    <p className="mb-4 text-xs text-gray-300">
+                      주간루틴에 설정한 요일에 미션이 자동으로 표시됩니다
+                    </p>
+                    <button
+                      onClick={handleNewMission}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      <Plus className="h-3.5 w-3.5" />이 날만 미션 추가
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="mb-1 text-sm font-medium text-gray-400">오늘의 일정이 없습니다</p>
+                    <p className="mb-4 text-xs text-gray-300">+ 버튼으로 미션을 추가하세요</p>
+                    <button
+                      onClick={handleNewMission}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      미션 추가하기
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -1967,7 +2053,8 @@ function MyMissionsPage() {
       {activeTab === 'plan' && (
         <button
           onClick={handleNewMission}
-          className="fixed bottom-20 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 transition-all hover:scale-105 hover:shadow-xl active:scale-95 md:bottom-6 md:right-[calc(50%-28rem)]"
+          aria-label="새 미션 추가"
+          className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 transition-all hover:scale-105 hover:shadow-xl active:scale-95 md:bottom-6 md:right-[calc(50%-28rem)]"
         >
           <Plus className="h-7 w-7" />
         </button>

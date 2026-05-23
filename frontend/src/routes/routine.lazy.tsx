@@ -1692,8 +1692,11 @@ function PlannerRoutinePage() {
         ) : (
           <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
             <Calendar className="mb-3 h-12 w-12 text-gray-200" />
-            <p className="mb-1 text-sm font-medium text-gray-400">등록된 루틴이 없습니다</p>
-            <p className="mb-4 text-xs text-gray-300">+ 버튼으로 루틴을 추가하세요</p>
+            <p className="mb-1 text-sm font-medium text-gray-500">2단계 · 주간루틴 만들기</p>
+            <p className="mb-4 max-w-xs text-center text-xs text-gray-400">
+              매주 반복할 공부 요일과 시간을 정하세요. 장기계획의 분량이 이 시간표에 맞춰 자동
+              배분됩니다
+            </p>
             <button
               onClick={handleCreate}
               className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
@@ -1806,7 +1809,8 @@ function PlannerRoutinePage() {
       {/* FAB */}
       <button
         onClick={handleCreate}
-        className="fixed bottom-20 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 transition-all hover:scale-105 hover:shadow-xl active:scale-95 md:bottom-6 md:right-[calc(50%-28rem)]"
+        aria-label="새 루틴 추가"
+        className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-200 transition-all hover:scale-105 hover:shadow-xl active:scale-95 md:bottom-6 md:right-[calc(50%-28rem)]"
       >
         <Plus className="h-7 w-7" />
       </button>
