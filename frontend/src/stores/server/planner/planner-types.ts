@@ -88,10 +88,16 @@ export interface DailyMission {
   progress: number;
   weekNumber?: number;
   weeklyTarget?: number;
-  // 결과 필드
-  resultStartPage?: number;
-  resultEndPage?: number;
-  resultMemo?: string;
+  // 결과 (서버 응답의 중첩 객체)
+  result?: {
+    id: number;
+    startPage: number | null;
+    endPage: number | null;
+    amount: number | null;
+    achievementRate: number | null;
+    note: string | null;
+    studyMinutes: number | null;
+  } | null;
 }
 
 // ================================================================
