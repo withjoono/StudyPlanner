@@ -374,6 +374,8 @@ model MissionResult {
   completedDate   DateTime? @map("completed_date") @db.Date
   startTime       DateTime? @map("start_time") @db.Time(0)
   endTime         DateTime? @map("end_time") @db.Time(0)
+  startPage       Int?      @map("start_page") // 실제 학습 시작 페이지
+  endPage         Int?      @map("end_page") // 실제 학습 종료 페이지
   amount          Int?
   studyMinutes    Int?      @map("study_minutes") // 타이머 누적 학습시간 (분)
   achievementRate Decimal?  @map("achievement_rate") @db.Decimal(3, 2)

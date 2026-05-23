@@ -58,6 +58,7 @@ export interface MissionResponse {
     amount: number | null;
     achievementRate: number | null;
     note: string | null;
+    studyMinutes: number | null;
   } | null;
 }
 
@@ -69,8 +70,8 @@ export class MissionService {
     private readonly scoringService: ScoringService,
   ) {}
 
-  /** member_id로 학생 조회, 없으면 자동 생성 */
-  private async getOrCreateStudent(memberId: number | string): Promise<bigint> {
+  /** member_id(숫자 ID 또는 Hub userId)로 학생 조회, 없으면 자동 생성 */
+  async getOrCreateStudent(memberId: number | string): Promise<bigint> {
     // 숫자형 member_id인 경우
     if (typeof memberId === 'number' || /^\d+$/.test(String(memberId))) {
       const id = BigInt(memberId);
@@ -78,23 +79,45 @@ export class MissionService {
       if (existing) return existing.id;
     }
 
-    // 문자열 userId ("sp_S26H208011") 인 경우
     const userIdStr = String(memberId);
+    // userId 직접 조회
     const byUserId = await this.prisma.student.findFirst({
       where: { userId: userIdStr },
     });
     if (byUserId) return byUserId.id;
 
-    // 학생 자동 생성
-    const code = `SP${Date.now()}`;
-    const student = await this.prisma.student.create({
-      data: {
-        studentCode: code,
-        userId: userIdStr.startsWith('sp_') ? userIdStr : undefined,
+    // sp_ 없이 들어온 Hub raw ID 재시도 ("S26H208011" → "sp_S26H208011")
+    if (!userIdStr.startsWith('sp_')) {
+      const withPrefix = await this.prisma.student.findFirst({
+        where: { userId: `sp_${userIdStr}` },
+      });
+      if (withPrefix) return withPrefix.id;
+    }
+
+    // 학생 자동 생성 — User FK 제약 위반 방지: User 먼저 upsert
+    const normalizedUserId = userIdStr.startsWith('sp_') ? userIdStr : `sp_${userIdStr}`;
+    const hubId = normalizedUserId.replace(/^sp_/, '');
+    await this.prisma.user.upsert({
+      where: { id: normalizedUserId },
+      create: {
+        id: normalizedUserId,
+        email: `${hubId}@hub.local`,
+        name: hubId,
+        role: 'student',
+        hubUserId: hubId,
+      },
+      update: {},
+    });
+    const student = await this.prisma.student.upsert({
+      where: { userId: normalizedUserId },
+      create: {
+        studentCode: `SP${Date.now()}`,
+        userId: normalizedUserId,
         year: new Date().getFullYear(),
         schoolLevel: 'high',
         name: '학생',
       },
+      update: {},
     });
     return student.id;
   }
@@ -136,15 +159,22 @@ export class MissionService {
       endPage: mission.endPage,
       amount: mission.amount,
       status: mission.status || 'pending',
-      progress: mission.status === MissionStatus.completed ? 100 : 0,
+      // 진행률: 결과의 달성률(achievementRate)이 있으면 그 값을, 없으면 완료 여부로 산출
+      progress:
+        result?.achievementRate != null
+          ? Math.round(Number(result.achievementRate) * 100)
+          : mission.status === MissionStatus.completed
+            ? 100
+            : 0,
       result: result
         ? {
             id: Number(result.id),
-            startPage: result.amount !== undefined ? (result.startPage ?? null) : null,
-            endPage: result.amount !== undefined ? (result.endPage ?? null) : null,
+            startPage: result.startPage ?? null,
+            endPage: result.endPage ?? null,
             amount: result.amount ?? null,
-            achievementRate: result.achievementRate ? Number(result.achievementRate) : null,
+            achievementRate: result.achievementRate != null ? Number(result.achievementRate) : null,
             note: result.note ?? null,
+            studyMinutes: result.studyMinutes ?? null,
           }
         : null,
     };
@@ -347,6 +377,8 @@ export class MissionService {
       return this.prisma.missionResult.update({
         where: { id: existing.id },
         data: {
+          startPage: dto.start_page,
+          endPage: dto.end_page,
           amount: dto.amount,
           achievementRate: dto.achievement_rate !== undefined ? dto.achievement_rate : undefined,
           note: dto.note,
@@ -360,6 +392,8 @@ export class MissionService {
           resultCode,
           missionId: BigInt(missionId),
           studentId: BigInt(studentId),
+          startPage: dto.start_page,
+          endPage: dto.end_page,
           amount: dto.amount,
           achievementRate: dto.achievement_rate,
           note: dto.note,

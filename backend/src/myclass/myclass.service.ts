@@ -114,7 +114,7 @@ export class MyClassService {
       weeklyGoal?: number;
     },
   ) {
-    const student = await this.findStudent(memberId);
+    const student = await this.findOrCreateStudent(memberId);
     if (!student) throw new NotFoundException('학생 정보를 찾을 수 없습니다.');
 
     // 초대 코드 생성
@@ -191,7 +191,7 @@ export class MyClassService {
    * 초대 코드로 마이 클래스 가입
    */
   async joinRoom(memberId: string, code: string, inviterId?: string) {
-    const student = await this.findStudent(memberId);
+    const student = await this.findOrCreateStudent(memberId);
     if (!student) throw new NotFoundException('학생 정보를 찾을 수 없습니다.');
 
     const room = await this.prisma.studyRoom.findUnique({
@@ -655,15 +655,61 @@ export class MyClassService {
   // ─────────── Private Helpers ───────────
 
   private async findStudent(memberId: string) {
-    const memberIdNum = parseInt(memberId, 10);
-    if (!isNaN(memberIdNum)) {
-      return this.prisma.student.findUnique({
-        where: { id: BigInt(memberIdNum) },
+    // 숫자 ID로 조회
+    if (/^\d+$/.test(memberId)) {
+      const byId = await this.prisma.student.findUnique({
+        where: { id: BigInt(memberId) },
+        select: { id: true },
+      });
+      if (byId) return byId;
+    }
+    // userId 직접 조회
+    const byUserId = await this.prisma.student.findFirst({
+      where: { userId: memberId },
+      select: { id: true },
+    });
+    if (byUserId) return byUserId;
+    // sp_ 없이 들어온 Hub raw ID 재시도
+    if (!memberId.startsWith('sp_')) {
+      return this.prisma.student.findFirst({
+        where: { userId: `sp_${memberId}` },
         select: { id: true },
       });
     }
-    return this.prisma.student.findFirst({
-      where: { userId: memberId },
+    return null;
+  }
+
+  /** 학생 조회 후 없으면 자동 생성 (쓰기 작업용 — plan.controller 정책과 동일) */
+  private async findOrCreateStudent(memberId: string) {
+    const existing = await this.findStudent(memberId);
+    if (existing) return existing;
+    // 숫자 ID만 들어왔는데 학생이 없으면 안전하게 생성 불가
+    if (/^\d+$/.test(memberId)) return null;
+
+    // User FK 제약 위반 방지: User 먼저 upsert
+    const normalizedUserId = memberId.startsWith('sp_') ? memberId : `sp_${memberId}`;
+    const hubId = normalizedUserId.replace(/^sp_/, '');
+    await this.prisma.user.upsert({
+      where: { id: normalizedUserId },
+      create: {
+        id: normalizedUserId,
+        email: `${hubId}@hub.local`,
+        name: hubId,
+        role: 'student',
+        hubUserId: hubId,
+      },
+      update: {},
+    });
+    return this.prisma.student.upsert({
+      where: { userId: normalizedUserId },
+      create: {
+        studentCode: `SP${Date.now()}`,
+        userId: normalizedUserId,
+        year: new Date().getFullYear(),
+        schoolLevel: 'high',
+        name: '학생',
+      },
+      update: {},
       select: { id: true },
     });
   }

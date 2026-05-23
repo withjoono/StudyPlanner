@@ -9,9 +9,10 @@ export class MissionController {
 
   @Get()
   @ApiOperation({ summary: '일간 미션 조회 (날짜별 또는 전체)' })
-  async getMissions(@Query('member_id') memberId?: number, @Query('date') date?: string) {
+  async getMissions(@Query('member_id') memberId?: string, @Query('date') date?: string) {
     try {
-      const studentId = memberId || 1;
+      // member_id(숫자 ID 또는 Hub userId)를 실제 studentId로 해석
+      const studentId = Number(await this.missionService.getOrCreateStudent(memberId || 1));
       if (date) {
         return this.missionService.getMissionsByDate(studentId, date);
       }
