@@ -101,6 +101,7 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
   const [showResults, setShowResults] = useState(false);
+  const [materialError, setMaterialError] = useState(''); // 교재 인라인 오류
 
   // 범위: 시작페이지 / 끝페이지
   const [startPage, setStartPage] = useState<number | ''>('');
@@ -148,6 +149,7 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
     setSearchQuery(value);
     setShowResults(true);
     setSelectedMaterial(null);
+    if (materialError) setMaterialError('');
     // 디바운스
     setTimeout(() => setDebouncedQuery(value), 300);
   };
@@ -215,9 +217,10 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
       }
     } else {
       if (!selectedMaterial && !searchQuery.trim()) {
-        toast.error('교재를 검색하여 선택하거나 이름을 직접 입력해주세요.');
+        setMaterialError('교재를 검색하여 선택하거나 이름을 직접 입력해주세요.');
         return;
       }
+      setMaterialError('');
     }
 
     if (!selectedKyokwa) {
@@ -462,8 +465,11 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
                       value={searchQuery}
                       onChange={(e) => handleSearchChange(e.target.value)}
                       onFocus={() => searchQuery.length >= 1 && setShowResults(true)}
-                      className="mt-1.5"
+                      className={`mt-1.5 ${materialError ? 'border-red-400 focus-visible:ring-red-200' : ''}`}
                     />
+                    {materialError && (
+                      <p className="mt-1 text-xs font-medium text-red-500">{materialError}</p>
+                    )}
                     {/* 검색 결과 드롭다운 */}
                     {showResults && debouncedQuery.length >= 1 && (
                       <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
@@ -1132,18 +1138,7 @@ function GanttTimeline({
 
   const showSchoolRow = !!linkedSchool && allSchoolEvents.length > 0 && showSchoolEvents;
   const SCHOOL_ROW_H = 32;
-
-  if (datePlans.length === 0) {
-    return (
-      <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white px-4 py-10 text-center shadow-sm">
-        <Calendar className="mb-3 h-10 w-10 text-gray-200" />
-        <p className="text-sm font-medium text-gray-400">타임라인에 표시할 계획이 없어요</p>
-        <p className="mt-1 text-xs text-gray-300">
-          시작일과 종료일을 설정한 계획이 여기에 표시됩니다
-        </p>
-      </div>
-    );
-  }
+  const isEmpty = datePlans.length === 0;
 
   // 오늘 위치 (%)
   const todayPct = ((today.getTime() - rangeStart.getTime()) / totalMs) * 100;
@@ -1247,6 +1242,15 @@ function GanttTimeline({
               </div>
             );
           })}
+          {/* 빈 상태 라벨 (좌측 영역) */}
+          {isEmpty && (
+            <div
+              className="flex items-center border-b border-gray-50 px-3 text-[11px] font-medium text-gray-300"
+              style={{ height: '72px' }}
+            >
+              계획 없음
+            </div>
+          )}
         </div>
 
         {/* ── 우측: 가로 스크롤 타임라인 ── */}
@@ -1436,6 +1440,41 @@ function GanttTimeline({
                 </div>
               );
             })}
+            {/* 빈 상태 본문 행: 격자선 + 오늘선 + 안내 텍스트 */}
+            {isEmpty && (
+              <div
+                className="relative border-b border-gray-50 last:border-0"
+                style={{ height: '72px' }}
+              >
+                {/* 컬럼 구분선 */}
+                {columns.map((c, i) =>
+                  c.isPeriodStart || showMinorLines ? (
+                    <div
+                      key={i}
+                      className={`absolute inset-y-0 w-px ${
+                        c.isPeriodStart ? 'bg-indigo-100' : 'bg-gray-100'
+                      }`}
+                      style={{ left: `${(i / numColumns) * 100}%` }}
+                    />
+                  ) : null,
+                )}
+                {/* 오늘 마커 */}
+                {showToday && (
+                  <div
+                    className="pointer-events-none absolute inset-y-0 z-10 w-px bg-red-400/70"
+                    style={{ left: `${todayPct}%` }}
+                  >
+                    <div className="absolute -top-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-red-400" />
+                  </div>
+                )}
+                {/* 빈 상태 안내 */}
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <span className="rounded-full bg-gray-50 px-3 py-1 text-[11px] font-medium text-gray-400">
+                    시작일·종료일이 있는 계획이 여기에 표시됩니다
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1586,18 +1625,37 @@ function PlannerPlansPage() {
 
   const handleDistribute = async (plan: ExtendedLongTermPlan) => {
     if (!routines || routines.length === 0) {
-      toast.error('먼저 주간 루틴을 설정해주세요.');
+      toast.error('먼저 주간루틴에서 공부 시간표를 만들어주세요.', {
+        action: { label: '주간루틴으로', onClick: () => (window.location.href = '/routine') },
+      });
       return;
     }
 
     try {
-      await distributeMutation.mutateAsync({
+      const result = await distributeMutation.mutateAsync({
         plan,
         routines,
         startDate: new Date(plan.startDate || new Date()),
         endDate: new Date(plan.endDate || new Date()),
       });
-      toast.success('일정이 분배되었습니다!');
+      // 분배된 미션 수 확인 — 매칭되는 루틴이 없으면 0개가 만들어짐
+      const createdCount =
+        result && typeof result === 'object' && !Array.isArray(result) && 'created' in result
+          ? Number((result as { created: number }).created)
+          : Array.isArray(result)
+            ? result.length
+            : 0;
+      if (!createdCount) {
+        toast.error(
+          `'${plan.subject || '이 과목'}'에 해당하는 자습 루틴이 없어 미션을 배분하지 못했어요. 주간루틴에서 같은 과목의 자습 시간을 추가해주세요.`,
+          { action: { label: '주간루틴으로', onClick: () => (window.location.href = '/routine') } },
+        );
+        return;
+      }
+      toast.success(
+        `${createdCount}개 미션으로 배분했어요! 이제 금일계획에 매일 자동으로 표시됩니다.`,
+        { action: { label: '금일계획 보기', onClick: () => (window.location.href = '/missions') } },
+      );
     } catch {
       toast.error('일정 분배에 실패했습니다.');
     }
@@ -1956,9 +2014,10 @@ function PlannerPlansPage() {
                               {!plan.isDistributed && (
                                 <button
                                   onClick={() => guard(() => handleDistribute(plan))}
-                                  className="rounded-lg bg-indigo-50 px-2 py-1 text-[10px] font-semibold text-indigo-600 transition-colors hover:bg-indigo-100"
+                                  className="rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[10px] font-bold text-white shadow-sm transition-colors hover:bg-indigo-700"
+                                  title="주간루틴으로 배분"
                                 >
-                                  분배
+                                  주간 배분
                                 </button>
                               )}
                               <button
@@ -1980,8 +2039,10 @@ function PlannerPlansPage() {
         ) : (
           <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
             <BookOpen className="mb-3 h-12 w-12 text-gray-200" />
-            <p className="mb-1 text-sm font-medium text-gray-400">등록된 계획이 없습니다</p>
-            <p className="mb-4 text-xs text-gray-300">+ 버튼으로 계획을 추가하세요</p>
+            <p className="mb-1 text-sm font-medium text-gray-500">1단계 · 장기계획 만들기</p>
+            <p className="mb-4 max-w-xs text-center text-xs text-gray-400">
+              끝낼 교재와 기간을 정해두면, 주간루틴을 거쳐 매일의 미션이 자동으로 채워집니다
+            </p>
             <button
               onClick={() => guard(() => setIsPlanSetupOpen(true))}
               className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
