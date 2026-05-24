@@ -15,7 +15,7 @@ export class StudentController {
    */
   @Get('connections')
   async getConnections(@Req() req: any) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.studentService.getConnections(userId);
   }
 
@@ -28,7 +28,7 @@ export class StudentController {
     @Param('teacherId') teacherId: string,
     @Body() body: { permissions: { kyokwa: string; allowed: boolean; subjectId?: string }[] },
   ) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.studentService.updateTeacherPermissions(userId, teacherId, body.permissions);
   }
 }

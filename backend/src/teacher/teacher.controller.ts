@@ -27,31 +27,31 @@ export class TeacherController {
 
   @Get('dashboard')
   async getDashboard(@Req() req: any) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.teacherService.getDashboard(userId);
   }
 
   @Get('students')
   async getStudents(@Req() req: any) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.teacherService.getStudents(userId);
   }
 
   @Post('students')
   async addStudent(@Req() req: any, @Body() body: { studentCode: string }) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.teacherService.addStudent(userId, body.studentCode);
   }
 
   @Delete('students/:studentId')
   async removeStudent(@Req() req: any, @Param('studentId') studentId: string) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.teacherService.removeStudent(userId, parseInt(studentId));
   }
 
   @Get('students/:studentId')
   async getStudentDetail(@Req() req: any, @Param('studentId') studentId: string) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.teacherService.getStudentDetail(userId, parseInt(studentId));
   }
 
@@ -140,7 +140,7 @@ export class TeacherController {
     @Param('studentId') studentId: string,
     @Query('date') date?: string,
   ) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.teacherService.getStudentMissions(userId, parseInt(studentId), date);
   }
 
@@ -158,7 +158,7 @@ export class TeacherController {
       amount?: number;
     },
   ) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.teacherService.createMission(userId, parseInt(studentId), body);
   }
 
@@ -172,7 +172,7 @@ export class TeacherController {
     @Param('studentId') studentId: string,
     @Body() body: { date: string; score: number; comment?: string },
   ) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.teacherService.rateStudent(userId, parseInt(studentId), body);
   }
 
@@ -183,7 +183,7 @@ export class TeacherController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.teacherService.getStudentRatings(userId, parseInt(studentId), startDate, endDate);
   }
 
@@ -193,7 +193,7 @@ export class TeacherController {
     @Query('studentIds') studentIds: string,
     @Query('date') date?: string,
   ) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     const ids = studentIds
       .split(',')
       .map((id) => parseInt(id.trim()))
@@ -207,7 +207,7 @@ export class TeacherController {
     @Param('studentId') studentId: string,
     @Query('limit') limit?: string,
   ) {
-    const userId = Number(req.user?.sub || 0);
+    const userId = req.user?.sub ? `sp_${req.user.sub}` : '';
     return this.teacherService.getStudentPhotos(
       userId,
       parseInt(studentId),

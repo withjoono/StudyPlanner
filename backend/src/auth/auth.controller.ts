@@ -33,6 +33,9 @@ export class AuthController {
         null
       : null;
 
+    // 역할: Hub 토큰의 role(jti 접두어 기반 파생 포함). 없으면 student.
+    const role = payload.role || 'student';
+
     // sp_auth_member에서 조회 또는 자동 생성
     let user = await this.prisma.user.findUnique({ where: { id: spUserId } });
 
@@ -42,15 +45,15 @@ export class AuthController {
           id: spUserId,
           email: payload.email || `${hubId}@hub.local`,
           name: freshName || hubId,
-          role: 'student',
+          role,
           hubUserId: hubId,
         },
       });
-    } else if (freshName && freshName !== user.name) {
-      // Hub에서 닉네임이 변경된 경우 로컬 DB 동기화
+    } else if ((freshName && freshName !== user.name) || user.role !== role) {
+      // Hub 닉네임 변경 또는 역할 불일치 시 로컬 DB 동기화
       user = await this.prisma.user.update({
         where: { id: spUserId },
-        data: { name: freshName },
+        data: { name: freshName || user.name, role },
       });
     }
 

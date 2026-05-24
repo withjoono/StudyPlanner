@@ -50,6 +50,22 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Invalid token payload');
     }
 
-    return payload;
+    // Hub 토큰은 sub 에 토큰 종류("ATK"/"RTK"), jti 에 실제 회원 ID를 담는다.
+    // 컨트롤러들은 req.user.sub 를 회원 ID로 사용하므로 jti 값으로 정규화한다.
+    const memberId = payload.jti;
+    const role = payload.role ?? JwtStrategy.roleFromMemberId(memberId);
+    return { ...payload, sub: memberId, role };
+  }
+
+  /** Hub 회원 ID 접두어(S/T/P)로 역할 판별 */
+  private static roleFromMemberId(memberId: string): 'student' | 'parent' | 'teacher' | 'admin' {
+    switch (memberId.charAt(0).toUpperCase()) {
+      case 'T':
+        return 'teacher';
+      case 'P':
+        return 'parent';
+      default:
+        return 'student';
+    }
   }
 }

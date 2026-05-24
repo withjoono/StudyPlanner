@@ -63,7 +63,7 @@ export class TeacherService {
   // ================================================================
 
   /** 담당 학생 목록 */
-  async getStudents(teacherUserId: number) {
+  async getStudents(teacherUserId: string) {
     const links = await this.prisma.teacherStudent.findMany({
       where: { teacherId: String(teacherUserId) },
       include: {
@@ -103,7 +103,7 @@ export class TeacherService {
   }
 
   /** 학생 추가 (학생코드로) */
-  async addStudent(teacherUserId: number, studentCode: string) {
+  async addStudent(teacherUserId: string, studentCode: string) {
     const student = await this.prisma.student.findUnique({
       where: { studentCode },
     });
@@ -119,7 +119,7 @@ export class TeacherService {
   }
 
   /** 학생 제거 */
-  async removeStudent(teacherUserId: number, studentId: number) {
+  async removeStudent(teacherUserId: string, studentId: number) {
     await this.prisma.teacherStudent.deleteMany({
       where: {
         teacherId: String(teacherUserId),
@@ -230,7 +230,7 @@ export class TeacherService {
   // ================================================================
 
   /** 학생 상세 (대시보드) */
-  async getStudentDetail(teacherUserId: number, studentId: number) {
+  async getStudentDetail(teacherUserId: string, studentId: number) {
     await this.verifyTeacherAccess(teacherUserId, studentId);
 
     const today = new Date();
@@ -293,7 +293,7 @@ export class TeacherService {
   }
 
   /** 학생 미션 목록 */
-  async getStudentMissions(teacherUserId: number, studentId: number, date?: string) {
+  async getStudentMissions(teacherUserId: string, studentId: number, date?: string) {
     await this.verifyTeacherAccess(teacherUserId, studentId);
 
     const managedKyokwas = await this.getManagedKyokwas(teacherUserId, studentId);
@@ -353,7 +353,7 @@ export class TeacherService {
     return missions.map(this.serialize);
   }
 
-  private async getManagedKyokwas(teacherUserId: number, studentId: number): Promise<string[]> {
+  private async getManagedKyokwas(teacherUserId: string, studentId: number): Promise<string[]> {
     const link = await this.prisma.teacherStudent.findUnique({
       where: {
         uk_teacher_student: { teacherId: String(teacherUserId), studentId: BigInt(studentId) },
@@ -378,7 +378,7 @@ export class TeacherService {
 
   /** 학생 미션 생성 (선생님이 직접) */
   async createMission(
-    teacherUserId: number,
+    teacherUserId: string,
     studentId: number,
     data: {
       date: string;
@@ -423,7 +423,7 @@ export class TeacherService {
   }
 
   /** 학생 인증사진 조회 */
-  async getStudentPhotos(teacherUserId: number, studentId: number, limit: number = 20) {
+  async getStudentPhotos(teacherUserId: string, studentId: number, limit: number = 20) {
     await this.verifyTeacherAccess(teacherUserId, studentId);
 
     const photos = await this.prisma.verificationPhoto.findMany({
@@ -447,7 +447,7 @@ export class TeacherService {
   }
 
   /** 전체 학생 요약 (선생님 대시보드) */
-  async getDashboard(teacherUserId: number) {
+  async getDashboard(teacherUserId: string) {
     const students = await this.getStudents(teacherUserId);
 
     const today = new Date();
@@ -508,7 +508,7 @@ export class TeacherService {
 
   /** 학생 플래너 평가 저장 (날짜별 upsert) */
   async rateStudent(
-    teacherUserId: number,
+    teacherUserId: string,
     studentId: number,
     data: { date: string; score: number; comment?: string },
   ) {
@@ -542,7 +542,7 @@ export class TeacherService {
 
   /** 학생 평가 목록 조회 */
   async getStudentRatings(
-    teacherUserId: number,
+    teacherUserId: string,
     studentId: number,
     startDate?: string,
     endDate?: string,
@@ -569,7 +569,7 @@ export class TeacherService {
   }
 
   /** 다수 학생 비교 (평가 + 학습 통계) */
-  async compareStudents(teacherUserId: number, studentIds: number[], date?: string) {
+  async compareStudents(teacherUserId: string, studentIds: number[], date?: string) {
     const targetDate = date ? new Date(date) : new Date();
     const dateStr = targetDate.toISOString().split('T')[0];
 
@@ -647,7 +647,7 @@ export class TeacherService {
   // Helpers
   // ================================================================
 
-  private async verifyTeacherAccess(teacherUserId: number, studentId: number) {
+  private async verifyTeacherAccess(teacherUserId: string, studentId: number) {
     const link = await this.prisma.teacherStudent.findUnique({
       where: {
         uk_teacher_student: { teacherId: String(teacherUserId), studentId: BigInt(studentId) },

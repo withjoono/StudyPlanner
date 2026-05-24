@@ -10,7 +10,7 @@ export class StudentService {
   /**
    * 연결된 모든 사용자 조회
    */
-  async getConnections(studentUserId: number) {
+  async getConnections(studentUserId: string) {
     // 1. 학생 식별
     const student = await this.prisma.student.findUnique({
       where: { userId: String(studentUserId) },
@@ -61,7 +61,7 @@ export class StudentService {
    * 선생님 권한 업데이트
    */
   async updateTeacherPermissions(
-    studentUserId: number,
+    studentUserId: string,
     teacherUserIdStr: string,
     permissions: { kyokwa: string; allowed: boolean; subjectId?: string }[],
   ) {
