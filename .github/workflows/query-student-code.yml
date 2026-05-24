@@ -32,5 +32,12 @@ jobs:
         env:
           PGPASSWORD: tsuser1234
         run: |
+          echo "=== Total rows in student table ==="
           psql -h 127.0.0.1 -p 5434 -U tsuser -d geobukschool_prod -c \
-            "SELECT id, student_code, name FROM studyplanner.student WHERE user_id = 'sp_S26H003141';"
+            "SELECT COUNT(*) FROM studyplanner.student;"
+          echo "=== Sample user_id values ==="
+          psql -h 127.0.0.1 -p 5434 -U tsuser -d geobukschool_prod -c \
+            "SELECT id, student_code, name, user_id FROM studyplanner.student LIMIT 10;"
+          echo "=== Search for S26H003141 anywhere ==="
+          psql -h 127.0.0.1 -p 5434 -U tsuser -d geobukschool_prod -c \
+            "SELECT id, student_code, name, user_id FROM studyplanner.student WHERE user_id LIKE '%S26H003141%';"
