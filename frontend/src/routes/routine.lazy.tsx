@@ -3,6 +3,7 @@
  */
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
+import { EmptyState } from '@/components/onboarding/EmptyState';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   ChevronLeft,
@@ -1690,21 +1691,13 @@ function PlannerRoutinePage() {
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
-            <Calendar className="mb-3 h-12 w-12 text-gray-200" />
-            <p className="mb-1 text-sm font-medium text-gray-500">2단계 · 주간루틴 만들기</p>
-            <p className="mb-4 max-w-xs text-center text-xs text-gray-400">
-              매주 반복할 공부 요일과 시간을 정하세요. 장기계획의 분량이 이 시간표에 맞춰 자동
-              배분됩니다
-            </p>
-            <button
-              onClick={handleCreate}
-              className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              루틴 추가하기
-            </button>
-          </div>
+          <EmptyState
+            mood="point"
+            title="2단계 · 주간루틴 만들기"
+            description="매주 반복할 공부 요일과 시간을 정하세요. 장기계획의 분량이 이 시간표에 맞춰 자동 배분됩니다"
+            actionLabel="루틴 추가하기"
+            onAction={handleCreate}
+          />
         )}
       </div>
 

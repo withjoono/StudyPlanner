@@ -5,6 +5,7 @@
  */
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
+import { EmptyState } from '@/components/onboarding/EmptyState';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useLoginGuard } from '@/hooks/useLoginGuard';
 import {
@@ -2073,20 +2074,13 @@ function PlannerPlansPage() {
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
-            <BookOpen className="mb-3 h-12 w-12 text-gray-200" />
-            <p className="mb-1 text-sm font-medium text-gray-500">1단계 · 장기계획 만들기</p>
-            <p className="mb-4 max-w-xs text-center text-xs text-gray-400">
-              끝낼 교재와 기간을 정해두면, 주간루틴을 거쳐 매일의 미션이 자동으로 채워집니다
-            </p>
-            <button
-              onClick={() => guard(() => setIsPlanSetupOpen(true))}
-              className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              계획 추가하기
-            </button>
-          </div>
+          <EmptyState
+            mood="point"
+            title="1단계 · 장기계획 만들기"
+            description="끝낼 교재와 기간을 정해두면, 주간루틴을 거쳐 매일의 미션이 자동으로 채워집니다"
+            actionLabel="계획 추가하기"
+            onAction={() => guard(() => setIsPlanSetupOpen(true))}
+          />
         )}
       </div>
 

@@ -8,6 +8,7 @@
  */
 
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
+import { EmptyState } from '@/components/onboarding/EmptyState';
 import { useState, useMemo } from 'react';
 import {
   ChevronLeft,
@@ -1835,55 +1836,30 @@ function MyMissionsPage() {
                       </div>
                     );
                   })
+                ) : !routines || routines.length === 0 ? (
+                  <EmptyState
+                    mood="point"
+                    title="아직 설정된 학습 계획이 없어요"
+                    description="장기계획과 주간루틴을 만들면 매일 미션이 자동으로 채워집니다"
+                    actionLabel="장기계획 만들러 가기"
+                    actionHref="/plans"
+                  />
+                ) : selectedDate.getDay() === 0 || selectedDate.getDay() === 6 ? (
+                  <EmptyState
+                    mood="happy"
+                    title="오늘은 루틴이 없는 요일이에요"
+                    description="주간루틴에 설정한 요일에 미션이 자동으로 표시됩니다"
+                    actionLabel="이 날만 미션 추가"
+                    onAction={handleNewMission}
+                  />
                 ) : (
-                  <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-16 shadow-sm">
-                    <BookOpen className="mb-3 h-12 w-12 text-gray-200" />
-                    {!routines || routines.length === 0 ? (
-                      <>
-                        <p className="mb-1 text-sm font-medium text-gray-400">
-                          아직 설정된 학습 계획이 없어요
-                        </p>
-                        <p className="mb-4 text-xs text-gray-300">
-                          장기계획과 주간루틴을 만들면 매일 미션이 자동으로 채워집니다
-                        </p>
-                        <a
-                          href="/plans"
-                          className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-                        >
-                          장기계획 만들러 가기
-                        </a>
-                      </>
-                    ) : selectedDate.getDay() === 0 || selectedDate.getDay() === 6 ? (
-                      <>
-                        <p className="mb-1 text-sm font-medium text-gray-400">
-                          오늘은 루틴이 없는 요일이에요
-                        </p>
-                        <p className="mb-4 text-xs text-gray-300">
-                          주간루틴에 설정한 요일에 미션이 자동으로 표시됩니다
-                        </p>
-                        <button
-                          onClick={handleNewMission}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-                        >
-                          <Plus className="h-3.5 w-3.5" />이 날만 미션 추가
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <p className="mb-1 text-sm font-medium text-gray-400">
-                          오늘의 일정이 없습니다
-                        </p>
-                        <p className="mb-4 text-xs text-gray-300">+ 버튼으로 미션을 추가하세요</p>
-                        <button
-                          onClick={handleNewMission}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-5 py-2 text-xs font-semibold text-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-md"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          미션 추가하기
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <EmptyState
+                    mood="happy"
+                    title="오늘의 일정이 없습니다"
+                    description="+ 버튼으로 미션을 추가하세요"
+                    actionLabel="미션 추가하기"
+                    onAction={handleNewMission}
+                  />
                 )}
               </div>
             )}

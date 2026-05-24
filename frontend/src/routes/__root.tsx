@@ -8,6 +8,8 @@ import { X, LayoutGrid, ChevronDown, Timer } from 'lucide-react';
 import PromoPage from '@/components/PromoPage';
 import { useAcornBalance } from '@/stores/server/acorn';
 import { Footer, UtilityNav } from 'geobuk-shared/ui';
+import { OnboardingTour } from '@/components/onboarding/OnboardingTour';
+import { OnboardingLauncher } from '@/components/onboarding/OnboardingLauncher';
 
 // Hub URL
 const HUB_URL =
@@ -134,7 +136,7 @@ function RootLayout() {
             </div>
 
             {/* 중앙: 네비게이션 메뉴 (Desktop) */}
-            <div className="hidden items-center gap-1 md:flex">
+            <div className="hidden items-center gap-1 md:flex" data-tour-zone="desktop-nav">
               <a
                 href={HUB_URL}
                 className="text-primary hover:bg-primary/10 flex h-9 w-9 items-center justify-center rounded-full transition-colors"
@@ -152,6 +154,7 @@ function RootLayout() {
               {/* 마이 그룹 드롭다운 */}
               <div className="relative" ref={myclassDropdownRef}>
                 <button
+                  data-tour="nav-mygroup"
                   onClick={() => setMyclassDropdownOpen((v) => !v)}
                   className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
                 >
@@ -354,7 +357,10 @@ function RootLayout() {
 
       {/* 모바일 하단 네비게이션 (프로모 페이지에서는 숨김) */}
       {!showPromo && (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white md:hidden">
+        <nav
+          className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white md:hidden"
+          data-tour-zone="mobile-nav"
+        >
           <div className="flex items-center justify-around py-2">
             <MobileNavLink to="/" label="홈" />
             <MobileNavLink to="/plans" label="장기계획" />
@@ -370,6 +376,10 @@ function RootLayout() {
         {showPromo ? <PromoPage /> : <Outlet />}
         {!showPromo && <Footer />}
       </main>
+
+      {/* 온보딩 코치마크 투어 (로그인 사용자, 프로모 화면 제외) */}
+      {isAuthenticated && !showPromo && <OnboardingTour />}
+      {isAuthenticated && !showPromo && <OnboardingLauncher />}
 
       {/* Toast notifications */}
       <Toaster position="top-right" richColors />
