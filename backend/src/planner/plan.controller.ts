@@ -95,7 +95,13 @@ export class PlanController {
     const planCounts = await Promise.all(
       students.map(async (s) => {
         const count = await this.prisma.longTermPlan.count({ where: { studentId: s.id } });
-        return { studentId: Number(s.id), userId: s.userId, name: s.name, planCount: count };
+        return {
+          studentId: Number(s.id),
+          userId: s.userId,
+          name: s.name,
+          studentCode: s.studentCode,
+          planCount: count,
+        };
       }),
     );
 
