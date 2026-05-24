@@ -32,5 +32,11 @@ jobs:
         env:
           PGPASSWORD: tsuser1234
         run: |
+          echo "=== Searching for Student table ==="
+          psql -h 127.0.0.1 -p 5434 -U tsuser -d geobukschool_prod -c \
+            "SELECT table_schema, table_name FROM information_schema.tables WHERE table_name = 'Student';"
+          echo "=== Query result ==="
+          psql -h 127.0.0.1 -p 5434 -U tsuser -d geobukschool_prod -c \
+            'SELECT id, student_code, name FROM studyplanner."Student" WHERE user_id = '"'"'sp_S26H003141'"'"';' || \
           psql -h 127.0.0.1 -p 5434 -U tsuser -d geobukschool_prod -c \
             'SELECT id, student_code, name FROM public."Student" WHERE user_id = '"'"'sp_S26H003141'"'"';'
