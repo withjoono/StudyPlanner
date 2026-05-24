@@ -11,6 +11,7 @@ interface LeaderboardEntry {
   totalScore: number;
   studyMinutes: number;
   missionCount: number;
+  totalPages: number;
   rankChange: number | null; // 이전 기간 대비 순위 변동 (▲양수 ▼음수)
 }
 
@@ -295,6 +296,7 @@ export class RankingService {
 
     // 1. 현재 기간 점수 집계
     const currentScores = await this.aggregateScores(studentIds, start, end);
+    const pagesMap = await this.aggregatePages(studentIds, start, end);
 
     // 2. 이전 기간 점수 집계 (순위 변동용)
     const prevRange = this.getPreviousDateRange(period, date);
@@ -317,6 +319,7 @@ export class RankingService {
         totalScore: score.totalScore,
         studyMinutes: score.studyMinutes,
         missionCount: score.missionCount,
+        totalPages: pagesMap.get(score.studentId) ?? 0,
         rankChange,
       };
     });
@@ -412,6 +415,24 @@ export class RankingService {
       studyMinutes: data.studyMinutes,
       missionCount: data.missionCount,
     }));
+  }
+
+  /** 기간 내 완료 미션의 분량(MissionResult.amount) 합산 */
+  private async aggregatePages(
+    studentIds: bigint[],
+    startDate: string,
+    endDate: string,
+  ): Promise<Map<number, number>> {
+    const results = await this.prisma.missionResult.groupBy({
+      by: ['studentId'],
+      where: {
+        studentId: { in: studentIds },
+        completedDate: { gte: new Date(startDate), lte: new Date(endDate) },
+        amount: { not: null },
+      },
+      _sum: { amount: true },
+    });
+    return new Map(results.map((r) => [Number(r.studentId), Number(r._sum.amount ?? 0)]));
   }
 
   private buildRankMap(scores: { studentId: number; totalScore: number }[]): Map<number, number> {
@@ -513,6 +534,7 @@ export class RankingService {
     const { start, end } = this.getDateRange(period, date);
     const scores = await this.aggregateScores([student.id], start, end);
     const myScore = scores[0] || { totalScore: 0, studyMinutes: 0, missionCount: 0 };
+    const soloPages = await this.aggregatePages([student.id], start, end);
 
     return {
       period,
@@ -526,6 +548,7 @@ export class RankingService {
           totalScore: myScore.totalScore,
           studyMinutes: myScore.studyMinutes,
           missionCount: myScore.missionCount,
+          totalPages: soloPages.get(Number(student.id)) ?? 0,
           rankChange: null,
         },
       ],

@@ -48,11 +48,11 @@ import {
   useAcceptInvitation,
   useDeclineInvitation,
   type MyClassRoom,
-  type LeaderboardEntry,
   type StudentSearchResult,
   type InvitationItem,
 } from '@/stores/server/myclass';
 import { useHubGroupLeaderboard, useLeaderboard } from '@/stores/server/ranking';
+import { GroupLeaderboard, type GroupPeriod } from '@/components/GroupLeaderboard';
 
 export const Route = createLazyFileRoute('/myclass')({
   component: MyClassPage,
@@ -244,7 +244,8 @@ function RoomCard({ room, onClick }: { room: MyClassRoom; onClick: () => void })
 
 function RoomDetail({ roomId, onBack }: { roomId: number; onBack: () => void }) {
   const { data: room } = useMyClassDetail(roomId);
-  const { data: leaderboard } = useMyClassLeaderboard(roomId, 'weekly');
+  const [period, setPeriod] = useState<GroupPeriod>('weekly');
+  const { data: leaderboard, isLoading: isLbLoading } = useMyClassLeaderboard(roomId, period);
   const deleteMutation = useDeleteMyClass();
   const leaveMutation = useLeaveMyClass();
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
@@ -419,27 +420,23 @@ function RoomDetail({ roomId, onBack }: { roomId: number; onBack: () => void }) 
             </div>
           )}
 
-          {/* 리더보드 */}
-          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
-            <div className="border-b border-gray-100 px-6 py-4">
-              <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900">
-                <Trophy className="h-5 w-5 text-amber-500" /> 이번 주 랭킹
-              </h3>
-            </div>
-            <div className="divide-y divide-gray-50">
-              {leaderboard?.leaderboard.map((entry) => (
-                <LeaderboardRow
-                  key={entry.studentId}
-                  entry={entry}
-                  isMe={entry.studentId === leaderboard.myRank?.studentId}
-                />
-              ))}
-              {(!leaderboard?.leaderboard || leaderboard.leaderboard.length === 0) && (
-                <div className="p-8 text-center text-sm text-gray-400">
-                  아직 이번 주 학습 기록이 없습니다.
-                </div>
-              )}
-            </div>
+          {/* 리더보드 — 일/주/월 비교 */}
+          <div className="mb-6">
+            <GroupLeaderboard
+              members={(leaderboard?.leaderboard ?? []).map((e) => ({
+                id: e.studentId,
+                name: e.name,
+                isMe: e.studentId === leaderboard?.myRank?.studentId,
+                grade: e.grade,
+                score: e.totalScore,
+                studyMinutes: e.studyMinutes,
+                totalPages: e.totalPages ?? 0,
+              }))}
+              period={period}
+              onPeriodChange={setPeriod}
+              loading={isLbLoading}
+              emptyText="아직 이 기간의 학습 기록이 없어요"
+            />
           </div>
 
           {/* AI 성취율 평가 */}
@@ -618,56 +615,6 @@ function AiEvaluationPanel({
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function LeaderboardRow({ entry, isMe }: { entry: LeaderboardEntry; isMe: boolean }) {
-  const getRankEmoji = (rank: number) => {
-    if (rank === 1) return '🥇';
-    if (rank === 2) return '🥈';
-    if (rank === 3) return '🥉';
-    return `${rank}`;
-  };
-
-  return (
-    <div
-      className={`flex items-center gap-4 px-6 py-3.5 transition-colors ${
-        isMe ? 'bg-indigo-50' : 'hover:bg-gray-50'
-      } ${entry.rank <= 3 ? 'font-semibold' : ''}`}
-    >
-      <div className="flex h-8 w-8 items-center justify-center text-lg">
-        {getRankEmoji(entry.rank)}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className={`truncate ${isMe ? 'font-bold text-indigo-700' : 'text-gray-800'}`}>
-            {entry.name}
-          </span>
-          {entry.role === 'owner' && <Crown className="h-3.5 w-3.5 flex-shrink-0 text-amber-500" />}
-          {isMe && (
-            <span className="flex-shrink-0 rounded-full bg-indigo-200 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">
-              나
-            </span>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center gap-4 text-sm">
-        <div className="text-right">
-          <div className="font-bold text-gray-900">{entry.totalScore.toLocaleString()}</div>
-          <div className="text-[10px] text-gray-400">점수</div>
-        </div>
-        <div className="text-right">
-          <div className="text-gray-600">
-            {Math.floor(entry.studyMinutes / 60)}h {entry.studyMinutes % 60}m
-          </div>
-          <div className="text-[10px] text-gray-400">학습</div>
-        </div>
-        <div className="text-right">
-          <div className="text-gray-600">{(entry.totalPages ?? 0).toLocaleString()}p</div>
-          <div className="text-[10px] text-gray-400">분량</div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1069,10 +1016,11 @@ function HubGroupLeaderboardSection() {
     (g) => g.id !== 'teacher' && !g.id.startsWith('mc-'),
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [period, setPeriod] = useState<GroupPeriod>('weekly');
   const activeGroupId = selectedId ?? hubGroups[0]?.id ?? null;
   const { data: leaderboard, isLoading: isLbLoading } = useHubGroupLeaderboard(
     activeGroupId,
-    'weekly',
+    period,
   );
 
   if (isGroupsLoading) {
@@ -1111,64 +1059,23 @@ function HubGroupLeaderboardSection() {
         })}
       </div>
 
-      {/* 리더보드 본문 */}
-      <div className="px-4 py-3">
-        {isLbLoading ? (
-          <div className="space-y-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-8 animate-pulse rounded bg-gray-100" />
-            ))}
-          </div>
-        ) : !leaderboard || leaderboard.leaderboard.length === 0 ? (
-          <p className="py-4 text-center text-xs text-gray-400">
-            아직 이 그룹의 학습 데이터가 없습니다.
-          </p>
-        ) : (
-          <ol className="space-y-1">
-            {leaderboard.leaderboard.slice(0, 10).map((e) => {
-              const isMe = leaderboard.myRank === e.rank;
-              return (
-                <li
-                  key={e.studentId}
-                  className={`flex items-center gap-3 rounded-lg px-2 py-1.5 ${
-                    isMe ? 'bg-sky-50' : ''
-                  }`}
-                >
-                  <span
-                    className={`w-6 text-center text-xs font-bold ${
-                      e.rank === 1
-                        ? 'text-amber-500'
-                        : e.rank === 2
-                          ? 'text-gray-400'
-                          : e.rank === 3
-                            ? 'text-orange-400'
-                            : 'text-gray-500'
-                    }`}
-                  >
-                    {e.rank}
-                  </span>
-                  <span className="flex-1 truncate text-sm text-gray-800">
-                    {e.name}
-                    {isMe && <span className="ml-1 text-[10px] text-sky-500">(나)</span>}
-                  </span>
-                  <span className="text-xs font-semibold text-gray-700">
-                    {e.totalScore.toLocaleString()}점
-                  </span>
-                  <span className="text-[10px] text-gray-400">
-                    <Clock className="mr-0.5 inline h-3 w-3" />
-                    {Math.round(e.studyMinutes / 60)}h
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-        {leaderboard && leaderboard.totalMembers > 0 && (
-          <div className="mt-3 flex items-center justify-between border-t border-gray-50 pt-2 text-[10px] text-gray-400">
-            <span>{leaderboard.totalMembers}명 참여 중</span>
-            {leaderboard.myRank && <span>내 순위 #{leaderboard.myRank}</span>}
-          </div>
-        )}
+      {/* 리더보드 본문 — 일/주/월 비교 */}
+      <div className="px-4 py-4">
+        <GroupLeaderboard
+          members={(leaderboard?.leaderboard ?? []).map((e) => ({
+            id: e.studentId,
+            name: e.name,
+            isMe: leaderboard?.myRank === e.rank,
+            grade: e.grade,
+            score: e.totalScore,
+            studyMinutes: e.studyMinutes,
+            totalPages: e.totalPages ?? 0,
+          }))}
+          period={period}
+          onPeriodChange={setPeriod}
+          loading={isLbLoading}
+          emptyText="아직 이 그룹의 학습 데이터가 없어요"
+        />
       </div>
     </div>
   );

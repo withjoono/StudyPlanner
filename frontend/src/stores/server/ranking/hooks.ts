@@ -9,6 +9,7 @@ export interface LeaderboardEntry {
   totalScore: number;
   studyMinutes: number;
   missionCount: number;
+  totalPages: number;
   rankChange: number | null;
 }
 
