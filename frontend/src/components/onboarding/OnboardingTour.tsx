@@ -27,49 +27,49 @@ const NAV = (path: string) => [
 const STEPS: TourStep[] = [
   {
     id: 'welcome',
-    title: '안녕! 나는 거북이야 🐢',
-    body: '스터디플래너 사용법을 30초만에 알려줄게. 천천히 따라와!',
+    title: '안녕하세요, 거북 선생님이에요 🐢',
+    body: '스터디플래너 사용법을 30초만에 안내해 드릴게요.',
     mood: 'wave',
   },
   {
     id: 'plans',
     title: '1단계 · 장기계획',
-    body: "먼저 끝낼 교재와 목표 기간을 정해요. 예를 들면 '수학 기출문제집을 6월까지'처럼요.",
+    body: "끝낼 교재와 목표 기간을 먼저 설정해 주세요. 예: '수학 기출문제집 6월까지'",
     mood: 'point',
     selectors: NAV('/plans'),
   },
   {
     id: 'routine',
     title: '2단계 · 주간루틴',
-    body: '매주 반복되는 공부 시간표를 한 번 짜두면, 매일 계획을 새로 세울 필요가 없어요.',
+    body: '매주 공부할 요일과 시간을 한 번 설정해 두시면 매일 자동으로 적용됩니다.',
     mood: 'point',
     selectors: ['[data-tour-zone="desktop-nav"] a[href="/routine"]'],
   },
   {
     id: 'missions',
     title: '3단계 · 금일계획',
-    body: '장기계획과 루틴을 바탕으로 오늘 할 일이 자동으로 채워져요. 여기서 공부하고 체크하면 끝!',
+    body: '장기계획과 루틴을 바탕으로 오늘 할 일이 자동으로 채워집니다. 완료 후 체크해 주세요.',
     mood: 'happy',
     selectors: NAV('/missions'),
   },
   {
     id: 'timer',
     title: '집중 타이머',
-    body: '공부할 땐 타이머를 켜요. 공부 시간이 자동으로 기록돼서 학습분석에 쓰여요.',
+    body: '공부할 때 타이머를 켜 두세요. 학습 시간이 자동으로 기록됩니다.',
     mood: 'point',
     selectors: ['nav a[href="/timer"]'],
   },
   {
     id: 'mygroup',
     title: '마이 그룹',
-    body: '친구들과 학습량을 비교하고, 선생님이 매긴 점수도 여기서 확인해요. 같이 경쟁해보자!',
+    body: '반 친구들과 학습량을 비교하고 선생님이 매긴 점수도 확인할 수 있습니다.',
     mood: 'cheer',
     selectors: ['[data-tour="nav-mygroup"]'],
   },
   {
     id: 'done',
-    title: '준비 끝! 🐢',
-    body: '이제 직접 해볼까? 막히면 오른쪽 아래 거북이 버튼을 눌러 다시 볼 수 있어. 화이팅!',
+    title: '안내 완료! 🐢',
+    body: '이제 시작해 보세요. 궁금한 점이 생기면 오른쪽 아래 버튼을 눌러 다시 볼 수 있습니다.',
     mood: 'cheer',
   },
 ];
@@ -256,7 +256,7 @@ export function OnboardingTour() {
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">
-                    거북이의 팁
+                    거북 선생님의 안내
                   </span>
                   <span className="text-[11px] font-semibold text-gray-400">
                     {safeIndex + 1} / {STEPS.length}
