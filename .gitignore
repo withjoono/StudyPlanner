@@ -39,6 +39,11 @@ coverage
 .env.test.local
 .env.production.local
 # .env.production is committed (VITE_ vars are public — they're in the JS bundle)
+backend/.env.production
+
+# Tooling caches (not source)
+.playwright-mcp/
+frontend/.tanstack/
 
 # Deployment (contains secrets)
 app.yaml
