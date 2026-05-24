@@ -32,12 +32,5 @@ jobs:
         env:
           PGPASSWORD: tsuser1234
         run: |
-          echo "=== All tables with 'student' in name (case-insensitive) ==="
           psql -h 127.0.0.1 -p 5434 -U tsuser -d geobukschool_prod -c \
-            "SELECT table_schema, table_name FROM information_schema.tables WHERE lower(table_name) LIKE '%student%' ORDER BY table_schema, table_name;"
-          echo "=== All studyplanner schema tables ==="
-          psql -h 127.0.0.1 -p 5434 -U tsuser -d geobukschool_prod -c \
-            "SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema = 'studyplanner' ORDER BY table_name;"
-          echo "=== Query sp_S26H003141 in studyplanner ==="
-          psql -h 127.0.0.1 -p 5434 -U tsuser -d geobukschool_prod -c \
-            'SELECT id, student_code, name FROM studyplanner."Student" WHERE user_id = '"'"'sp_S26H003141'"'"';' 2>&1 || true
+            "SELECT id, student_code, name FROM studyplanner.student WHERE user_id = 'sp_S26H003141';"
