@@ -307,7 +307,10 @@ function PlanSetupDialog({ open, onOpenChange, onSubmit, isLoading }: PlanSetupD
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
+      <DialogContent
+        className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]"
+        aria-describedby={undefined}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg">장기 계획 설정</DialogTitle>
         </DialogHeader>
@@ -835,7 +838,7 @@ function EditPlanDialog({ open, onOpenChange, plan, onSubmit, isLoading }: EditP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px]" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="text-lg">계획 수정</DialogTitle>
         </DialogHeader>
