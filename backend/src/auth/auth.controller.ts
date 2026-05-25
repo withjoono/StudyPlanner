@@ -79,6 +79,7 @@ export class AuthController {
       userName: user.name,
       role: user.role,
       hubUserId: user.hubUserId,
+      studentProfile: (hubInfo?.studentProfile as Record<string, unknown>) || null,
     };
   }
 

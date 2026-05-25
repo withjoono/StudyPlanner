@@ -637,43 +637,51 @@ export interface SubjectsResponse {
   groups: SubjectGroup[];
 }
 
-/** 사용자 ID 기반 교육과정 판별 (백엔드 로직과 동일) */
-function getCurriculumFromUserId(userId?: string): '2015' | '2022' {
-  if (!userId) return '2022';
-  // sp_ 접두사 제거
-  let idBody = userId.startsWith('sp_') ? userId.substring(3) : userId;
-  // S(학생)/T(선생)/P(학부모) 역할 접두사 제거
-  if (/^[STP]/i.test(idBody)) {
-    idBody = idBody.substring(1);
+/** studentProfile의 grade/schoolLevel을 우선 사용해 교육과정 판별.
+ *  - 고등학교 3학년 이상 → 2015 (2026년 기준 고3은 2015 교육과정)
+ *  - 그 외 모든 학년 → 2022
+ *  - studentProfile 없을 때만 user ID 접두사로 폴백 */
+function getCurriculumFromUser(user?: import('@/types/auth').Member | null): '2015' | '2022' {
+  const profile = user?.studentProfile;
+  if (profile) {
+    const grade =
+      typeof profile.grade === 'number' ? profile.grade : parseInt(String(profile.grade ?? ''), 10);
+    const level = (profile.schoolLevel ?? '').toLowerCase();
+    const isHighSchool = level.includes('고') || level === 'high';
+    if (!isNaN(grade)) {
+      if (isHighSchool && grade >= 3) return '2015';
+      return '2022';
+    }
   }
+  // 폴백: user ID 파싱 (sp_S26H3... 형태)
+  const userId = user?.id;
+  if (!userId) return '2022';
+  let idBody = userId.startsWith('sp_') ? userId.substring(3) : userId;
+  if (/^[STP]/i.test(idBody)) idBody = idBody.substring(1);
   const prefix = idBody.substring(0, 4).toUpperCase();
   if (['26H3', '26H4', '26H0'].includes(prefix)) return '2015';
   return '2022';
 }
 
-/** 사용자 ID 기반 교과/과목 목록 조회 */
+/** Hub DB 기반 교과/과목 목록 조회 */
 export function useGetSubjects(): { data: SubjectsResponse | undefined; isLoading: boolean } {
   const user = useAuthStore((state) => state.user);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  // user.id는 "sp_S26H208011" 형태일 수도 있고, Hub UUID 형태일 수도 있음
-  const userId = user?.id || undefined;
-  const curriculum = getCurriculumFromUserId(userId);
+  const curriculum = getCurriculumFromUser(user);
 
   const query = useQuery({
-    queryKey: plannerKeys.subjects(userId ?? 'default'),
+    queryKey: plannerKeys.subjects(curriculum),
     queryFn: async (): Promise<SubjectsResponse> => {
       const response = await plannerClient.get('/planner/subjects', {
-        params: userId ? { user_id: userId } : {},
+        params: { curriculum },
       });
       return response.data;
     },
-    // 인증 상태이거나 user.id가 있으면 호출 (백엔드는 user_id 없이도 기본 2022 반환)
-    enabled: isAuthenticated || !!userId,
+    enabled: isAuthenticated || !!user,
     staleTime: 1000 * 60 * 30,
     retry: 1,
   });
 
-  // API 실패 시 빈 그룹 반환 (더미 데이터 없음)
   const data: SubjectsResponse = query.data ?? {
     curriculum,
     groups: [],

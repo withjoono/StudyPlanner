@@ -26,13 +26,19 @@ export class PlannerController {
   }
 
   @Get('subjects')
-  @ApiOperation({ summary: '사용 가능한 교과/과목 목록 (사용자 ID 기반)' })
-  async getSubjects(@Query('user_id') userId?: string) {
-    const curriculum = this.getCurriculum(userId || '');
+  @ApiOperation({ summary: '교과/과목 목록 (Hub DB 기반)' })
+  async getSubjects(
+    @Query('curriculum') curriculumParam?: string,
+    @Query('user_id') userId?: string,
+  ) {
+    const curriculum: '2015' | '2022' =
+      curriculumParam === '2015' || curriculumParam === '2022'
+        ? curriculumParam
+        : this.getCurriculum(userId || '');
 
     try {
       const model =
-        curriculum === '2015' ? this.prisma.sp2015KyokwaSubject : this.prisma.sp2022KyokwaSubject;
+        curriculum === '2015' ? this.prisma.hub2015KyokwaSubject : this.prisma.hub2022KyokwaSubject;
 
       const subjects = await (model as any).findMany({
         orderBy: [{ kyokwaCode: 'asc' }, { classificationCode: 'asc' }, { subjectCode: 'asc' }],
