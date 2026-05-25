@@ -38,7 +38,7 @@ export class PlannerController {
 
     try {
       const model =
-        curriculum === '2015' ? this.prisma.sp2015KyokwaSubject : this.prisma.sp2022KyokwaSubject;
+        curriculum === '2015' ? this.prisma.hub2015KyokwaSubject : this.prisma.hub2022KyokwaSubject;
 
       const subjects = await (model as any).findMany({
         orderBy: [{ kyokwaCode: 'asc' }, { classificationCode: 'asc' }, { subjectCode: 'asc' }],
