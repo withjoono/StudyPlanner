@@ -209,7 +209,7 @@ export class RankingService {
 
       // SP DB에서 Student 매핑
       const spStudents = await this.prisma.student.findMany({
-        where: { userId: { in: hubUserIds } },
+        where: { userId: { in: hubUserIds.map((h) => this.toSpUserId(h)) } },
         select: { id: true, name: true, grade: true },
       });
 
@@ -251,10 +251,11 @@ export class RankingService {
     }
 
     const hubUserIds = members.map((m) => m.hubUserId);
-    const nicknameByHubId = new Map(members.map((m) => [m.hubUserId, m.nickname]));
+    // Student.userId 는 sp_ 접두어가 붙어 저장되므로 동일하게 맞춰 조회/매핑한다.
+    const nicknameBySpId = new Map(members.map((m) => [this.toSpUserId(m.hubUserId), m.nickname]));
 
     const spStudentsRaw = await this.prisma.student.findMany({
-      where: { userId: { in: hubUserIds } },
+      where: { userId: { in: hubUserIds.map((h) => this.toSpUserId(h)) } },
       select: { id: true, userId: true, grade: true },
     });
     const spStudents = spStudentsRaw.filter(
@@ -267,12 +268,13 @@ export class RankingService {
 
     const students = spStudents.map((s) => ({
       id: Number(s.id),
-      name: nicknameByHubId.get(s.userId) || '학생',
+      name: nicknameBySpId.get(s.userId) || '학생',
       grade: s.grade,
     }));
 
-    const currentStudentId = currentHubUserId
-      ? Number(spStudents.find((s) => s.userId === currentHubUserId)?.id ?? 0) || undefined
+    const currentSpUserId = currentHubUserId ? this.toSpUserId(currentHubUserId) : undefined;
+    const currentStudentId = currentSpUserId
+      ? Number(spStudents.find((s) => s.userId === currentSpUserId)?.id ?? 0) || undefined
       : undefined;
 
     return this.calculateLeaderboard(students, period, date, currentStudentId);
@@ -363,18 +365,34 @@ export class RankingService {
 
   // ─────────── Private Helpers ───────────
 
+  /** Hub 회원 ID에 StudyPlanner 네임스페이스 접두어(sp_)를 적용. 이미 있으면 그대로. */
+  private toSpUserId(hubId: string): string {
+    return hubId.startsWith('sp_') ? hubId : `sp_${hubId}`;
+  }
+
   private async findStudent(memberId: string) {
-    const memberIdNum = parseInt(memberId, 10);
-    if (!isNaN(memberIdNum)) {
-      return this.prisma.student.findUnique({
-        where: { id: BigInt(memberIdNum) },
+    // 순수 숫자면 Student.id 로 직접 조회
+    if (/^\d+$/.test(memberId)) {
+      const byId = await this.prisma.student.findUnique({
+        where: { id: BigInt(memberId) },
         select: { id: true, name: true, grade: true },
       });
+      if (byId) return byId;
     }
-    return this.prisma.student.findFirst({
+    // Hub 회원 ID(userId)로 조회
+    const byUserId = await this.prisma.student.findFirst({
       where: { userId: memberId },
       select: { id: true, name: true, grade: true },
     });
+    if (byUserId) return byUserId;
+    // Hub raw ID → sp_ 접두어 재시도 ("S26H003141" → "sp_S26H003141")
+    if (!memberId.startsWith('sp_')) {
+      return this.prisma.student.findFirst({
+        where: { userId: `sp_${memberId}` },
+        select: { id: true, name: true, grade: true },
+      });
+    }
+    return null;
   }
 
   private async aggregateScores(studentIds: bigint[], startDate: string, endDate: string) {
