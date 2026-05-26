@@ -40,7 +40,7 @@ export const Route = createFileRoute('/')({
   component: Dashboard,
 });
 
-// ───── 과목별 색상 ─────
+// ───── 교과별 색상 (planner.ts KYOKWA_COLORS와 동기화) ─────
 const SUBJECT_COLORS: Record<string, string> = {
   국어: '#ef4444',
   수학: '#eab308',
@@ -48,9 +48,11 @@ const SUBJECT_COLORS: Record<string, string> = {
   사회: '#3b82f6',
   과학: '#14b8a6',
   한국사: '#a855f7',
+  예체능: '#ec4899',
+  기타: '#6b7280',
 };
 function getColor(subject?: string) {
-  return SUBJECT_COLORS[subject ?? ''] || '#8b5cf6';
+  return SUBJECT_COLORS[subject ?? ''] || '#6b7280';
 }
 
 function fmtMinutes(min: number) {

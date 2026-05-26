@@ -34,6 +34,7 @@ import {
   useGetSubjects,
   useSearchMaterials,
   useGetRoutines,
+  useGetPlans,
 } from '@/stores/server/planner';
 import type { DailyMission } from '@/stores/server/planner/planner-types';
 import {
@@ -46,7 +47,8 @@ import {
 } from '@/stores/server/planner/school-schedule';
 import { useSchoolDisplayPrefs } from '@/stores/client';
 import { env } from '@/lib/config/env';
-import { getSubjectColor, MAJOR_CATEGORY_COLORS } from '@/types/planner';
+import { getSubjectColor, getKyokwaColor, MAJOR_CATEGORY_COLORS } from '@/types/planner';
+import type { LongTermPlan } from '@/types/planner';
 import type { Routine } from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'geobuk-shared/ui';
@@ -239,6 +241,19 @@ function MissionDialog({
 }) {
   const { data: subjectsData } = useGetSubjects();
   const groups = subjectsData?.groups || [];
+  const { data: plansData } = useGetPlans();
+
+  // 진행 중인 장기계획 목록 (새 미션 생성 시에만 표시)
+  const activePlans = useMemo(() => {
+    if (!isNew || !plansData) return [];
+    const now = new Date();
+    return plansData.filter((p: LongTermPlan) => {
+      if (!p.startDate || !p.endDate) return false;
+      const end = new Date(p.endDate);
+      end.setHours(23, 59, 59, 999);
+      return end >= now;
+    });
+  }, [plansData, isNew]);
 
   const [form, setForm] = useState<MissionFormData>(INITIAL_FORM);
   const [searchQuery, setSearchQuery] = useState('');
@@ -331,6 +346,20 @@ function MissionDialog({
     setShowResults(false);
   };
 
+  const handleSelectPlan = (plan: LongTermPlan) => {
+    const subject = plan.subject || '';
+    const matchGroup = groups.find(
+      (g: any) => g.kyokwa === subject || g.subjects.some((s: any) => s.subjectName === subject),
+    );
+    setForm((prev) => ({
+      ...prev,
+      title: plan.title,
+      kyokwa: matchGroup?.kyokwa || '',
+      subject,
+      materialTab: plan.type === 'lecture' ? 'lecture' : 'reference',
+    }));
+  };
+
   const planTotal = (Number(form.endPage) || 0) - (Number(form.startPage) || 0);
   const unitLabel = form.materialTab === 'lecture' ? '강' : '페이지';
   const color = form.subject ? getSubjectColor(form.subject) : '#3b82f6';
@@ -360,6 +389,59 @@ function MissionDialog({
         </div>
 
         <div className="space-y-4 px-5 pb-5">
+          {/* 장기계획에서 선택 (새 미션 생성 시) */}
+          {isNew && activePlans.length > 0 && (
+            <div className="rounded-lg border border-indigo-100 bg-indigo-50/50 pt-3">
+              <div className="mb-2 flex items-center gap-1.5 px-3">
+                <Target className="h-4 w-4 text-indigo-500" />
+                <span className="text-sm font-semibold text-indigo-700">장기계획에서 선택</span>
+              </div>
+              <div className="max-h-36 space-y-1 overflow-y-auto px-3 pb-3">
+                {activePlans.map((plan: LongTermPlan) => {
+                  const planColor = getSubjectColor(plan.subject || '기타');
+                  const isSelected =
+                    form.title === plan.title && form.subject === (plan.subject || '');
+                  const unitLabel2 = plan.type === 'lecture' ? '강' : 'p';
+                  return (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => handleSelectPlan(plan)}
+                      className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors ${
+                        isSelected
+                          ? 'border border-indigo-300 bg-indigo-100'
+                          : 'border border-transparent bg-white hover:bg-indigo-50'
+                      }`}
+                    >
+                      <div
+                        className="h-5 w-1 flex-shrink-0 rounded-full"
+                        style={{ backgroundColor: planColor }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium text-gray-800">{plan.title}</p>
+                        <div className="flex items-center gap-1 text-[10px] text-gray-400">
+                          <span
+                            className="rounded px-1 py-0.5 font-medium text-white"
+                            style={{ backgroundColor: planColor }}
+                          >
+                            {plan.subject || '미지정'}
+                          </span>
+                          {(plan.weeklyTarget || 0) > 0 && (
+                            <span>
+                              주 {plan.weeklyTarget}
+                              {unitLabel2}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {isSelected && <span className="text-xs font-bold text-indigo-600">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* 미션 제목 */}
           <div>
             <Label className="text-sm font-semibold text-gray-700">미션 제목</Label>
@@ -702,6 +784,7 @@ function ResultDialog({
 
   useMemo(() => {
     if (mission && open) {
+      setProgressManual(false);
       // 미션 계획 시간으로 학습 시간 초기값 계산
       const calcMinutes = () => {
         try {
@@ -727,12 +810,30 @@ function ResultDialog({
     }
   }, [mission, open]);
 
+  const [progressManual, setProgressManual] = useState(false);
+
   const update = (key: keyof ResultFormData, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    if (key === 'startPage' || key === 'endPage') {
+      setForm((prev) => {
+        const next = { ...prev, [key]: value };
+        // 분량 기반 완성도 자동 계산 (수동 모드가 아닐 때)
+        if (!progressManual && mission && mission.amount > 0) {
+          const sp = key === 'startPage' ? Number(value) : Number(prev.startPage);
+          const ep = key === 'endPage' ? Number(value) : Number(prev.endPage);
+          const done = Math.max(0, ep - sp);
+          const auto = Math.min(100, Math.round((done / mission.amount) * 100));
+          return { ...next, progress: String(auto) };
+        }
+        return next;
+      });
+    } else {
+      setForm((prev) => ({ ...prev, [key]: value }));
+    }
   };
 
   const resultTotal = (Number(form.endPage) || 0) - (Number(form.startPage) || 0);
   const progressNum = Number(form.progress) || 0;
+  const canAutoCalc = !!(mission?.amount && mission.amount > 0);
   const color = mission?.subject ? getSubjectColor(mission.subject) : '#8b5cf6';
 
   const handleSave = () => {
@@ -782,7 +883,10 @@ function ResultDialog({
                 onChange={(e) => update('endPage', e.target.value)}
                 className="h-8 flex-1 text-center text-sm"
               />
-              <div className="flex h-8 min-w-[50px] items-center justify-center rounded-md bg-purple-100 text-sm font-bold text-purple-700">
+              <div
+                className="flex h-8 min-w-[50px] items-center justify-center rounded-md text-sm font-bold"
+                style={{ backgroundColor: `${color}20`, color }}
+              >
                 {resultTotal > 0 ? `${resultTotal}p` : '-'}
               </div>
             </div>
@@ -812,7 +916,35 @@ function ResultDialog({
 
           {/* 완성도 */}
           <div>
-            <Label className="text-xs font-semibold text-gray-600">완성도</Label>
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold text-gray-600">완성도</Label>
+              {canAutoCalc && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProgressManual((prev) => {
+                      if (prev) {
+                        // 자동 모드로 전환 시 재계산
+                        const done = Math.max(0, resultTotal);
+                        const auto = Math.min(
+                          100,
+                          Math.round((done / (mission?.amount || 1)) * 100),
+                        );
+                        setForm((f) => ({ ...f, progress: String(auto) }));
+                      }
+                      return !prev;
+                    });
+                  }}
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${
+                    progressManual
+                      ? 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200'
+                  }`}
+                >
+                  {progressManual ? '수동 입력' : '자동 계산'}
+                </button>
+              )}
+            </div>
             <div className="mt-1.5 flex items-center gap-3">
               <input
                 type="range"
@@ -820,7 +952,10 @@ function ResultDialog({
                 max={100}
                 step={5}
                 value={progressNum}
-                onChange={(e) => update('progress', e.target.value)}
+                onChange={(e) => {
+                  setProgressManual(true);
+                  update('progress', e.target.value);
+                }}
                 className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-gray-200 accent-purple-600"
               />
               <span
@@ -835,7 +970,10 @@ function ResultDialog({
                 <button
                   key={v}
                   type="button"
-                  onClick={() => update('progress', String(v))}
+                  onClick={() => {
+                    setProgressManual(true);
+                    update('progress', String(v));
+                  }}
                   className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold transition-colors ${
                     progressNum === v
                       ? 'bg-purple-600 text-white'
@@ -2323,20 +2461,21 @@ function DailyTimelineCard({
             const e = dailyTlTimeToMin(m.endTime);
             const isDone =
               m.status === 'completed' || (typeof m.progress === 'number' && m.progress >= 100);
+            const mkc = getKyokwaColor(m.subject || '');
             return (
               <button
                 key={`m-${m.id}`}
                 onClick={() => onMissionClick(m)}
-                className={`absolute right-1 cursor-pointer overflow-hidden rounded border-l-2 px-1.5 py-0.5 text-left text-xs ${
-                  isDone
-                    ? 'border-green-500 bg-green-100 text-green-800'
-                    : 'border-purple-500 bg-purple-100 text-purple-800'
-                }`}
+                className="absolute right-1 cursor-pointer overflow-hidden rounded border-l-2 px-1.5 py-0.5 text-left text-xs"
                 style={{
                   width: 'calc(50% - 0.5rem)',
                   top: `${dailyTlToTopPct(s)}%`,
                   height: `${dailyTlToHeightPct(s, e)}%`,
                   zIndex: 20,
+                  borderLeftColor: mkc.solid,
+                  backgroundColor: isDone ? mkc.bg : `${mkc.solid}22`,
+                  color: mkc.text,
+                  opacity: isDone ? 0.7 : 1,
                 }}
                 title={`${m.subject || ''} ${m.content || ''} (${m.startTime}~${m.endTime})`}
               >
@@ -2376,7 +2515,8 @@ function DailyTimelineCard({
           시간표
         </span>
         <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded bg-purple-300" /> 미션
+          <span className="inline-block h-2.5 w-2.5 rounded border-l-2 border-yellow-400 bg-yellow-100" />{' '}
+          미션
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block h-2.5 w-2.5 rounded bg-blue-300" /> 루틴

@@ -15,7 +15,6 @@ import {
   BookOpen,
   Target,
   Sparkles,
-  BarChart3,
   Pencil,
   Trash2,
 } from 'lucide-react';
@@ -38,7 +37,13 @@ import {
 import { useSchoolDisplayPrefs } from '@/stores/client';
 import { env } from '@/lib/config/env';
 import type { Routine, RoutineMajorCategory, LongTermPlan } from '@/types/planner';
-import { MAJOR_CATEGORY_LABELS, MAJOR_CATEGORY_COLORS, getSubjectColor } from '@/types/planner';
+import {
+  MAJOR_CATEGORY_LABELS,
+  MAJOR_CATEGORY_COLORS,
+  getSubjectColor,
+  getKyokwaColor,
+  getKyokwaFromSubject,
+} from '@/types/planner';
 import { Button } from 'geobuk-shared/ui';
 import { Card, CardContent } from 'geobuk-shared/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'geobuk-shared/ui';
@@ -262,13 +267,40 @@ function WeeklyRoutineSummaryCard({
     return { classSubjects, selfStudySubjects, combinedSubjects };
   }, [routines, weekStart, weekEnd]);
 
+  // 과목→교과로 집계하여 파이 데이터 생성
   const getSubjectPieData = (subjects: Record<string, number>): PieChartData[] => {
-    return Object.entries(subjects).map(([label, value]) => ({
+    const kyokwaMap: Record<string, number> = {};
+    Object.entries(subjects).forEach(([subjectName, minutes]) => {
+      const kyokwa = getKyokwaFromSubject(subjectName) || '기타';
+      kyokwaMap[kyokwa] = (kyokwaMap[kyokwa] || 0) + minutes;
+    });
+    return Object.entries(kyokwaMap).map(([label, value]) => ({
       label,
       value,
       color: getSubjectColor(label),
     }));
   };
+
+  // 유형별 주간 시간 (수업/자습/운동/일정)
+  const typeMinutes = useMemo(() => {
+    const totals: Record<string, number> = { class: 0, self_study: 0, exercise: 0, schedule: 0 };
+    routines.forEach((r) => {
+      if (r.startDate && r.endDate) {
+        const rs = new Date(r.startDate);
+        const re = new Date(r.endDate);
+        rs.setHours(0, 0, 0, 0);
+        re.setHours(23, 59, 59, 999);
+        if (weekStart > re || weekEnd < rs) return;
+      }
+      const [sh, sm] = r.startTime.split(':').map(Number);
+      const [eh, em] = r.endTime.split(':').map(Number);
+      const duration = eh * 60 + em - (sh * 60 + sm);
+      if (duration <= 0) return;
+      totals[r.majorCategory] =
+        (totals[r.majorCategory] || 0) + duration * r.days.filter(Boolean).length;
+    });
+    return totals;
+  }, [routines, weekStart, weekEnd]);
 
   const totalMinutes = summaryBySubject.reduce((sum, s) => sum + s.totalTime, 0);
   const totalSessions = summaryBySubject.reduce((sum, s) => sum + s.count, 0);
@@ -340,9 +372,36 @@ function WeeklyRoutineSummaryCard({
           )}
         </div>
 
-        {/* 과목별 원형 차트 */}
+        {/* 유형별 시간 */}
+        <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
+          <h4 className="mb-2 text-sm font-semibold text-gray-600">유형별 시간</h4>
+          <div className="grid grid-cols-4 gap-2">
+            {(
+              [
+                { key: 'class', label: '수업', color: '#3b82f6' },
+                { key: 'self_study', label: '자습', color: '#f97316' },
+                { key: 'exercise', label: '운동', color: '#22c55e' },
+                { key: 'schedule', label: '일정', color: '#64748b' },
+              ] as const
+            ).map(({ key, label, color }) => (
+              <div
+                key={key}
+                className="flex flex-col items-center rounded-lg border bg-white px-2 py-2"
+              >
+                <span className="text-[10px] font-medium" style={{ color }}>
+                  {label}
+                </span>
+                <span className="mt-0.5 text-xs font-bold text-gray-700">
+                  {formatTime(typeMinutes[key] || 0)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 교과별 원형 차트 */}
         <div className="mb-4 rounded-lg border border-gray-100 bg-gray-50 p-4">
-          <h4 className="mb-3 text-center text-sm font-semibold text-gray-600">과목별 시간 비중</h4>
+          <h4 className="mb-3 text-center text-sm font-semibold text-gray-600">교과별 시간 비중</h4>
           <div className="grid grid-cols-3 gap-4">
             <PieChart
               data={getSubjectPieData(subjectStats.classSubjects)}
@@ -362,39 +421,53 @@ function WeeklyRoutineSummaryCard({
           </div>
         </div>
 
-        {/* 과목별 루틴 목록 */}
+        {/* 교과별 루틴 목록 */}
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {summaryBySubject.map((summary) => {
-            const color = getSubjectColor(summary.subject);
-            const categoryLabel = summary.category === 'class' ? '수업' : '자습';
+            const kc = getKyokwaColor(summary.subject);
+            const isClass = summary.category === 'class';
 
             return (
               <div
                 key={summary.subject}
-                className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 p-3"
+                className="flex items-start gap-3 overflow-hidden rounded-lg border p-3"
+                style={{
+                  borderColor: kc.solid,
+                  backgroundColor: isClass ? kc.bg : 'white',
+                  ...(isClass ? {} : { borderStyle: 'dashed' }),
+                }}
               >
-                {/* 과목 색상 바 */}
+                {/* 교과 색상 바 */}
                 <div
-                  className="mt-0.5 h-full w-1 flex-shrink-0 rounded-full"
-                  style={{ backgroundColor: color, minHeight: '40px' }}
+                  className="mt-0.5 w-1 flex-shrink-0 rounded-full"
+                  style={{ backgroundColor: kc.solid, minHeight: '40px', alignSelf: 'stretch' }}
                 />
 
                 <div className="min-w-0 flex-1">
-                  {/* 과목명 */}
+                  {/* 교과명 + 수업/자습 */}
                   <div className="flex items-center gap-2">
                     <span
-                      className="rounded px-2 py-0.5 text-xs font-medium text-white"
-                      style={{ backgroundColor: color }}
+                      className="rounded px-2 py-0.5 text-xs font-semibold text-white"
+                      style={{ backgroundColor: kc.solid }}
                     >
                       {summary.subject}
                     </span>
-                    <span className="text-xs text-gray-400">{categoryLabel}</span>
+                    <span
+                      className="rounded border px-1.5 py-0.5 text-[10px] font-medium"
+                      style={{
+                        borderColor: kc.solid,
+                        color: kc.text,
+                        borderStyle: isClass ? 'solid' : 'dashed',
+                      }}
+                    >
+                      {isClass ? '수업' : '자습'}
+                    </span>
                   </div>
 
                   {/* 루틴 제목들 */}
                   <div className="mt-1.5 space-y-0.5">
                     {summary.titles.map((title, idx) => (
-                      <p key={idx} className="truncate text-xs text-gray-600">
+                      <p key={idx} className="truncate text-xs" style={{ color: kc.text }}>
                         • {title}
                       </p>
                     ))}
@@ -452,9 +525,8 @@ function useSchoolEventsForWeek(weekStart: Date, weekEnd: Date): Map<string, Sch
   }, [r1.data, r2.data, sm, em]);
 }
 
-const MAJOR_COLOR_HEX: Record<string, string> = {
-  class: '#3b82f6',
-  self_study: '#f97316',
+// 수업/자습은 교과 색상으로 표시 → 여기선 운동/일정만 유지
+const NON_STUDY_COLOR: Record<string, string> = {
   exercise: '#22c55e',
   schedule: '#64748b',
 };
@@ -745,31 +817,44 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
                           Math.min(END_HOUR * 60, endM) - Math.max(START_HOUR * 60, startM),
                           20,
                         );
-                        const color = routine.subject
-                          ? getSubjectColor(routine.subject)
-                          : (MAJOR_COLOR_HEX[routine.majorCategory] ?? '#94a3b8');
+
+                        const isClass = routine.majorCategory === 'class';
+                        const isSelfStudy = routine.majorCategory === 'self_study';
+                        const isStudy = isClass || isSelfStudy;
+
+                        // 수업/자습: 교과 색상 | 운동/일정: 카테고리 고정색
+                        const kc = isStudy ? getKyokwaColor(routine.subject || '') : null;
+                        const catColor = NON_STUDY_COLOR[routine.majorCategory] ?? '#94a3b8';
+
+                        // A안: 수업=파스텔배경+좌측실선 / 자습=흰배경+전체점선
+                        const blockStyle = isClass
+                          ? { backgroundColor: kc!.bg, borderLeft: `4px solid ${kc!.solid}` }
+                          : isSelfStudy
+                            ? { backgroundColor: 'white', border: `1.5px dashed ${kc!.solid}` }
+                            : {
+                                backgroundColor: `${catColor}20`,
+                                borderLeft: `3px solid ${catColor}`,
+                              };
+
+                        const textColor = isStudy ? kc!.text : catColor;
+
                         return (
                           <div
                             key={routine.id}
                             className="absolute left-0.5 right-0.5 overflow-hidden rounded"
-                            style={{
-                              top: `${topPx}px`,
-                              height: `${heightPx}px`,
-                              backgroundColor: `${color}28`,
-                              borderLeft: `3px solid ${color}`,
-                            }}
+                            style={{ top: `${topPx}px`, height: `${heightPx}px`, ...blockStyle }}
                             title={`${routine.title} (${routine.startTime}~${routine.endTime})`}
                           >
                             <div
                               className="truncate px-1 pt-0.5 text-[10px] font-semibold leading-tight"
-                              style={{ color }}
+                              style={{ color: textColor }}
                             >
                               {routine.title}
                             </div>
                             {heightPx >= 32 && (
                               <div
                                 className="px-1 text-[9px] leading-none"
-                                style={{ color: `${color}99` }}
+                                style={{ color: `${textColor}99` }}
                               >
                                 {routine.startTime}
                               </div>
@@ -786,18 +871,38 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
 
           {/* 범례 */}
           <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-3">
-            {Object.entries(MAJOR_CATEGORY_LABELS).map(([key, label]) => {
-              const c = MAJOR_COLOR_HEX[key] ?? '#94a3b8';
-              return (
-                <div key={key} className="flex items-center gap-1.5 text-xs text-gray-600">
-                  <div
-                    className="h-3 w-3 rounded"
-                    style={{ backgroundColor: `${c}44`, borderLeft: `3px solid ${c}` }}
-                  />
-                  <span>{label}</span>
-                </div>
-              );
-            })}
+            {/* 수업: 파스텔 배경 + 좌측 실선 */}
+            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+              <div
+                className="h-3 w-5 rounded"
+                style={{ backgroundColor: '#fefce8', borderLeft: '4px solid #eab308' }}
+              />
+              <span>수업</span>
+            </div>
+            {/* 자습: 흰 배경 + 점선 전체 테두리 */}
+            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+              <div
+                className="h-3 w-5 rounded bg-white"
+                style={{ border: '1.5px dashed #eab308' }}
+              />
+              <span>자습</span>
+            </div>
+            {/* 운동 */}
+            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+              <div
+                className="h-3 w-3 rounded"
+                style={{ backgroundColor: '#22c55e20', borderLeft: '3px solid #22c55e' }}
+              />
+              <span>운동</span>
+            </div>
+            {/* 일정 */}
+            <div className="flex items-center gap-1.5 text-xs text-gray-600">
+              <div
+                className="h-3 w-3 rounded"
+                style={{ backgroundColor: '#64748b20', borderLeft: '3px solid #64748b' }}
+              />
+              <span>일정</span>
+            </div>
             <div className="flex items-center gap-1.5 text-xs text-gray-600">
               <div className="h-3 w-3 rounded border-l-2 border-gray-300 bg-gray-100" />
               <span>학교 시간표</span>
@@ -856,11 +961,17 @@ function WeeklyCalendar({ routines }: { routines: Routine[] }) {
 // 루틴 폼 다이얼로그
 // ============================================
 
+interface DaySchedule {
+  day: number; // 0=일 1=월 ... 6=토
+  startTime: string;
+  endTime: string;
+}
+
 interface RoutineFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   routine?: Routine;
-  onSubmit: (data: Omit<Routine, 'id'>) => void;
+  onSubmit: (data: Omit<Routine, 'id'>[]) => void;
   isLoading?: boolean;
 }
 
@@ -880,12 +991,22 @@ function RoutineFormDialog({
     title: routine?.title || '',
     majorCategory: routine?.majorCategory || ('self_study' as RoutineMajorCategory),
     subject: routine?.subject || ('' as string),
-    startTime: routine?.startTime || '09:00',
-    endTime: routine?.endTime || '10:00',
     repeat: routine?.repeat ?? true,
-    days: routine?.days || [false, true, true, true, true, true, false],
     startDate: routine?.startDate || defaultStartDate,
     endDate: routine?.endDate || defaultEndDate,
+  });
+
+  // 요일별 개별 시간 설정
+  const [daySchedules, setDaySchedules] = useState<DaySchedule[]>(() => {
+    if (!routine) return [{ day: 1, startTime: '09:00', endTime: '10:00' }];
+    const activeIdx = routine.days.map((active, i) => (active ? i : -1)).filter((i) => i >= 0);
+    if (activeIdx.length === 0)
+      return [{ day: 1, startTime: routine.startTime, endTime: routine.endTime }];
+    return activeIdx.map((day) => ({
+      day,
+      startTime: routine.startTime,
+      endTime: routine.endTime,
+    }));
   });
 
   // 교과 선택 상태
@@ -915,8 +1036,8 @@ function RoutineFormDialog({
   const handleSelectMission = (plan: LongTermPlan) => {
     const subject = plan.subject || '';
     // 교과 역추적
-    const matchGroup = subjectGroups.find((g) =>
-      g.subjects.some((s: any) => s.subjectName === subject),
+    const matchGroup = subjectGroups.find(
+      (g) => g.kyokwa === subject || g.subjects.some((s: any) => s.subjectName === subject),
     );
     if (matchGroup) setSelectedKyokwa(matchGroup.kyokwa);
 
@@ -937,17 +1058,16 @@ function RoutineFormDialog({
         title: routine.title,
         majorCategory: routine.majorCategory,
         subject: routine.subject || '',
-        startTime: routine.startTime,
-        endTime: routine.endTime,
         repeat: routine.repeat,
-        days: routine.days,
         startDate: routine.startDate,
         endDate: routine.endDate,
       });
       // 기존 과목에서 교과 역추적
       if (routine.subject) {
-        const matchGroup = subjectGroups.find((g) =>
-          g.subjects.some((s) => s.subjectName === routine.subject),
+        const matchGroup = subjectGroups.find(
+          (g) =>
+            g.kyokwa === routine.subject ||
+            g.subjects.some((s) => s.subjectName === routine.subject),
         );
         if (matchGroup) setSelectedKyokwa(matchGroup.kyokwa);
       }
@@ -956,17 +1076,60 @@ function RoutineFormDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      ...formData,
-      subject: formData.subject || undefined,
-    } as Omit<Routine, 'id'>);
+    // 요일별 시간을 (startTime|endTime) 키로 그룹화
+    const timeGroups = new Map<string, Set<number>>();
+    daySchedules.forEach(({ day, startTime, endTime }) => {
+      const key = `${startTime}|${endTime}`;
+      if (!timeGroups.has(key)) timeGroups.set(key, new Set());
+      timeGroups.get(key)!.add(day);
+    });
+
+    const subject = formData.subject || selectedKyokwa || undefined;
+    const results: Omit<Routine, 'id'>[] = [];
+    timeGroups.forEach((daysSet, key) => {
+      const [startTime, endTime] = key.split('|');
+      const daysArray = Array.from({ length: 7 }, (_, i) => daysSet.has(i));
+      results.push({
+        title: formData.title,
+        majorCategory: formData.majorCategory,
+        subject,
+        startTime,
+        endTime,
+        repeat: formData.repeat,
+        days: daysArray,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+      } as Omit<Routine, 'id'>);
+    });
+
+    onSubmit(
+      results.length > 0
+        ? results
+        : [
+            {
+              title: formData.title,
+              majorCategory: formData.majorCategory,
+              subject,
+              startTime: '09:00',
+              endTime: '10:00',
+              repeat: formData.repeat,
+              days: [false, true, true, true, true, true, false],
+              startDate: formData.startDate,
+              endDate: formData.endDate,
+            } as Omit<Routine, 'id'>,
+          ],
+    );
   };
 
-  const toggleDay = (index: number) => {
-    const newDays = [...formData.days];
-    newDays[index] = !newDays[index];
-    setFormData({ ...formData, days: newDays });
+  const updateDaySchedule = (idx: number, field: keyof DaySchedule, value: string | number) => {
+    setDaySchedules((prev) => prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s)));
   };
+
+  const addDaySchedule = () =>
+    setDaySchedules((prev) => [...prev, { day: 1, startTime: '09:00', endTime: '10:00' }]);
+
+  const removeDaySchedule = (idx: number) =>
+    setDaySchedules((prev) => prev.filter((_, i) => i !== idx));
 
   // 대분류 변경 시 과목 초기화
   const handleMajorCategoryChange = (category: RoutineMajorCategory) => {
@@ -1174,49 +1337,56 @@ function RoutineFormDialog({
             </div>
           )}
 
-          {/* 시간 */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="startTime">시작 시간</Label>
-              <Input
-                id="startTime"
-                type="time"
-                value={formData.startTime}
-                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="endTime">종료 시간</Label>
-              <Input
-                id="endTime"
-                type="time"
-                value={formData.endTime}
-                onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                required
-              />
-            </div>
-          </div>
-
-          {/* 반복 요일 */}
+          {/* 요일별 개별 시간 설정 */}
           <div>
-            <Label>반복 요일</Label>
-            <div className="mt-2 flex justify-between">
-              {DAYS_KR.map((day, idx) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => toggleDay(idx)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-colors ${
-                    formData.days[idx]
-                      ? 'bg-ultrasonic-500 text-white'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  {day}
-                </button>
+            <Label>요일 및 시간</Label>
+            <div className="mt-2 space-y-2">
+              {daySchedules.map((schedule, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <select
+                    value={schedule.day}
+                    onChange={(e) => updateDaySchedule(idx, 'day', Number(e.target.value))}
+                    className="rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none"
+                  >
+                    {DAYS_KR.map((d, i) => (
+                      <option key={i} value={i}>
+                        {d}요일
+                      </option>
+                    ))}
+                  </select>
+                  <Input
+                    type="time"
+                    value={schedule.startTime}
+                    onChange={(e) => updateDaySchedule(idx, 'startTime', e.target.value)}
+                    className="h-9 flex-1 text-sm"
+                  />
+                  <span className="text-xs text-gray-400">~</span>
+                  <Input
+                    type="time"
+                    value={schedule.endTime}
+                    onChange={(e) => updateDaySchedule(idx, 'endTime', e.target.value)}
+                    className="h-9 flex-1 text-sm"
+                  />
+                  {daySchedules.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeDaySchedule(idx)}
+                      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-300 hover:bg-red-50 hover:text-red-500"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={addDaySchedule}
+              className="mt-2 flex items-center gap-1.5 text-sm text-indigo-500 hover:text-indigo-700"
+            >
+              <Plus className="h-4 w-4" />
+              요일 추가
+            </button>
           </div>
 
           {/* 버튼 */}
@@ -1487,11 +1657,13 @@ function PlannerRoutinePage() {
     });
   };
 
-  const handleSubmit = async (data: Omit<Routine, 'id'>) => {
+  const handleSubmit = async (items: Omit<Routine, 'id'>[]) => {
     if (editingRoutine) {
-      await updateMutation.mutateAsync({ ...data, id: editingRoutine.id } as Routine);
+      await updateMutation.mutateAsync({ ...items[0], id: editingRoutine.id } as Routine);
     } else {
-      await createMutation.mutateAsync(data);
+      for (const item of items) {
+        await createMutation.mutateAsync(item);
+      }
     }
     setIsFormOpen(false);
     setEditingRoutine(undefined);
@@ -1589,213 +1761,123 @@ function PlannerRoutinePage() {
         <WeeklyCalendar routines={routines || []} />
       </div>
 
-      {/* ═══════ 주간 미션 ═══════ */}
-      <div className="mx-auto w-full max-w-screen-xl px-4 pb-4">
-        <WeeklyMissionSection />
-      </div>
+      {/* ═══════ 주간미션 + 루틴목록 좌우 배치 ═══════ */}
+      <div className="mx-auto w-full max-w-screen-xl px-4 pb-24">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          {/* 주간 미션 — 좌측 */}
+          <div className="lg:w-80 lg:flex-shrink-0">
+            <WeeklyMissionSection />
+          </div>
 
-      {/* ═══════ 루틴 목록 (카테고리별 아코디언) ═══════ */}
-      <div className="mx-auto w-full max-w-screen-xl px-4 pb-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-700">📋 루틴 목록</h3>
-        </div>
-        {routines && routines.length > 0 ? (
-          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-            {(Object.entries(MAJOR_CATEGORY_LABELS) as [RoutineMajorCategory, string][]).map(
-              ([key, label], sectionIdx) => {
-                const categoryRoutines = routines.filter((r) => r.majorCategory === key);
-                if (categoryRoutines.length === 0) return null;
-                const colors = MAJOR_CATEGORY_COLORS[key];
-                const isOpen = openCategories.has(key);
-                return (
-                  <div key={key} className={sectionIdx > 0 ? 'border-t border-gray-100' : ''}>
-                    {/* 섹션 헤더 */}
-                    <button
-                      onClick={() => toggleCategory(key)}
-                      className="flex w-full items-center gap-2.5 px-4 py-3 hover:bg-gray-50"
-                    >
-                      <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${colors.bg}`} />
-                      <span className="text-sm font-semibold text-gray-700">{label}</span>
-                      <span className="text-xs text-gray-400">{categoryRoutines.length}개</span>
-                      <ChevronRight
-                        className={`ml-auto h-4 w-4 text-gray-300 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
-                      />
-                    </button>
-                    {/* 루틴 행 */}
-                    {isOpen && (
-                      <div className="border-t border-gray-50">
-                        {categoryRoutines.map((routine) => {
-                          const subjectColor = routine.subject
-                            ? getSubjectColor(routine.subject)
-                            : undefined;
-                          const activeDays = DAYS_KR.filter((_, idx) => routine.days[idx]).join('');
-                          return (
-                            <div
-                              key={routine.id}
-                              className="group/row flex items-center gap-3 border-b border-gray-50 px-4 py-2.5 last:border-0 hover:bg-gray-50/70"
-                            >
-                              <span
-                                className="h-2 w-2 flex-shrink-0 rounded-full"
-                                style={{ backgroundColor: subjectColor ?? '#94a3b8' }}
-                              />
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-gray-800">
-                                  {routine.title}
-                                </p>
-                                <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400">
-                                  {routine.subject && (
-                                    <>
-                                      <span style={{ color: subjectColor }} className="font-medium">
-                                        {routine.subject}
+          {/* 루틴 목록 — 우측 */}
+          <div className="flex-1">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-700">📋 루틴 목록</h3>
+            </div>
+            {routines && routines.length > 0 ? (
+              <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                {(Object.entries(MAJOR_CATEGORY_LABELS) as [RoutineMajorCategory, string][]).map(
+                  ([key, label], sectionIdx) => {
+                    const categoryRoutines = routines.filter((r) => r.majorCategory === key);
+                    if (categoryRoutines.length === 0) return null;
+                    const colors = MAJOR_CATEGORY_COLORS[key];
+                    const isOpen = openCategories.has(key);
+                    return (
+                      <div key={key} className={sectionIdx > 0 ? 'border-t border-gray-100' : ''}>
+                        <button
+                          onClick={() => toggleCategory(key)}
+                          className="flex w-full items-center gap-2.5 px-4 py-3 hover:bg-gray-50"
+                        >
+                          <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${colors.bg}`} />
+                          <span className="text-sm font-semibold text-gray-700">{label}</span>
+                          <span className="text-xs text-gray-400">{categoryRoutines.length}개</span>
+                          <ChevronRight
+                            className={`ml-auto h-4 w-4 text-gray-300 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}
+                          />
+                        </button>
+                        {isOpen && (
+                          <div className="border-t border-gray-50">
+                            {categoryRoutines.map((routine) => {
+                              const subjectColor = routine.subject
+                                ? getSubjectColor(routine.subject)
+                                : undefined;
+                              const activeDays = DAYS_KR.filter((_, idx) => routine.days[idx]).join(
+                                '',
+                              );
+                              return (
+                                <div
+                                  key={routine.id}
+                                  className="group/row flex items-center gap-3 border-b border-gray-50 px-4 py-2.5 last:border-0 hover:bg-gray-50/70"
+                                >
+                                  <span
+                                    className="h-2 w-2 flex-shrink-0 rounded-full"
+                                    style={{ backgroundColor: subjectColor ?? '#94a3b8' }}
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-medium text-gray-800">
+                                      {routine.title}
+                                    </p>
+                                    <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400">
+                                      {routine.subject && (
+                                        <>
+                                          <span
+                                            style={{ color: subjectColor }}
+                                            className="font-medium"
+                                          >
+                                            {routine.subject}
+                                          </span>
+                                          <span>·</span>
+                                        </>
+                                      )}
+                                      <span className="font-medium text-gray-500">
+                                        {activeDays || '-'}
                                       </span>
                                       <span>·</span>
-                                    </>
-                                  )}
-                                  <span className="font-medium text-gray-500">
-                                    {activeDays || '-'}
-                                  </span>
-                                  <span>·</span>
-                                  <span>
-                                    {routine.startTime}~{routine.endTime}
-                                  </span>
+                                      <span>
+                                        {routine.startTime}~{routine.endTime}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100">
+                                    <button
+                                      onClick={() => handleComment(routine)}
+                                      className="rounded p-1.5 text-gray-300 hover:bg-indigo-50 hover:text-indigo-500"
+                                    >
+                                      <MessageSquare className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleEdit(routine)}
+                                      className="rounded p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(routine.id)}
+                                      className="rounded p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-500"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="flex flex-shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100">
-                                <button
-                                  onClick={() => handleComment(routine)}
-                                  className="rounded p-1.5 text-gray-300 hover:bg-indigo-50 hover:text-indigo-500"
-                                >
-                                  <MessageSquare className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleEdit(routine)}
-                                  className="rounded p-1.5 text-gray-300 hover:bg-gray-100 hover:text-gray-600"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(routine.id)}
-                                  className="rounded p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-500"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              },
+                    );
+                  },
+                )}
+              </div>
+            ) : (
+              <EmptyState
+                mood="point"
+                title="2단계 · 주간루틴 만들기"
+                description="매주 반복할 공부 요일과 시간을 정하세요. 장기계획의 분량이 이 시간표에 맞춰 자동 배분됩니다"
+                actionLabel="루틴 추가하기"
+                onAction={handleCreate}
+              />
             )}
           </div>
-        ) : (
-          <EmptyState
-            mood="point"
-            title="2단계 · 주간루틴 만들기"
-            description="매주 반복할 공부 요일과 시간을 정하세요. 장기계획의 분량이 이 시간표에 맞춰 자동 배분됩니다"
-            actionLabel="루틴 추가하기"
-            onAction={handleCreate}
-          />
-        )}
-      </div>
-
-      {/* ═══════ 분석 ═══════ */}
-      <div className="mx-auto w-full max-w-screen-xl px-4 pb-24">
-        <div className="mb-3">
-          <h3 className="text-sm font-bold text-gray-700">📊 분석</h3>
-        </div>
-        <div className="space-y-4">
-          {routines && routines.length > 0 ? (
-            <>
-              {/* 카테고리별 분석 */}
-              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-                <h4 className="mb-3 text-sm font-bold text-gray-700">카테고리별 루틴</h4>
-                <div className="space-y-2.5">
-                  {Object.entries(MAJOR_CATEGORY_LABELS).map(([key, label]) => {
-                    const count = routines.filter((r) => r.majorCategory === key).length;
-                    const maxCount = Math.max(
-                      ...Object.keys(MAJOR_CATEGORY_LABELS).map(
-                        (k) => routines.filter((r) => r.majorCategory === k).length,
-                      ),
-                      1,
-                    );
-                    const catColors = MAJOR_CATEGORY_COLORS[key as RoutineMajorCategory];
-                    return (
-                      <div key={key}>
-                        <div className="mb-1 flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`inline-block h-2 w-2 rounded-full ${catColors.bg}`} />
-                            <span className="font-medium text-gray-700">{label}</span>
-                          </div>
-                          <span className="font-bold text-gray-500">{count}개</span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                          <div
-                            className={`h-full rounded-full ${catColors.bg} transition-all duration-500`}
-                            style={{ width: `${(count / maxCount) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 요일별 분석 */}
-              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-                <h4 className="mb-3 text-sm font-bold text-gray-700">📅 요일별 루틴 수</h4>
-                <div className="grid grid-cols-7 gap-2">
-                  {DAYS_KR.map((day, idx) => {
-                    const count = routines.filter((r) => r.days[idx]).length;
-                    return (
-                      <div key={day} className="text-center">
-                        <div
-                          className={`mx-auto flex h-10 w-10 items-center justify-center rounded-xl ${count > 0 ? 'bg-indigo-50' : 'bg-gray-50'}`}
-                        >
-                          <span
-                            className={`text-sm font-bold ${count > 0 ? 'text-indigo-600' : 'text-gray-300'}`}
-                          >
-                            {count}
-                          </span>
-                        </div>
-                        <span className="mt-1 block text-[10px] font-medium text-gray-400">
-                          {day}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 달성 요약 */}
-              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-                <h4 className="mb-3 text-sm font-bold text-gray-700">🎯 요약</h4>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-xl bg-blue-50 p-3 text-center">
-                    <div className="text-xl font-extrabold text-blue-600">{totalRoutines}</div>
-                    <div className="text-[10px] font-medium text-blue-500">전체</div>
-                  </div>
-                  <div className="rounded-xl bg-emerald-50 p-3 text-center">
-                    <div className="text-xl font-extrabold text-emerald-600">{studyRoutines}</div>
-                    <div className="text-[10px] font-medium text-emerald-500">학습</div>
-                  </div>
-                  <div className="rounded-xl bg-amber-50 p-3 text-center">
-                    <div className="text-xl font-extrabold text-amber-600">
-                      {Math.round(totalWeeklyHours / 60)}
-                    </div>
-                    <div className="text-[10px] font-medium text-amber-500">주간 시간(h)</div>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center rounded-2xl border border-gray-100 bg-white py-12 shadow-sm">
-              <BarChart3 className="mb-3 h-10 w-10 text-gray-200" />
-              <p className="text-sm text-gray-400">분석할 데이터가 없습니다</p>
-            </div>
-          )}
         </div>
       </div>
 

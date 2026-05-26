@@ -6,83 +6,71 @@
 // 상수 정의
 // ─────────────────────────────────────────────────────
 
-/** 과목 색상 매핑 */
-export const SUBJECT_COLORS: Record<string, string> = {
-  // 주요 교과
-  국어: '#c026d3', // fuchsia (국어 전용; 음악·미술·체육은 거의 미사용)
-  수학: '#eab308', // yellow
-  영어: '#f97316', // orange
-  사회: '#3b82f6', // blue
-  과학: '#14b8a6', // teal
-  한국사: '#a855f7', // purple
+/** 교과 키 타입 */
+export type KyokwaKey = '국어' | '수학' | '영어' | '사회' | '과학' | '한국사' | '예체능' | '기타';
 
-  // 사탐/과탐 통합
-  사탐: '#2563eb', // blue-600
-  과탐: '#0d9488', // teal-600
+/** 교과별 색상 3종 세트 */
+export interface KyokwaColor {
+  solid: string; // 대표색 (테두리·배지 배경)
+  bg: string; // 파스텔 배경 (수업 블록)
+  text: string; // 어두운 글자색
+}
 
-  // 국어 세부 (fuchsia 계열)
-  공통국어1: '#a21caf', // fuchsia-700
-  공통국어2: '#86198f', // fuchsia-800
-  문학: '#d946ef', // fuchsia-500
-  독서: '#e879f9', // fuchsia-400
-  화법과작문: '#c026d3', // fuchsia-600
-  언어와매체: '#701a75', // fuchsia-900
-
-  // 수학 세부
-  수학1: '#ca8a04', // yellow-600
-  수학2: '#a16207', // yellow-700
-  확률과통계: '#d97706', // amber-600
-  미적분: '#b45309', // amber-700
-  기하: '#92400e', // amber-800
-
-  // 영어 세부
-  영어1: '#ea580c', // orange-600
-  영어2: '#c2410c', // orange-700
-
-  // 사회 세부
-  생활과윤리: '#1d4ed8', // blue-700
-  윤리와사상: '#1e40af', // blue-800
-  한국지리: '#2563eb', // blue-600
-  세계지리: '#3730a3', // indigo-800
-  동아시아사: '#4f46e5', // indigo-600
-  세계사: '#6366f1', // indigo-500
-  정치와법: '#7c3aed', // violet-600
-  경제: '#6d28d9', // violet-700
-  사회문화: '#4338ca', // indigo-700
-
-  // 과학 세부
-  통합과학: '#0f766e', // teal-700
-  물리학1: '#0891b2', // cyan-600
-  물리학2: '#0e7490', // cyan-700
-  화학1: '#059669', // emerald-600
-  화학2: '#047857', // emerald-700
-  생명과학1: '#16a34a', // green-600
-  생명과학2: '#15803d', // green-700
-  지구과학1: '#0284c7', // sky-600
-  지구과학2: '#0369a1', // sky-700
-
-  // 예체능 & 기타
-  음악: '#c026d3', // fuchsia-600
-  미술: '#db2777', // pink-600
-  체육: '#65a30d', // lime-600
-  기술가정: '#78716c', // stone-500
-  정보: '#06b6d4', // cyan-500
-  제2외국어: '#6366f1', // indigo-500
-  한문: '#9333ea', // purple-600
-  기타: '#6b7280', // gray-500
+/** 교과별 색상 정의 */
+export const KYOKWA_COLORS: Record<KyokwaKey, KyokwaColor> = {
+  국어: { solid: '#ef4444', bg: '#fef2f2', text: '#b91c1c' }, // red-500 / red-50 / red-700
+  수학: { solid: '#eab308', bg: '#fefce8', text: '#854d0e' }, // yellow-500 / yellow-50 / yellow-800
+  영어: { solid: '#f97316', bg: '#fff7ed', text: '#c2410c' }, // orange-500 / orange-50 / orange-700
+  사회: { solid: '#3b82f6', bg: '#eff6ff', text: '#1d4ed8' }, // blue-500 / blue-50 / blue-700
+  과학: { solid: '#14b8a6', bg: '#f0fdfa', text: '#0f766e' }, // teal-500 / teal-50 / teal-700
+  한국사: { solid: '#a855f7', bg: '#faf5ff', text: '#7e22ce' }, // purple-500 / purple-50 / purple-700
+  예체능: { solid: '#ec4899', bg: '#fdf2f8', text: '#be185d' }, // pink-500 / pink-50 / pink-700
+  기타: { solid: '#6b7280', bg: '#f9fafb', text: '#374151' }, // gray-500 / gray-50 / gray-700
 };
 
-/** 과목 이름에 대한 고유 색상 반환 (매핑에 없으면 해시 기반 HSL 생성) */
-export function getSubjectColor(subject: string): string {
-  if (SUBJECT_COLORS[subject]) return SUBJECT_COLORS[subject];
-  // 문자열 해시 → 고유 Hue 생성
-  let hash = 0;
-  for (let i = 0; i < subject.length; i++) {
-    hash = subject.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const hue = ((hash % 360) + 360) % 360;
-  return `hsl(${hue}, 65%, 50%)`;
+const FALLBACK_KYOKWA_COLOR: KyokwaColor = { solid: '#94a3b8', bg: '#f8fafc', text: '#475569' };
+
+/** 과목명으로 교과 키를 반환 */
+export function getKyokwaFromSubject(subject: string): KyokwaKey | null {
+  if (!subject) return null;
+  if (subject in KYOKWA_COLORS) return subject as KyokwaKey;
+  if (/^(공통국어|문학|독서|화법과작문|언어와매체|국어)/.test(subject)) return '국어';
+  if (/^(수학|확률과통계|미적분|기하)/.test(subject)) return '수학';
+  if (/^영어/.test(subject)) return '영어';
+  if (/^한국사/.test(subject)) return '한국사';
+  if (/^(통합과학|물리학|화학|생명과학|지구과학|과탐|과학)/.test(subject)) return '과학';
+  if (
+    /^(생활과윤리|윤리와사상|한국지리|세계지리|동아시아사|세계사|정치와법|경제|사회문화|사탐|사회)/.test(
+      subject,
+    )
+  )
+    return '사회';
+  if (/^(음악|미술|체육)/.test(subject)) return '예체능';
+  return '기타';
 }
+
+/** 과목명에 해당하는 교과 색상 3종 세트 반환 */
+export function getKyokwaColor(subject: string): KyokwaColor {
+  const kyokwa = getKyokwaFromSubject(subject);
+  return kyokwa ? KYOKWA_COLORS[kyokwa] : FALLBACK_KYOKWA_COLOR;
+}
+
+/** 과목 이름에 대한 대표 단색 반환 (기존 호환용) */
+export function getSubjectColor(subject: string): string {
+  return getKyokwaColor(subject).solid;
+}
+
+/** 교과명별 단색 맵 (기존 호환용 — learning 등에서 직접 import) */
+export const SUBJECT_COLORS: Record<string, string> = {
+  국어: '#ef4444',
+  수학: '#eab308',
+  영어: '#f97316',
+  사회: '#3b82f6',
+  과학: '#14b8a6',
+  한국사: '#a855f7',
+  예체능: '#ec4899',
+  기타: '#6b7280',
+};
 
 /** 루틴 카테고리 색상 */
 export const ROUTINE_CATEGORY_COLORS: Record<RoutineCategory, string> = {

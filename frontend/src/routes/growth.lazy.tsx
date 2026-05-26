@@ -61,6 +61,7 @@ const MOOD_OPTIONS = [
 
 const UNDERSTANDING_LABELS = ['매우 낮음', '낮음', '보통', '높음', '매우 높음'];
 
+// planner.ts KYOKWA_COLORS와 동기화
 const SUBJECT_COLORS: Record<string, string> = {
   국어: '#ef4444',
   수학: '#eab308',
@@ -68,6 +69,7 @@ const SUBJECT_COLORS: Record<string, string> = {
   사회: '#3b82f6',
   과학: '#14b8a6',
   한국사: '#a855f7',
+  예체능: '#ec4899',
   기타: '#6b7280',
 };
 
