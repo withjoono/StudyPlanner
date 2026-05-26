@@ -40,12 +40,14 @@ export class RankingController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Hub 반(internal API) 기준 학습 랭킹 리더보드',
-    description: 'Hub /api/internal/groups/:id/members로 멤버를 조회한 뒤 SP DailyScore를 집계',
+    description:
+      'Hub /api/internal/groups/{type}/:id/members로 멤버를 조회한 뒤 SP DailyScore를 집계',
   })
   async getHubGroupLeaderboard(
     @Req() req: any,
     @Param('groupId') groupId: string,
     @Query() query: LeaderboardQueryDto,
+    @Query('groupType') groupType?: 'teacher' | 'study' | 'aim-univ',
   ) {
     const hubUserId = req.user?.sub || req.user?.userId;
     return this.rankingService.getInternalHubLeaderboard(
@@ -53,6 +55,7 @@ export class RankingController {
       hubUserId ? String(hubUserId) : undefined,
       query.period || 'weekly',
       query.date,
+      groupType ?? 'study',
     );
   }
 }

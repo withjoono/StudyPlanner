@@ -1,4 +1,4 @@
-export type HubGroupType = 'teacher' | 'student_study' | 'target_univ';
+export type HubGroupType = 'teacher' | 'study' | 'aim_univ';
 
 export interface HubGroup {
   id: string;

@@ -53,9 +53,13 @@ export class HubServiceClient implements OnModuleInit {
   }
 
   /** 한 반의 멤버 목록 + 닉네임/프로필 */
-  async getGroupMembers(groupId: string): Promise<HubMember[]> {
+  async getGroupMembers(
+    groupId: string,
+    groupType: 'teacher' | 'study' | 'aim-univ' = 'study',
+  ): Promise<HubMember[]> {
+    const typeSegment = (groupType as string) === 'aim_univ' ? 'aim-univ' : groupType;
     const body = await this.request<{ members?: HubMember[] }>(
-      `/api/internal/groups/${encodeURIComponent(groupId)}/members`,
+      `/api/internal/groups/${typeSegment}/${encodeURIComponent(groupId)}/members`,
     );
     return body?.members ?? [];
   }

@@ -237,10 +237,11 @@ export class RankingService {
     currentHubUserId?: string,
     period: 'daily' | 'weekly' | 'monthly' = 'weekly',
     date?: string,
+    groupType: 'teacher' | 'study' | 'aim-univ' = 'study',
   ): Promise<LeaderboardResponse> {
     let members;
     try {
-      members = await this.hubServiceClient.getGroupMembers(groupId);
+      members = await this.hubServiceClient.getGroupMembers(groupId, groupType);
     } catch (error) {
       this.logger.error(`Hub internal 멤버 조회 실패: ${(error as Error).message}`);
       return this.getEmptyLeaderboard(period, date);
