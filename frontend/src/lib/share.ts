@@ -74,7 +74,7 @@ export async function shareViaKakao(options: KakaoShareOptions): Promise<boolean
       content: {
         title: options.title,
         description: options.description,
-        imageUrl: options.imageUrl || 'https://geobukschool.kr/og-image.png',
+        imageUrl: options.imageUrl || 'https://tskool.kr/og-image.png',
         link: {
           mobileWebUrl: options.link,
           webUrl: options.link,
@@ -146,7 +146,7 @@ export async function shareGeneral(
 // 공유 템플릿 생성
 // ═══════════════════════════════════════════
 
-const BASE_URL = 'https://geobukschool.kr';
+const BASE_URL = 'https://tskool.kr';
 
 /** 마이 그룹 초대 공유 */
 export function buildClassInviteShare(roomName: string, roomCode: string) {

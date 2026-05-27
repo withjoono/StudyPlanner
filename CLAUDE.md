@@ -129,7 +129,7 @@ Prisma with PostgreSQL. Schema at `backend/prisma/schema.prisma` (~40 models). K
 
 - Frontend: `https://studyplanner.kr` (Firebase project `ts-front-479305`, also `studyplanner-new.web.app`)
 - Backend: `https://studyplanner-backend-dot-ts-back-nest-479305.du.r.appspot.com`
-- Hub Frontend (SSO dispatcher): `https://www.geobukschool.kr`
+- Hub Frontend (SSO dispatcher): `https://www.tskool.kr`
 - Hub Backend API: `https://ts-back-nest-479305.du.r.appspot.com`
 
 CI/CD triggers automatically on push to `main`:
@@ -140,7 +140,7 @@ CI/CD triggers automatically on push to `main`:
 **`.env.production` is critical.** Vite bakes env vars at build time. If `VITE_HUB_URL` is missing, the fallback `http://localhost:3000` gets hardcoded into the production bundle and all SSO logins will redirect to localhost. Required production vars:
 
 ```env
-VITE_HUB_URL="https://www.geobukschool.kr"
+VITE_HUB_URL="https://www.tskool.kr"
 VITE_HUB_API_URL="https://ts-back-nest-479305.du.r.appspot.com"
 VITE_API_URL_PLANNER="https://studyplanner-backend-dot-ts-back-nest-479305.du.r.appspot.com"
 ```

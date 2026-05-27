@@ -74,7 +74,7 @@ const ShareCardBase = forwardRef<HTMLDivElement, ShareCardBaseProps>(
           }}
         >
           <div style={{ fontSize: 12, opacity: 0.7 }}>🌱 StudyPlanner by 거북스쿨</div>
-          <div style={{ fontSize: 11, opacity: 0.5 }}>geobukschool.kr</div>
+          <div style={{ fontSize: 11, opacity: 0.5 }}>tskool.kr</div>
         </div>
       </div>
     );

@@ -64,7 +64,7 @@ export function useShareCard() {
           try {
             await navigator.share({
               title: options.title,
-              text: `${options.text}\n\n🌱 StudyPlanner by 거북스쿨\nhttps://geobukschool.kr`,
+              text: `${options.text}\n\n🌱 StudyPlanner by 거북스쿨\nhttps://tskool.kr`,
               files: [file],
             });
 

@@ -260,7 +260,7 @@ function RoomDetail({ roomId, onBack }: { roomId: number; onBack: () => void }) 
 
   const handleShareInvite = async () => {
     if (!room) return;
-    const text = `🏠 "${room.name}" 마이 그룹에서 같이 공부하자!\n\n초대 코드: ${room.roomCode}\n\n🌱 StudyPlanner by 거북스쿨\nhttps://geobukschool.kr/join/${room.roomCode}`;
+    const text = `🏠 "${room.name}" 마이 그룹에서 같이 공부하자!\n\n초대 코드: ${room.roomCode}\n\n🌱 StudyPlanner by 거북스쿨\nhttps://tskool.kr/join/${room.roomCode}`;
 
     if (navigator.share) {
       try {
