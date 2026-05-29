@@ -116,4 +116,33 @@ export class HubServiceClient implements OnModuleInit {
     }
     throw lastErr;
   }
+
+  /**
+   * Hub 대시보드 알림 적재 (fire-and-forget, POST).
+   *
+   * 쪽지/코멘트 등 이벤트 시 수신자의 Hub 대시보드 "나의 앱" 카드에 표시될 알림 전송.
+   * 알림 실패가 핵심 흐름(쪽지 저장 등)을 막으면 안 되므로 에러는 삼키고 로깅만 한다.
+   * baseUrl/token 미설정 시 graceful skip.
+   *
+   * @param payload.hubUserId 수신자 Hub user id (sp_ 접두어 없는 auth_member.id)
+   */
+  async sendNotification(payload: {
+    hubUserId: string;
+    type: string;
+    title: string;
+    body?: string;
+    linkPath?: string;
+  }): Promise<void> {
+    if (!this.baseUrl || !this.serviceToken) return;
+    const url = `${this.baseUrl}/api/internal/notifications`;
+    const headers: Record<string, string> = {
+      'X-Service-Id': this.serviceId,
+      Authorization: `Bearer ${this.serviceToken}`,
+    };
+    try {
+      await firstValueFrom(this.http.post(url, payload, { headers, timeout: DEFAULT_TIMEOUT_MS }));
+    } catch (e) {
+      this.logger.warn(`Hub 알림 전송 실패 (무시됨): ${(e as Error).message}`);
+    }
+  }
 }

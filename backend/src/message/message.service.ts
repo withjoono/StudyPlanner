@@ -1,11 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { HubServiceClient } from '../hub-client';
 
 @Injectable()
 export class MessageService {
   private readonly logger = new Logger(MessageService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly hub: HubServiceClient,
+  ) {}
 
   /** 쪽지 발송 */
   async sendMessage(data: {
@@ -26,6 +30,19 @@ export class MessageService {
         receiver: { select: { id: true, name: true, role: true } },
       },
     });
+
+    // Hub 대시보드 알림 (fire-and-forget — 실패해도 쪽지 저장에 영향 없음)
+    // StudyPlanner userId 는 sp_<hubUserId> 형식이므로 접두어 제거해 Hub user id 로 변환
+    const receiverHubUserId = data.receiverId.startsWith('sp_')
+      ? data.receiverId.slice(3)
+      : data.receiverId;
+    void this.hub.sendNotification({
+      hubUserId: receiverHubUserId,
+      type: 'message',
+      title: `${message.sender?.name ?? '상대방'}님이 쪽지를 보냈어요`,
+      body: data.content.slice(0, 100),
+    });
+
     return this.serialize(message);
   }
 
