@@ -1,14 +1,12 @@
 /**
- * 마이 클래스 — 사용자 생성 경쟁 반
+ * 마이 클래스 — 사용자 생성 경쟁 반 + 목표대학반
  *
- * - 내가 속한 클래스 목록
- * - 클래스 생성 모달
- * - 클래스 상세 (멤버 + 리더보드)
- * - 초대 코드 공유
+ * - 마이 그룹: 내가 속한 클래스 목록, 생성/초대코드 참여
+ * - 목표대학반: Hub(모고/생기북)에서 시스템 배정 → 학습량·성적 비교 경쟁
  */
 
 import { createLazyFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Plus,
   Trophy,
@@ -32,6 +30,13 @@ import {
   X,
   UserPlus,
   Check,
+  Shield,
+  GraduationCap,
+  Flame,
+  ArrowUp,
+  ArrowDown,
+  BookOpen,
+  ClipboardList,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -58,7 +63,62 @@ export const Route = createLazyFileRoute('/myclass')({
   component: MyClassPage,
 });
 
+type TabType = 'mygroup' | 'university';
+
 function MyClassPage() {
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('type') === 'university' ? 'university' : 'mygroup';
+  });
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (activeTab === 'university') {
+      url.searchParams.set('type', 'university');
+    } else {
+      url.searchParams.delete('type');
+    }
+    window.history.replaceState(null, '', url.toString());
+  }, [activeTab]);
+
+  return (
+    <div className="mx-auto max-w-screen-lg px-4 py-6">
+      {/* 탭 네비게이션 */}
+      <div className="mb-6">
+        <div className="flex gap-1 rounded-2xl bg-gray-100 p-1">
+          <button
+            onClick={() => setActiveTab('mygroup')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-all ${
+              activeTab === 'mygroup'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Users className="h-4 w-4" />
+            마이 그룹
+          </button>
+          <button
+            onClick={() => setActiveTab('university')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-all ${
+              activeTab === 'university'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <GraduationCap className="h-4 w-4" />
+            목표대학반
+          </button>
+        </div>
+      </div>
+
+      {activeTab === 'mygroup' ? <MyGroupTab /> : <UniversityClassTab />}
+    </div>
+  );
+}
+
+// ─────────── 마이 그룹 탭 ───────────
+
+function MyGroupTab() {
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [joinCode, setJoinCode] = useState('');
@@ -77,7 +137,7 @@ function MyClassPage() {
           toast.success(`"${result.roomName}"에 가입했습니다! 🎉`);
           setJoinCode('');
         },
-        onError: (err: any) => {
+        onError: (err: { response?: { data?: { message?: string } } }) => {
           toast.error(err?.response?.data?.message || '가입에 실패했습니다.');
         },
       },
@@ -89,7 +149,7 @@ function MyClassPage() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-lg px-4 py-6">
+    <>
       {/* 헤더 */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -116,36 +176,30 @@ function MyClassPage() {
         </div>
       </div>
 
-      {/* 받은 초대 목록 */}
       {pendingCount > 0 && <InvitationsPanel invitations={invitations!} />}
-
-      {/* Hub 학습 그룹 리더보드 (target_univ / teacher / student_study) */}
-      <HubGroupLeaderboardSection />
 
       {/* 초대 코드 입력 */}
       <div className="mb-6 overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-purple-50 p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <label className="mb-1 block text-xs font-semibold text-indigo-700">
-              초대 코드로 참여
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                placeholder="MC-XXXXXX"
-                className="flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2 font-mono text-sm tracking-widest text-indigo-900 placeholder:text-indigo-300 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-                maxLength={9}
-              />
-              <button
-                onClick={handleJoin}
-                disabled={joinMutation.isPending || !joinCode.trim()}
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {joinMutation.isPending ? '...' : '참여'}
-              </button>
-            </div>
+        <div className="flex-1">
+          <label className="mb-1 block text-xs font-semibold text-indigo-700">
+            초대 코드로 참여
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              placeholder="MC-XXXXXX"
+              className="flex-1 rounded-lg border border-indigo-200 bg-white px-3 py-2 font-mono text-sm tracking-widest text-indigo-900 placeholder:text-indigo-300 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              maxLength={9}
+            />
+            <button
+              onClick={handleJoin}
+              disabled={joinMutation.isPending || !joinCode.trim()}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {joinMutation.isPending ? '...' : '참여'}
+            </button>
           </div>
         </div>
       </div>
@@ -178,15 +232,439 @@ function MyClassPage() {
           </p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-indigo-700"
+            className="hover:bg-indiv-700 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-bold text-white transition-colors"
           >
             첫 클래스 만들기
           </button>
         </div>
       )}
 
-      {/* 생성 모달 */}
       {showCreateModal && <CreateClassModal onClose={() => setShowCreateModal(false)} />}
+    </>
+  );
+}
+
+// ─────────── 목표대학반 탭 ───────────
+
+function UniversityClassTab() {
+  const { data: rankingData, isLoading } = useLeaderboard('weekly');
+  const [period, setPeriod] = useState<GroupPeriod>('weekly');
+
+  // target_univ 타입 Hub 그룹만 필터 (teacher·mc- 제외)
+  const univGroups = (rankingData?.availableGroups ?? []).filter(
+    (g) => g.id !== 'teacher' && !g.id.startsWith('mc-'),
+  );
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const activeGroupId = selectedGroupId ?? univGroups[0]?.id ?? null;
+
+  const { data: leaderboard, isLoading: isLbLoading } = useHubGroupLeaderboard(
+    activeGroupId,
+    period,
+  );
+
+  const myEntry = leaderboard?.leaderboard.find((e) => e.rank === leaderboard.myRank);
+  const myRank = leaderboard?.myRank ?? null;
+  const totalMembers = leaderboard?.totalMembers ?? 0;
+
+  // 강등보호: 내 학습 시간이 상위 30% 이내면 보호
+  const myStudyMinutes = myEntry?.studyMinutes ?? 0;
+  const sortedMinutes = [...(leaderboard?.leaderboard ?? [])]
+    .map((e) => e.studyMinutes)
+    .sort((a, b) => b - a);
+  const top30idx = Math.ceil(sortedMinutes.length * 0.3);
+  const isProtected =
+    myRank !== null && myStudyMinutes > 0 && myStudyMinutes >= (sortedMinutes[top30idx - 1] ?? 0);
+
+  const rankChange = myEntry?.rankChange ?? null;
+
+  if (isLoading) {
+    return <div className="h-48 animate-pulse rounded-2xl bg-gray-100" />;
+  }
+
+  // 배정된 반이 없는 경우
+  if (univGroups.length === 0) {
+    return <UniversityClassEmpty />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* 반 선택 칩 (여러 반 배정 시) */}
+      {univGroups.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {univGroups.map((g) => {
+            const isActive = g.id === activeGroupId;
+            return (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => setSelectedGroupId(g.id)}
+                className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${
+                  isActive
+                    ? 'bg-violet-600 text-white shadow'
+                    : 'border border-violet-200 bg-white text-violet-700 hover:bg-violet-50'
+                }`}
+              >
+                {g.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 헤더 카드 */}
+      <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-5 text-white shadow-lg">
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <div className="mb-1 flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 opacity-80" />
+              <span className="text-sm font-semibold opacity-80">목표대학반</span>
+            </div>
+            <h2 className="text-xl font-black">
+              {univGroups.find((g) => g.id === activeGroupId)?.name ?? '—'}
+            </h2>
+          </div>
+          {isProtected && (
+            <div className="flex items-center gap-1.5 rounded-xl bg-white/20 px-3 py-1.5 backdrop-blur-sm">
+              <Shield className="h-4 w-4 text-emerald-300" />
+              <span className="text-xs font-bold text-emerald-200">강등 보호 중</span>
+            </div>
+          )}
+        </div>
+
+        {/* 내 등수 */}
+        <div className="flex items-end gap-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest opacity-60">내 등수</p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-4xl font-black">{myRank !== null ? myRank : '—'}</span>
+              <span className="text-lg opacity-70">/ {totalMembers}위</span>
+            </div>
+          </div>
+          {rankChange !== null && rankChange !== 0 && (
+            <div
+              className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-bold ${
+                rankChange < 0 ? 'bg-emerald-400/30 text-emerald-200' : 'bg-red-400/30 text-red-200'
+              }`}
+            >
+              {rankChange < 0 ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+              {Math.abs(rankChange)}위
+            </div>
+          )}
+          <div className="ml-auto text-right">
+            <p className="text-xs opacity-60">
+              이번 {period === 'daily' ? '일' : period === 'weekly' ? '주' : '월'} 학습
+            </p>
+            <p className="text-lg font-bold">
+              {myStudyMinutes >= 60
+                ? `${Math.floor(myStudyMinutes / 60)}h ${myStudyMinutes % 60}m`
+                : `${myStudyMinutes}m`}
+            </p>
+          </div>
+        </div>
+
+        {/* 강등/월반 안내 */}
+        <div className="mt-4 rounded-xl bg-white/10 px-3 py-2 text-xs text-white/70">
+          💡 이 반의 강등·월반 기준:{' '}
+          <span className="font-semibold text-white/90">모의고사 성적</span>
+          &nbsp;—&nbsp;스터디플래너 학습량 우수 시 강등 면제
+        </div>
+      </div>
+
+      {/* 강등보호 상세 안내 (보호 중일 때) */}
+      {isProtected && (
+        <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <Shield className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-500" />
+          <div>
+            <p className="text-sm font-bold text-emerald-800">학습량 우수 — 강등 보호 활성</p>
+            <p className="mt-0.5 text-xs text-emerald-600">
+              이번 {period === 'weekly' ? '주' : period === 'monthly' ? '달' : '일'} 학습량이 반
+              상위 30% 이내입니다. 성적 기준 강등 대상이더라도 이 반에 유지됩니다.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 비교 기간 탭 */}
+      <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
+        {(['daily', 'weekly', 'monthly'] as GroupPeriod[]).map((p) => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={`flex-1 rounded-lg py-2 text-sm font-bold transition-all ${
+              period === p
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {p === 'daily' ? '일간' : p === 'weekly' ? '주간' : '월간'}
+          </button>
+        ))}
+      </div>
+
+      {/* 비교 지표 설명 */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { icon: Clock, label: '학습량', desc: '스터디플래너 기록', color: 'indigo' },
+          { icon: BarChart2, label: '모의고사', desc: '모고앱 연동 성적', color: 'violet' },
+          { icon: ClipboardList, label: '내신·비교과', desc: '생기북앱 연동', color: 'purple' },
+        ].map(({ icon: Icon, label, desc, color }) => (
+          <div
+            key={label}
+            className={`rounded-xl border border-${color}-100 bg-${color}-50 p-3 text-center`}
+          >
+            <Icon className={`mx-auto mb-1.5 h-4 w-4 text-${color}-500`} />
+            <p className={`text-xs font-bold text-${color}-700`}>{label}</p>
+            <p className="mt-0.5 text-[10px] text-gray-500">{desc}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* 리더보드 */}
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="flex items-center gap-2 border-b border-gray-50 bg-gray-50 px-4 py-3">
+          <Trophy className="h-4 w-4 text-amber-500" />
+          <span className="text-sm font-bold text-gray-700">학습량 순위</span>
+          <span className="ml-auto text-[10px] text-gray-400">
+            {period === 'daily' ? '오늘' : period === 'weekly' ? '이번 주' : '이번 달'} 기준
+          </span>
+        </div>
+        <div className="px-4 py-4">
+          <GroupLeaderboard
+            members={(leaderboard?.leaderboard ?? []).map((e) => ({
+              id: e.studentId,
+              name: e.name,
+              isMe: leaderboard?.myRank === e.rank,
+              grade: e.grade,
+              score: e.totalScore,
+              studyMinutes: e.studyMinutes,
+              totalPages: e.totalPages ?? 0,
+            }))}
+            period={period}
+            onPeriodChange={setPeriod}
+            loading={isLbLoading}
+            emptyText="아직 이 반의 학습 데이터가 없어요"
+          />
+        </div>
+      </div>
+
+      {/* 강등·월반 기준 안내 */}
+      <UniversityClassRules />
+    </div>
+  );
+}
+
+function UniversityClassEmpty() {
+  const [showFaq, setShowFaq] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      {/* 메인 안내 카드 */}
+      <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-6 text-white shadow-lg">
+        <div className="mb-2 flex items-center gap-2">
+          <GraduationCap className="h-6 w-6 opacity-80" />
+          <span className="text-sm font-semibold opacity-80">목표대학반</span>
+        </div>
+        <h2 className="mb-1 text-2xl font-black">아직 배정된 반이 없어요</h2>
+        <p className="text-sm leading-relaxed text-white/75">
+          모의고사·내신 성적이 목표 대학 가능권에 진입하면
+          <br />
+          티스쿨 앱에서 배정 알림을 받게 됩니다.
+        </p>
+        <div className="mt-4 rounded-xl bg-white/15 px-4 py-3 text-sm text-white/80">
+          🔔 배정 알림은 <span className="font-bold text-white">모고앱</span> 또는{' '}
+          <span className="font-bold text-white">생기북앱</span>에서 확인하세요
+        </div>
+      </div>
+
+      {/* 수시 vs 정시 카드 */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Flame className="h-5 w-5 text-rose-500" />
+            <span className="text-sm font-black text-rose-700">수시파이터반</span>
+          </div>
+          <p className="mb-3 text-xs leading-relaxed text-rose-600">
+            내신 성적 + 비교과활동으로 경쟁
+          </p>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5 text-[11px] text-rose-500">
+              <Check className="h-3 w-3" />
+              <span>생기북앱 성적 연동</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-rose-500">
+              <Check className="h-3 w-3" />
+              <span>비교과 활동 비교</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-rose-500">
+              <Check className="h-3 w-3" />
+              <span>학습량 강등 보호</span>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-blue-500" />
+            <span className="text-sm font-black text-blue-700">정시파이터반</span>
+          </div>
+          <p className="mb-3 text-xs leading-relaxed text-blue-600">모의고사 성적으로 경쟁</p>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5 text-[11px] text-blue-500">
+              <Check className="h-3 w-3" />
+              <span>모고앱 성적 연동</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-blue-500">
+              <Check className="h-3 w-3" />
+              <span>수능 영역별 비교</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-blue-500">
+              <Check className="h-3 w-3" />
+              <span>학습량 강등 보호</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 진입 조건 */}
+      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <h3 className="mb-4 flex items-center gap-2 text-sm font-bold text-gray-800">
+          <Target className="h-4 w-4 text-indigo-500" />
+          어떻게 진입하나요?
+        </h3>
+        <div className="space-y-3">
+          {[
+            {
+              step: '01',
+              text: '모의고사/내신 성적이 목표 대학 가능권에 1회 이상 진입',
+              color: 'indigo',
+            },
+            {
+              step: '02',
+              text: '티스쿨 앱(모고앱 또는 생기북앱)에서 배정 알림 수신',
+              color: 'violet',
+            },
+            {
+              step: '03',
+              text: '학생이 배정을 수락하면 스터디플래너에 반 자동 연동',
+              color: 'purple',
+            },
+            {
+              step: '04',
+              text: '반 내 다른 학생들과 학습량·성적 비교 경쟁 시작',
+              color: 'fuchsia',
+            },
+          ].map(({ step, text, color }) => (
+            <div key={step} className="flex items-start gap-3">
+              <span
+                className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-${color}-100 text-[10px] font-black text-${color}-600`}
+              >
+                {step}
+              </span>
+              <p className="text-sm text-gray-600">{text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* FAQ 토글 */}
+      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <button
+          onClick={() => setShowFaq(!showFaq)}
+          className="flex w-full items-center justify-between px-5 py-4 text-sm font-bold text-gray-700"
+        >
+          <span className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-gray-400" />
+            강등·월반이 뭔가요?
+          </span>
+          {showFaq ? (
+            <ChevronUp className="h-4 w-4 text-gray-400" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-gray-400" />
+          )}
+        </button>
+        {showFaq && (
+          <div className="space-y-3 border-t border-gray-50 px-5 pb-5 pt-4 text-sm text-gray-600">
+            <p>
+              <span className="font-bold text-violet-600">월반</span>: 성적이 오르면 더 높은 목표
+              대학 반으로 올라갑니다.
+            </p>
+            <p>
+              <span className="font-bold text-rose-500">강등</span>: 성적이 하락하면 낮은 반으로
+              이동할 수 있습니다.
+            </p>
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+              <p className="flex items-center gap-1.5 font-bold text-emerald-700">
+                <Shield className="h-3.5 w-3.5" /> 강등 보호 조건
+              </p>
+              <p className="mt-1 text-emerald-600">
+                스터디플래너 학습량이 반 상위 30% 이내이면, 성적 기준 강등 대상이더라도 현재 반에
+                유지됩니다.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function UniversityClassRules() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-5 py-4 text-sm font-bold text-gray-700"
+      >
+        <span className="flex items-center gap-2">
+          <Star className="h-4 w-4 text-amber-400" />
+          강등·월반 기준 안내
+        </span>
+        {open ? (
+          <ChevronUp className="h-4 w-4 text-gray-400" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-gray-400" />
+        )}
+      </button>
+      {open && (
+        <div className="space-y-3 border-t border-gray-50 px-5 pb-5 pt-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-rose-100 bg-rose-50 p-3">
+              <p className="flex items-center gap-1 text-xs font-bold text-rose-600">
+                <ArrowDown className="h-3 w-3" /> 수시파이터 강등
+              </p>
+              <p className="mt-1 text-xs text-gray-600">내신 성적 하락 + 학습량 하위 70% 초과</p>
+            </div>
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+              <p className="flex items-center gap-1 text-xs font-bold text-blue-600">
+                <ArrowDown className="h-3 w-3" /> 정시파이터 강등
+              </p>
+              <p className="mt-1 text-xs text-gray-600">
+                모의고사 성적 가능권 이탈 + 학습량 하위 70%
+              </p>
+            </div>
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+              <p className="flex items-center gap-1 text-xs font-bold text-emerald-600">
+                <ArrowUp className="h-3 w-3" /> 수시파이터 월반
+              </p>
+              <p className="mt-1 text-xs text-gray-600">내신 성적 상위 목표 대학 가능권 진입</p>
+            </div>
+            <div className="rounded-xl border border-violet-100 bg-violet-50 p-3">
+              <p className="flex items-center gap-1 text-xs font-bold text-violet-600">
+                <ArrowUp className="h-3 w-3" /> 정시파이터 월반
+              </p>
+              <p className="mt-1 text-xs text-gray-600">모의고사 상위 목표 대학 가능권 진입</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+            <Shield className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
+            <p className="text-xs text-emerald-700">
+              <span className="font-bold">강등 보호</span>: 스터디플래너 학습량 상위 30% 이내이면
+              성적 기준 강등이 면제됩니다.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -656,7 +1134,7 @@ function CreateClassModal({ onClose }: { onClose: () => void }) {
           );
           onClose();
         },
-        onError: (err: any) => {
+        onError: (err: { response?: { data?: { message?: string } } }) => {
           toast.error(err?.response?.data?.message || '생성에 실패했습니다.');
         },
       },
@@ -790,7 +1268,7 @@ function InvitationsPanel({ invitations }: { invitations: InvitationItem[] }) {
       onSuccess: (result) => {
         toast.success(`"${result.roomName}"에 가입했습니다! 🎉`);
       },
-      onError: (err: any) => {
+      onError: (err: { response?: { data?: { message?: string } } }) => {
         toast.error(err?.response?.data?.message || '수락에 실패했습니다.');
       },
     });
@@ -879,7 +1357,7 @@ function InviteModal({
           toast.success(`${student.name}님에게 초대장을 보냈습니다! 🎉`);
           setSentIds((prev) => new Set(prev).add(student.id));
         },
-        onError: (err: any) => {
+        onError: (err: { response?: { data?: { message?: string } } }) => {
           toast.error(err?.response?.data?.message || '초대 발송에 실패했습니다.');
         },
       },
@@ -1009,74 +1487,3 @@ function InviteModal({
 }
 
 // ─────────── Hub 학습 그룹 리더보드 (Phase 1 통합) ───────────
-
-function HubGroupLeaderboardSection() {
-  const { data: rankingData, isLoading: isGroupsLoading } = useLeaderboard('weekly');
-  const hubGroups = (rankingData?.availableGroups ?? []).filter(
-    (g) => g.id !== 'teacher' && !g.id.startsWith('mc-'),
-  );
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [period, setPeriod] = useState<GroupPeriod>('weekly');
-  const activeGroupId = selectedId ?? hubGroups[0]?.id ?? null;
-  const { data: leaderboard, isLoading: isLbLoading } = useHubGroupLeaderboard(
-    activeGroupId,
-    period,
-  );
-
-  if (isGroupsLoading) {
-    return (
-      <div className="mb-6 h-24 animate-pulse rounded-2xl border border-gray-100 bg-white shadow-sm" />
-    );
-  }
-  if (hubGroups.length === 0) return null;
-
-  return (
-    <div className="mb-6 overflow-hidden rounded-2xl border border-sky-100 bg-white shadow-sm">
-      <div className="flex items-center gap-2 border-b border-sky-50 bg-gradient-to-r from-sky-50 to-cyan-50 px-4 py-3">
-        <BarChart2 className="h-4 w-4 text-sky-600" />
-        <span className="text-sm font-bold text-sky-700">Hub 학습 그룹 리더보드</span>
-        <span className="ml-auto text-[10px] text-sky-500">이번 주</span>
-      </div>
-
-      {/* 그룹 선택 칩 */}
-      <div className="flex flex-wrap gap-2 border-b border-gray-50 px-4 py-3">
-        {hubGroups.map((g) => {
-          const isActive = g.id === activeGroupId;
-          return (
-            <button
-              key={g.id}
-              type="button"
-              onClick={() => setSelectedId(g.id)}
-              className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${
-                isActive
-                  ? 'bg-sky-500 text-white'
-                  : 'border border-sky-200 bg-white text-sky-700 hover:bg-sky-50'
-              }`}
-            >
-              {g.name}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 리더보드 본문 — 일/주/월 비교 */}
-      <div className="px-4 py-4">
-        <GroupLeaderboard
-          members={(leaderboard?.leaderboard ?? []).map((e) => ({
-            id: e.studentId,
-            name: e.name,
-            isMe: leaderboard?.myRank === e.rank,
-            grade: e.grade,
-            score: e.totalScore,
-            studyMinutes: e.studyMinutes,
-            totalPages: e.totalPages ?? 0,
-          }))}
-          period={period}
-          onPeriodChange={setPeriod}
-          loading={isLbLoading}
-          emptyText="아직 이 그룹의 학습 데이터가 없어요"
-        />
-      </div>
-    </div>
-  );
-}
