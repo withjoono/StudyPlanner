@@ -11,6 +11,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 
 import { Route as rootRouteImport } from './routes/__root';
+import { Route as PromoRouteRouteImport } from './routes/promo/route';
 import { Route as IndexRouteImport } from './routes/index';
 import { Route as ProductsIndexRouteImport } from './routes/products/index';
 import { Route as OrderProductIdRouteImport } from './routes/order/$productId';
@@ -29,6 +30,14 @@ const LearningLazyRouteImport = createFileRoute('/learning')();
 const GrowthLazyRouteImport = createFileRoute('/growth')();
 const ConnectionsLazyRouteImport = createFileRoute('/connections')();
 const BadgesLazyRouteImport = createFileRoute('/badges')();
+const PromoIndexLazyRouteImport = createFileRoute('/promo/')();
+const PromoTimerLazyRouteImport = createFileRoute('/promo/timer')();
+const PromoRoutineLazyRouteImport = createFileRoute('/promo/routine')();
+const PromoPlansLazyRouteImport = createFileRoute('/promo/plans')();
+const PromoMissionsLazyRouteImport = createFileRoute('/promo/missions')();
+const PromoLearningLazyRouteImport = createFileRoute('/promo/learning')();
+const PromoGrowthLazyRouteImport = createFileRoute('/promo/growth')();
+const PromoGroupsLazyRouteImport = createFileRoute('/promo/groups')();
 const MentoringHumanLazyRouteImport = createFileRoute('/mentoring/human')();
 const MentoringAiLazyRouteImport = createFileRoute('/mentoring/ai')();
 const JoinCodeLazyRouteImport = createFileRoute('/join/$code')();
@@ -88,16 +97,61 @@ const BadgesLazyRoute = BadgesLazyRouteImport.update({
   path: '/badges',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/badges.lazy').then((d) => d.Route));
+const PromoRouteRoute = PromoRouteRouteImport.update({
+  id: '/promo',
+  path: '/promo',
+  getParentRoute: () => rootRouteImport,
+} as any);
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any);
+const PromoIndexLazyRoute = PromoIndexLazyRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PromoRouteRoute,
+} as any).lazy(() => import('./routes/promo/index.lazy').then((d) => d.Route));
 const ProductsIndexRoute = ProductsIndexRouteImport.update({
   id: '/products/',
   path: '/products/',
   getParentRoute: () => rootRouteImport,
 } as any);
+const PromoTimerLazyRoute = PromoTimerLazyRouteImport.update({
+  id: '/timer',
+  path: '/timer',
+  getParentRoute: () => PromoRouteRoute,
+} as any).lazy(() => import('./routes/promo/timer.lazy').then((d) => d.Route));
+const PromoRoutineLazyRoute = PromoRoutineLazyRouteImport.update({
+  id: '/routine',
+  path: '/routine',
+  getParentRoute: () => PromoRouteRoute,
+} as any).lazy(() => import('./routes/promo/routine.lazy').then((d) => d.Route));
+const PromoPlansLazyRoute = PromoPlansLazyRouteImport.update({
+  id: '/plans',
+  path: '/plans',
+  getParentRoute: () => PromoRouteRoute,
+} as any).lazy(() => import('./routes/promo/plans.lazy').then((d) => d.Route));
+const PromoMissionsLazyRoute = PromoMissionsLazyRouteImport.update({
+  id: '/missions',
+  path: '/missions',
+  getParentRoute: () => PromoRouteRoute,
+} as any).lazy(() => import('./routes/promo/missions.lazy').then((d) => d.Route));
+const PromoLearningLazyRoute = PromoLearningLazyRouteImport.update({
+  id: '/learning',
+  path: '/learning',
+  getParentRoute: () => PromoRouteRoute,
+} as any).lazy(() => import('./routes/promo/learning.lazy').then((d) => d.Route));
+const PromoGrowthLazyRoute = PromoGrowthLazyRouteImport.update({
+  id: '/growth',
+  path: '/growth',
+  getParentRoute: () => PromoRouteRoute,
+} as any).lazy(() => import('./routes/promo/growth.lazy').then((d) => d.Route));
+const PromoGroupsLazyRoute = PromoGroupsLazyRouteImport.update({
+  id: '/groups',
+  path: '/groups',
+  getParentRoute: () => PromoRouteRoute,
+} as any).lazy(() => import('./routes/promo/groups.lazy').then((d) => d.Route));
 const MentoringHumanLazyRoute = MentoringHumanLazyRouteImport.update({
   id: '/mentoring/human',
   path: '/mentoring/human',
@@ -136,6 +190,7 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
+  '/promo': typeof PromoRouteRouteWithChildren;
   '/badges': typeof BadgesLazyRoute;
   '/connections': typeof ConnectionsLazyRoute;
   '/growth': typeof GrowthLazyRoute;
@@ -144,8 +199,8 @@ export interface FileRoutesByFullPath {
   '/myclass': typeof MyclassLazyRoute;
   '/plans': typeof PlansLazyRoute;
   '/routine': typeof RoutineLazyRoute;
-  '/teacher-group': typeof TeacherGroupLazyRoute;
   '/teacher': typeof TeacherLazyRoute;
+  '/teacher-group': typeof TeacherGroupLazyRoute;
   '/timer': typeof TimerLazyRoute;
   '/auth/login': typeof AuthLoginRoute;
   '/auth/register': typeof AuthRegisterRoute;
@@ -154,7 +209,15 @@ export interface FileRoutesByFullPath {
   '/join/$code': typeof JoinCodeLazyRoute;
   '/mentoring/ai': typeof MentoringAiLazyRoute;
   '/mentoring/human': typeof MentoringHumanLazyRoute;
+  '/promo/groups': typeof PromoGroupsLazyRoute;
+  '/promo/growth': typeof PromoGrowthLazyRoute;
+  '/promo/learning': typeof PromoLearningLazyRoute;
+  '/promo/missions': typeof PromoMissionsLazyRoute;
+  '/promo/plans': typeof PromoPlansLazyRoute;
+  '/promo/routine': typeof PromoRoutineLazyRoute;
+  '/promo/timer': typeof PromoTimerLazyRoute;
   '/products/': typeof ProductsIndexRoute;
+  '/promo/': typeof PromoIndexLazyRoute;
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute;
@@ -166,8 +229,8 @@ export interface FileRoutesByTo {
   '/myclass': typeof MyclassLazyRoute;
   '/plans': typeof PlansLazyRoute;
   '/routine': typeof RoutineLazyRoute;
-  '/teacher-group': typeof TeacherGroupLazyRoute;
   '/teacher': typeof TeacherLazyRoute;
+  '/teacher-group': typeof TeacherGroupLazyRoute;
   '/timer': typeof TimerLazyRoute;
   '/auth/login': typeof AuthLoginRoute;
   '/auth/register': typeof AuthRegisterRoute;
@@ -176,11 +239,20 @@ export interface FileRoutesByTo {
   '/join/$code': typeof JoinCodeLazyRoute;
   '/mentoring/ai': typeof MentoringAiLazyRoute;
   '/mentoring/human': typeof MentoringHumanLazyRoute;
+  '/promo/groups': typeof PromoGroupsLazyRoute;
+  '/promo/growth': typeof PromoGrowthLazyRoute;
+  '/promo/learning': typeof PromoLearningLazyRoute;
+  '/promo/missions': typeof PromoMissionsLazyRoute;
+  '/promo/plans': typeof PromoPlansLazyRoute;
+  '/promo/routine': typeof PromoRoutineLazyRoute;
+  '/promo/timer': typeof PromoTimerLazyRoute;
   '/products': typeof ProductsIndexRoute;
+  '/promo': typeof PromoIndexLazyRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   '/': typeof IndexRoute;
+  '/promo': typeof PromoRouteRouteWithChildren;
   '/badges': typeof BadgesLazyRoute;
   '/connections': typeof ConnectionsLazyRoute;
   '/growth': typeof GrowthLazyRoute;
@@ -189,8 +261,8 @@ export interface FileRoutesById {
   '/myclass': typeof MyclassLazyRoute;
   '/plans': typeof PlansLazyRoute;
   '/routine': typeof RoutineLazyRoute;
-  '/teacher-group': typeof TeacherGroupLazyRoute;
   '/teacher': typeof TeacherLazyRoute;
+  '/teacher-group': typeof TeacherGroupLazyRoute;
   '/timer': typeof TimerLazyRoute;
   '/auth/login': typeof AuthLoginRoute;
   '/auth/register': typeof AuthRegisterRoute;
@@ -199,12 +271,21 @@ export interface FileRoutesById {
   '/join/$code': typeof JoinCodeLazyRoute;
   '/mentoring/ai': typeof MentoringAiLazyRoute;
   '/mentoring/human': typeof MentoringHumanLazyRoute;
+  '/promo/groups': typeof PromoGroupsLazyRoute;
+  '/promo/growth': typeof PromoGrowthLazyRoute;
+  '/promo/learning': typeof PromoLearningLazyRoute;
+  '/promo/missions': typeof PromoMissionsLazyRoute;
+  '/promo/plans': typeof PromoPlansLazyRoute;
+  '/promo/routine': typeof PromoRoutineLazyRoute;
+  '/promo/timer': typeof PromoTimerLazyRoute;
   '/products/': typeof ProductsIndexRoute;
+  '/promo/': typeof PromoIndexLazyRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | '/'
+    | '/promo'
     | '/badges'
     | '/connections'
     | '/growth'
@@ -213,8 +294,8 @@ export interface FileRouteTypes {
     | '/myclass'
     | '/plans'
     | '/routine'
-    | '/teacher-group'
     | '/teacher'
+    | '/teacher-group'
     | '/timer'
     | '/auth/login'
     | '/auth/register'
@@ -223,7 +304,15 @@ export interface FileRouteTypes {
     | '/join/$code'
     | '/mentoring/ai'
     | '/mentoring/human'
-    | '/products/';
+    | '/promo/groups'
+    | '/promo/growth'
+    | '/promo/learning'
+    | '/promo/missions'
+    | '/promo/plans'
+    | '/promo/routine'
+    | '/promo/timer'
+    | '/products/'
+    | '/promo/';
   fileRoutesByTo: FileRoutesByTo;
   to:
     | '/'
@@ -235,8 +324,8 @@ export interface FileRouteTypes {
     | '/myclass'
     | '/plans'
     | '/routine'
-    | '/teacher-group'
     | '/teacher'
+    | '/teacher-group'
     | '/timer'
     | '/auth/login'
     | '/auth/register'
@@ -245,10 +334,19 @@ export interface FileRouteTypes {
     | '/join/$code'
     | '/mentoring/ai'
     | '/mentoring/human'
-    | '/products';
+    | '/promo/groups'
+    | '/promo/growth'
+    | '/promo/learning'
+    | '/promo/missions'
+    | '/promo/plans'
+    | '/promo/routine'
+    | '/promo/timer'
+    | '/products'
+    | '/promo';
   id:
     | '__root__'
     | '/'
+    | '/promo'
     | '/badges'
     | '/connections'
     | '/growth'
@@ -257,8 +355,8 @@ export interface FileRouteTypes {
     | '/myclass'
     | '/plans'
     | '/routine'
-    | '/teacher-group'
     | '/teacher'
+    | '/teacher-group'
     | '/timer'
     | '/auth/login'
     | '/auth/register'
@@ -267,11 +365,20 @@ export interface FileRouteTypes {
     | '/join/$code'
     | '/mentoring/ai'
     | '/mentoring/human'
-    | '/products/';
+    | '/promo/groups'
+    | '/promo/growth'
+    | '/promo/learning'
+    | '/promo/missions'
+    | '/promo/plans'
+    | '/promo/routine'
+    | '/promo/timer'
+    | '/products/'
+    | '/promo/';
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
+  PromoRouteRoute: typeof PromoRouteRouteWithChildren;
   BadgesLazyRoute: typeof BadgesLazyRoute;
   ConnectionsLazyRoute: typeof ConnectionsLazyRoute;
   GrowthLazyRoute: typeof GrowthLazyRoute;
@@ -280,8 +387,8 @@ export interface RootRouteChildren {
   MyclassLazyRoute: typeof MyclassLazyRoute;
   PlansLazyRoute: typeof PlansLazyRoute;
   RoutineLazyRoute: typeof RoutineLazyRoute;
-  TeacherGroupLazyRoute: typeof TeacherGroupLazyRoute;
   TeacherLazyRoute: typeof TeacherLazyRoute;
+  TeacherGroupLazyRoute: typeof TeacherGroupLazyRoute;
   TimerLazyRoute: typeof TimerLazyRoute;
   AuthLoginRoute: typeof AuthLoginRoute;
   AuthRegisterRoute: typeof AuthRegisterRoute;
@@ -372,6 +479,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BadgesLazyRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/promo': {
+      id: '/promo';
+      path: '/promo';
+      fullPath: '/promo';
+      preLoaderRoute: typeof PromoRouteRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/': {
       id: '/';
       path: '/';
@@ -379,12 +493,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport;
       parentRoute: typeof rootRouteImport;
     };
+    '/promo/': {
+      id: '/promo/';
+      path: '/';
+      fullPath: '/promo/';
+      preLoaderRoute: typeof PromoIndexLazyRouteImport;
+      parentRoute: typeof PromoRouteRoute;
+    };
     '/products/': {
       id: '/products/';
       path: '/products';
       fullPath: '/products/';
       preLoaderRoute: typeof ProductsIndexRouteImport;
       parentRoute: typeof rootRouteImport;
+    };
+    '/promo/timer': {
+      id: '/promo/timer';
+      path: '/timer';
+      fullPath: '/promo/timer';
+      preLoaderRoute: typeof PromoTimerLazyRouteImport;
+      parentRoute: typeof PromoRouteRoute;
+    };
+    '/promo/routine': {
+      id: '/promo/routine';
+      path: '/routine';
+      fullPath: '/promo/routine';
+      preLoaderRoute: typeof PromoRoutineLazyRouteImport;
+      parentRoute: typeof PromoRouteRoute;
+    };
+    '/promo/plans': {
+      id: '/promo/plans';
+      path: '/plans';
+      fullPath: '/promo/plans';
+      preLoaderRoute: typeof PromoPlansLazyRouteImport;
+      parentRoute: typeof PromoRouteRoute;
+    };
+    '/promo/missions': {
+      id: '/promo/missions';
+      path: '/missions';
+      fullPath: '/promo/missions';
+      preLoaderRoute: typeof PromoMissionsLazyRouteImport;
+      parentRoute: typeof PromoRouteRoute;
+    };
+    '/promo/learning': {
+      id: '/promo/learning';
+      path: '/learning';
+      fullPath: '/promo/learning';
+      preLoaderRoute: typeof PromoLearningLazyRouteImport;
+      parentRoute: typeof PromoRouteRoute;
+    };
+    '/promo/growth': {
+      id: '/promo/growth';
+      path: '/growth';
+      fullPath: '/promo/growth';
+      preLoaderRoute: typeof PromoGrowthLazyRouteImport;
+      parentRoute: typeof PromoRouteRoute;
+    };
+    '/promo/groups': {
+      id: '/promo/groups';
+      path: '/groups';
+      fullPath: '/promo/groups';
+      preLoaderRoute: typeof PromoGroupsLazyRouteImport;
+      parentRoute: typeof PromoRouteRoute;
     };
     '/mentoring/human': {
       id: '/mentoring/human';
@@ -438,8 +608,33 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface PromoRouteRouteChildren {
+  PromoGroupsLazyRoute: typeof PromoGroupsLazyRoute;
+  PromoGrowthLazyRoute: typeof PromoGrowthLazyRoute;
+  PromoLearningLazyRoute: typeof PromoLearningLazyRoute;
+  PromoMissionsLazyRoute: typeof PromoMissionsLazyRoute;
+  PromoPlansLazyRoute: typeof PromoPlansLazyRoute;
+  PromoRoutineLazyRoute: typeof PromoRoutineLazyRoute;
+  PromoTimerLazyRoute: typeof PromoTimerLazyRoute;
+  PromoIndexLazyRoute: typeof PromoIndexLazyRoute;
+}
+
+const PromoRouteRouteChildren: PromoRouteRouteChildren = {
+  PromoGroupsLazyRoute: PromoGroupsLazyRoute,
+  PromoGrowthLazyRoute: PromoGrowthLazyRoute,
+  PromoLearningLazyRoute: PromoLearningLazyRoute,
+  PromoMissionsLazyRoute: PromoMissionsLazyRoute,
+  PromoPlansLazyRoute: PromoPlansLazyRoute,
+  PromoRoutineLazyRoute: PromoRoutineLazyRoute,
+  PromoTimerLazyRoute: PromoTimerLazyRoute,
+  PromoIndexLazyRoute: PromoIndexLazyRoute,
+};
+
+const PromoRouteRouteWithChildren = PromoRouteRoute._addFileChildren(PromoRouteRouteChildren);
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PromoRouteRoute: PromoRouteRouteWithChildren,
   BadgesLazyRoute: BadgesLazyRoute,
   ConnectionsLazyRoute: ConnectionsLazyRoute,
   GrowthLazyRoute: GrowthLazyRoute,
@@ -448,8 +643,8 @@ const rootRouteChildren: RootRouteChildren = {
   MyclassLazyRoute: MyclassLazyRoute,
   PlansLazyRoute: PlansLazyRoute,
   RoutineLazyRoute: RoutineLazyRoute,
-  TeacherGroupLazyRoute: TeacherGroupLazyRoute,
   TeacherLazyRoute: TeacherLazyRoute,
+  TeacherGroupLazyRoute: TeacherGroupLazyRoute,
   TimerLazyRoute: TimerLazyRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,

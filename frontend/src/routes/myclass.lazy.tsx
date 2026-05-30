@@ -137,8 +137,9 @@ function MyGroupTab() {
           toast.success(`"${result.roomName}"에 가입했습니다! 🎉`);
           setJoinCode('');
         },
-        onError: (err: { response?: { data?: { message?: string } } }) => {
-          toast.error(err?.response?.data?.message || '가입에 실패했습니다.');
+        onError: (err: Error) => {
+          const _err = err as unknown as { response?: { data?: { message?: string } } };
+          toast.error(_err?.response?.data?.message || '가입에 실패했습니다.');
         },
       },
     );
@@ -1134,8 +1135,9 @@ function CreateClassModal({ onClose }: { onClose: () => void }) {
           );
           onClose();
         },
-        onError: (err: { response?: { data?: { message?: string } } }) => {
-          toast.error(err?.response?.data?.message || '생성에 실패했습니다.');
+        onError: (err: Error) => {
+          const _err = err as unknown as { response?: { data?: { message?: string } } };
+          toast.error(_err?.response?.data?.message || '생성에 실패했습니다.');
         },
       },
     );
@@ -1268,8 +1270,9 @@ function InvitationsPanel({ invitations }: { invitations: InvitationItem[] }) {
       onSuccess: (result) => {
         toast.success(`"${result.roomName}"에 가입했습니다! 🎉`);
       },
-      onError: (err: { response?: { data?: { message?: string } } }) => {
-        toast.error(err?.response?.data?.message || '수락에 실패했습니다.');
+      onError: (err: Error) => {
+        const _err = err as unknown as { response?: { data?: { message?: string } } };
+        toast.error(_err?.response?.data?.message || '수락에 실패했습니다.');
       },
     });
   };
@@ -1357,8 +1360,9 @@ function InviteModal({
           toast.success(`${student.name}님에게 초대장을 보냈습니다! 🎉`);
           setSentIds((prev) => new Set(prev).add(student.id));
         },
-        onError: (err: { response?: { data?: { message?: string } } }) => {
-          toast.error(err?.response?.data?.message || '초대 발송에 실패했습니다.');
+        onError: (err: Error) => {
+          const _err = err as unknown as { response?: { data?: { message?: string } } };
+          toast.error(_err?.response?.data?.message || '초대 발송에 실패했습니다.');
         },
       },
     );
