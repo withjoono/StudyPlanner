@@ -1529,80 +1529,52 @@ function WeeklyMissionSection() {
             <p className="mt-1 text-xs text-gray-300">장기계획 페이지에서 계획을 추가하세요</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="pb-2 pl-1 pr-3 text-left text-xs font-semibold text-gray-400">
-                    과목
-                  </th>
-                  <th className="pb-2 pr-3 text-left text-xs font-semibold text-gray-400">
-                    계획명
-                  </th>
-                  <th className="pb-2 pr-3 text-center text-xs font-semibold text-gray-400">
-                    주차
-                  </th>
-                  <th className="pb-2 pr-3 text-center text-xs font-semibold text-gray-400">
-                    이번 주
-                  </th>
-                  <th className="pb-2 text-right text-xs font-semibold text-gray-400">진행</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {missionGroups.flatMap((group) => {
-                  const color = getSubjectColor(group.subject);
-                  return group.plans.map((plan, idx) => {
-                    const progress =
-                      plan.totalAmount > 0
-                        ? Math.round((plan.completedAmount / plan.totalAmount) * 100)
-                        : 0;
-                    return (
-                      <tr key={plan.id} className="hover:bg-gray-50/60">
-                        {idx === 0 && (
-                          <td
-                            rowSpan={group.plans.length}
-                            className="py-2.5 pl-1 pr-3 align-middle"
-                          >
-                            <span
-                              className="inline-block whitespace-nowrap rounded px-2 py-0.5 text-xs font-bold text-white"
-                              style={{ backgroundColor: color }}
-                            >
-                              {group.subject}
-                            </span>
-                          </td>
-                        )}
-                        <td className="py-2.5 pr-3 font-medium text-gray-800">
-                          <span className="line-clamp-1">{plan.title}</span>
-                        </td>
-                        <td className="py-2.5 pr-3 text-center text-xs text-gray-500">
-                          <span className="font-semibold text-gray-700">{plan.weekNumber}</span>
-                          <span className="text-gray-300">/{plan.totalWeeks}</span>주
-                        </td>
-                        <td className="py-2.5 pr-3 text-center">
-                          <span className="font-semibold text-indigo-600">
-                            {plan.weeklyAmount}
-                            {unitLabel(plan)}
-                          </span>
-                        </td>
-                        <td className="py-2.5">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="hidden h-1 w-14 overflow-hidden rounded-full bg-gray-100 sm:block">
-                              <div
-                                className="h-full rounded-full transition-all duration-500"
-                                style={{ width: `${progress}%`, backgroundColor: color }}
-                              />
-                            </div>
-                            <span className="w-8 text-right text-xs font-bold" style={{ color }}>
-                              {progress}%
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  });
-                })}
-              </tbody>
-            </table>
+          <div className="space-y-1">
+            {missionGroups.flatMap((group) => {
+              const color = getSubjectColor(group.subject);
+              return group.plans.map((plan) => {
+                const progress =
+                  plan.totalAmount > 0
+                    ? Math.round((plan.completedAmount / plan.totalAmount) * 100)
+                    : 0;
+                return (
+                  <div
+                    key={plan.id}
+                    className="flex items-start gap-2.5 rounded-lg px-2 py-2 hover:bg-gray-50/80"
+                  >
+                    <span
+                      className="mt-0.5 flex-shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-white"
+                      style={{ backgroundColor: color }}
+                    >
+                      {group.subject}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-snug text-gray-800">{plan.title}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <div className="h-1 flex-1 overflow-hidden rounded-full bg-gray-100">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${progress}%`, backgroundColor: color }}
+                          />
+                        </div>
+                        <span className="flex-shrink-0 text-xs font-bold" style={{ color }}>
+                          {progress}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <span className="text-sm font-semibold text-indigo-600">
+                        {plan.weeklyAmount}
+                        {unitLabel(plan)}
+                      </span>
+                      <p className="text-[10px] text-gray-400">
+                        {plan.weekNumber}/{plan.totalWeeks}주차
+                      </p>
+                    </div>
+                  </div>
+                );
+              });
+            })}
           </div>
         )}
       </CardContent>
@@ -1765,7 +1737,7 @@ function PlannerRoutinePage() {
       <div className="mx-auto w-full max-w-screen-xl px-4 pb-24">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
           {/* 주간 미션 — 좌측 */}
-          <div className="lg:w-80 lg:flex-shrink-0">
+          <div className="lg:w-[420px] lg:flex-shrink-0">
             <WeeklyMissionSection />
           </div>
 
